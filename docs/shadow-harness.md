@@ -73,8 +73,16 @@ original for the rest, and counts them (`g_event_stop_unverifiable`). A count th
 drops to a small fraction means the function is mostly unverified, whatever the divergence
 figure says.
 
-The same test applies to every later candidate: **before writing a native version, check
-what it calls.** A leaf, or one calling only pure-memory helpers like `memset`, is fully
+**Measured, 2026-09-11: `EVENT_STOP` is unverified, not verified.** One session with movies
+playing produced **0 comparable calls and 1 skipped**, while `EVENT_SUBMIT` reproduced 1,678
+runs at zero divergence in the same session as a control. So the harness was working and the
+function simply never arrived on a comparable path — which follows from what it does, since
+stopping playback is exactly when a decoder is live. Its native body is written and builds,
+and nothing has checked it.
+
+Choosing it first was the mistake this rule exists to prevent, made an hour after writing the
+rule down. The same test applies to every later candidate: **before writing a native version,
+check what it calls.** A leaf, or one calling only pure-memory helpers like `memset`, is fully
 comparable; anything that allocates, frees, releases, signals or submits is comparable only
 on the paths that avoid those calls. That is a property of the function, not a shortcoming
 to be engineered around — and a promoted native body still has to perform those calls for

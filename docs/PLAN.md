@@ -138,7 +138,11 @@ In Phase 0a frequency order where available, else call-graph order:
   fix from `docs/buffer-size-bug.md`.
 - Scalar plug-in math: filters, panners, submix, gain/dynamics — whatever 0a shows runs.
 
-Per function: read, write native C++, shadow-verify to zero divergence, promote. Because
+Per function: **read what it calls**, then read it, write native C++, shadow-verify to zero
+divergence, promote. The callee check comes first because a function that releases,
+frees, signals or submits cannot be replayed against rewound memory, and is verifiable
+only on paths that avoid those calls — `EVENT_STOP` turned out to have no such paths in
+practice (0 comparable calls in a session). See `docs/shadow-harness.md`. Because
 a hook is now a TU compile plus a relink rather than a full rebuild, run this as a **tight
 one-function-at-a-time loop**, not batched per build cycle.
 
