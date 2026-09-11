@@ -1,7 +1,11 @@
 # Guest execution trace: what audio code actually runs
 
-**Phase 0a, measured 2026-09-11. 784 of 1,693 audio-corpus functions (46.3%) executed** in
-one automated session. Read the two bounds below before using that number for anything.
+**Phase 0a, measured 2026-09-11. 789 of 1,693 audio-corpus functions (46.6%) executed**
+across two automated sessions. Read the two bounds below before using that number.
+
+The first session covered boot, free play and a map switch: 784 functions. A second,
+scripted session covered what a player does — skating, a bail and the replay editor — and
+added **5**. See "The played session" below.
 
 Reproduce with the tooling in `probe/trace/` — the hook, the rebuild and the run are
 described in `docs/environment-linux.md`, "Running the guest trace".
@@ -114,9 +118,37 @@ first thing to submit commands. Two of the three consumers that `command-queue.m
 define the wire format never ran, so shadow-verifying them needs a session that reaches
 whatever command types they handle.
 
+## The played session, 2026-09-11
+
+No human was available, so the pad was driven from a script instead
+(`docs/input-harness.md`): pushes, an ollie, five bail attempts and the replay editor, 66 s
+of timeline in PCU Library. Frames confirm what happened — the skater crossed the plaza and
+rode to a different area, one real bail occurred (the game's own `IsWipeoutRequested`), and
+the replay editor opened with its timeline and transport controls on screen.
+
+| | ran | new |
+|---|---|---|
+| session 1: boot, free play, map switch | 784 | — |
+| session 2: scripted skating, bail, replay | 760 | 5 |
+| **union** | **789 of 1,693 (46.6%)** | |
+
+The five the played session added are all in the audio window: `sub_82B301C0`,
+`sub_82B301C8` (first called on a worker thread), `sub_82B305C0`, `sub_82B33870` (audio
+thread) and `sub_82B715B0` (main). The first session holds 29 the played one does not, every
+one first called on the audio thread — the streaming paths a map switch exercises and a
+single world does not. Vector coverage did not move: 31 of 49 in both.
+
+**So the exit criterion is met, and breadth saturates early.** A session covering menu, a
+skate run and a bail plus replay reaches almost exactly what boot and a map switch already
+reached. What is left unreached is not gameplay-shaped: it is content the sessions never
+touched (other modes, other worlds) plus code in the corpus that is not audio at all.
+
+Still unreached and worth noting: `sub_82B28B78` and `sub_82B28CC0` — two of the three
+command-queue consumers — ran in neither session. `EVENT_SUBMIT` (`sub_82B28CC0`) needs
+movie playback, which these sessions skip; see `docs/shadow-harness.md`.
+
 ## Next
 
-A human-played session — skate, bail, replay — traced the same way and unioned with this one:
-`analyze_trace.py out/corpus.json A.trace B.trace` reports each trace and their union. That
-is what the exit criterion actually asks for, and it is the evidence needed before trusting
-the Phase 3 order above.
+More sessions add little breadth, so further tracing is not the lever. If a specific
+function needs to be reached — a command consumer, an unrun kernel — drive the feature that
+uses it rather than playing longer.

@@ -12,6 +12,9 @@
 # complete; close the window or pkill -KILL -x skate3.
 #
 # Usage: run_trace.sh LABEL [MACRO]      -> $OUT/LABEL.log and $OUT/LABEL.log.trace
+#
+# INPUT_SCRIPT drives the pad from a timeline file once gameplay is reached (see
+# scripts/). CAPTURE_EVERY_MS adds periodic frames; frames go to $OUT/LABEL.frames/.
 set -euo pipefail
 LABEL=${1:?usage: run_trace.sh LABEL [MACRO]}
 MACRO=${2:-}
@@ -21,6 +24,11 @@ BIN=${RECOMP_BIN:-/home/nakas/Documents/skate3/skate3recomp-dev/out/build/linux-
 GAME=${GAME_ROOT:-/home/nakas/Documents/skate3/freeskate/runtime/game}
 USER_SRC=${USER_SRC:-/home/nakas/Documents/skate3/freeskate/runtime/user}
 DELAY=${SKATE3_TRACE_DELAY_MS:-120000}
+INPUT_SCRIPT=${INPUT_SCRIPT:-}
+# Resolve now: the script cds into $OUT before launching, which breaks relative paths.
+[ -n "$INPUT_SCRIPT" ] && INPUT_SCRIPT=$(realpath "$INPUT_SCRIPT")
+SCRIPT_SETTLE_MS=${SCRIPT_SETTLE_MS:-3000}
+CAPTURE_EVERY_MS=${CAPTURE_EVERY_MS:-0}
 
 if pgrep -x skate3 >/dev/null; then echo "skate3 is already running" >&2; exit 1; fi
 if [ "$(nm "$BIN" | grep -c _skate3_seen)" -eq 0 ]; then
@@ -46,4 +54,14 @@ args=(
   --skate3_trace_dump_delay_ms="$DELAY"
 )
 [ -n "$MACRO" ] && args+=( "--skate3_demo_path_gameplay_inputs=$MACRO" )
+if [ -n "$INPUT_SCRIPT" ]; then
+  FRAMES="$OUT/$LABEL.frames"
+  rm -rf "$FRAMES"; mkdir -p "$FRAMES"
+  args+=(
+    "--skate3_input_script=$INPUT_SCRIPT"
+    "--skate3_input_script_settle_ms=$SCRIPT_SETTLE_MS"
+    "--skate3_input_capture_dir=$FRAMES"
+    "--skate3_input_capture_every_ms=$CAPTURE_EVERY_MS"
+  )
+fi
 exec "$BIN" "${args[@]}"

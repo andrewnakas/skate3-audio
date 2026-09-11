@@ -56,11 +56,13 @@ branch targets by address instead of by lowered call recovers nothing more.
 session covering menu, a skate run, and a crash/replay." It is an **upper bound**:
 address-range filtered, not thread-filtered, breadth not frequency. Use it to order Phases 2 and 3 by what is actually reachable.
 
-**Result, 2026-09-11: 784 of 1,693 (46.3%)** in one automated session — boot, University
-free play, pause-menu macro, 120 s. The exit criterion is **only partly met**: no skate
-run, no bail, no replay, so 784 is a floor for a representative session as well as a
-ceiling on audio work. Full breakdown and the reordered kernel list in
-`docs/execution-trace.md`. A human-played trace, unioned with this one, closes it.
+**Result, 2026-09-11: 789 of 1,693 (46.6%)** across two automated sessions, and the exit
+criterion is **met**. The first covered boot, free play and a map switch (784). The second
+was driven by a scripted pad timeline — skating, a bail confirmed by the game's own
+wipeout decision, and the replay editor — and added 5. Breadth saturates: playing more
+does not reach more. The number stays a ceiling on audio work, because the corpus holds
+code that is not audio. Breakdown and the reordered kernel list in
+`docs/execution-trace.md`; the harness is in `docs/input-harness.md`.
 
 **0b. VMX128 pathfinder spike. DONE — result GO.** See `docs/vmx128-exactness.md`;
 reproduce with `probe/vmx128/run.sh`.

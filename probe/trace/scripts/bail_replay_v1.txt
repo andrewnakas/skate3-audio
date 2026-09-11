@@ -1,0 +1,102 @@
+# Skate 3 scripted session v1: roll, ollie, late flip, forced bails, collision, replay editor.
+#
+# One step per line: <duration_ms> [buttons] [lx= ly= rx= ry= lt= rt=]
+#   buttons: a b x y lb rb l3 r3 start back up down left right
+#   sticks -100..100 with up and right positive; triggers 0..100
+#   A step holds exactly that pad state for its duration; anything unnamed is neutral.
+# @mark NAME logs a marker. @capture NAME logs one and saves a frame.
+#
+# The control mapping is from public sources and not yet confirmed in this build:
+#   push A; ollie = right stick down then flick up; forced bail = hold LB+RB, press Y
+#   (another source says X - both are tried); replay editor = Back.
+# v1 is exploratory: every section ends in a capture so the frames show what happened.
+
+@capture s00_spawn
+1000
+
+@mark push
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+1200
+@capture s01_rolling
+
+@mark ollie
+150 ry=-100
+100 ry=100
+1500
+@capture s02_after_ollie
+
+# Ollie, then flick the flip just before landing: too low to catch the board.
+@mark late_flip
+150 a
+450
+150 a
+900
+150 ry=-100
+100 ry=100
+380
+120 rx=-100 ry=100
+400
+@capture s03_late_flip_landing
+2500
+@capture s04_after_late_flip
+
+@mark bail_lb_rb_y
+150 a
+450
+150 a
+900
+400 lb rb
+200 lb rb y
+400 lb rb
+600
+@capture s05_bail_lb_rb_y
+3500
+@capture s06_after_bail_lb_rb_y
+
+@mark bail_x
+150 a
+450
+150 a
+900
+200 x
+800
+@capture s07_bail_x
+3500
+@capture s08_after_bail_x
+
+# Push while steering hard, to run into something at speed.
+@mark collide
+150 a lx=100
+450 lx=100
+150 a lx=100
+450 lx=100
+150 a lx=100
+450 lx=100
+150 a lx=100
+450 lx=100
+3000 lx=100
+@capture s09_collide
+3000
+
+@mark replay
+200 back
+3000
+@capture s10_replay_editor
+200 a
+4000
+@capture s11_replay_a
+200 b
+2500
+@capture s12_replay_b
+200 back
+2500
+@capture s13_after_back
+@mark end

@@ -93,9 +93,10 @@ Apply it with `probe/trace/trace_hook.py apply` and rebuild (195 s, measured). R
 assumed no audio instrumentation existed anywhere, and the work it informs (which functions
 to port first) comes after the harness is up. See `docs/PLAN.md` phase 0a.
 
-**Measured 2026-09-11: 784 of 1,693 corpus functions ran** in an automated session (boot,
-free play, pause menu, 120 s). No skating, bails or replay, so that is a floor for a full
-session and still a ceiling on audio work. Of the four heaviest VMX128 kernels only
+**Measured 2026-09-11: 789 of 1,693 corpus functions ran** across two automated sessions —
+boot with a map switch, and a scripted session that skated, bailed and opened the replay
+editor (`docs/input-harness.md`). The played session added only 5, so breadth saturates;
+the number is still a ceiling on audio work. Of the four heaviest VMX128 kernels only
 `sub_82B22898` ran. `docs/execution-trace.md` has the lists.
 
 ## Workflow for native audio

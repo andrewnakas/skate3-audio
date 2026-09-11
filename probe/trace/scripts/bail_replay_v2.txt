@@ -1,0 +1,138 @@
+# Skate 3 scripted session v2: every bail attempt starts from the same spot.
+#
+# One step per line: <duration_ms> [buttons] [lx= ly= rx= ry= lt= rt=]
+#   buttons: a b x y lb rb l3 r3 start back up down left right
+#   sticks -100..100 with up and right positive; triggers 0..100
+# @mark NAME logs a marker. @capture NAME logs one and saves a frame.
+#
+# Controls, from public sources and sk8-engine-linux's INPUT_LAB.md:
+#   push A; ollie = right stick down then flick up; replay editor = Back (Select);
+#   session marker reset = LB + D-pad Up (INPUT_LAB.md uses it between experiments);
+#   forced bail = hold LB+RB, press Y (one source says X - both are tried).
+# Whether each attempt really bailed comes from the wipeout counter the harness logs
+# (IsWipeoutRequested, sub_82DB9100), not from these names.
+
+@capture v2_00_spawn
+1500
+
+@mark reset1
+300 lb up
+2500
+@capture v2_01_after_reset
+
+@mark push1
+150 a
+500
+150 a
+500
+150 a
+500
+150 a
+1500
+@capture v2_02_rolling
+
+@mark ollie
+120 ry=-100
+120 ry=100
+1500
+@capture v2_03_after_ollie
+
+# Attempt 1: flick the flip just before landing - too low to catch the board.
+@mark attempt1_late_flip
+150 ry=-100
+100 ry=100
+420
+150 rx=-100 ry=100
+2500
+@capture v2_04_late_flip
+
+@mark reset2
+300 lb up
+2500
+@mark push2
+150 a
+500
+150 a
+500
+150 a
+1200
+# Attempt 2: hold LB+RB, press Y.
+@mark attempt2_lb_rb_y
+500 lb rb
+300 lb rb y
+500 lb rb
+2500
+@capture v2_05_lb_rb_y
+
+@mark reset3
+300 lb up
+2500
+@mark push3
+150 a
+500
+150 a
+500
+150 a
+1200
+# Attempt 3: X.
+@mark attempt3_x
+300 x
+2500
+@capture v2_06_x
+
+@mark reset4
+300 lb up
+2500
+@mark push4
+150 a
+500
+150 a
+500
+150 a
+500
+150 a
+1200
+# Attempt 4: ollie, then two opposite flip flicks mid-air to over-rotate the board.
+@mark attempt4_double_flip
+150 ry=-100
+100 ry=100
+200
+120 rx=-100 ry=100
+120 rx=100 ry=100
+2500
+@capture v2_07_double_flip
+
+@mark reset5
+300 lb up
+2500
+@mark push5
+150 a
+400
+150 a
+400
+150 a
+400
+150 a
+400
+150 a
+400
+# Attempt 5: full speed, steering hard, into whatever is there.
+@mark attempt5_collide
+4000 lx=100
+@capture v2_08_collide
+2000
+
+@mark replay_open
+250 back
+3500
+@capture v2_09_replay_editor
+250 a
+4000
+@capture v2_10_replay_a
+250 b
+3000
+@capture v2_11_replay_b
+250 back
+3000
+@capture v2_12_after_replay
+@mark end

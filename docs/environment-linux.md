@@ -28,7 +28,7 @@ fine.
 | lifted C++ | `…/skate3recomp-dev/generated/` — 289 MB, 113 `skate3_recomp.*.cpp` |
 | game data | `/home/nakas/Documents/skate3/freeskate/runtime/game/data/audio/` |
 | disc image | `/home/nakas/Documents/skate3/skate3.iso` |
-| second build dir | `…/out/build/linux-release/skate3` — byte-identical to the jammy binary until the 2026-09-11 trace rebuild, which touched only jammy |
+| `linux-release` | `…/out/build/linux-release` is a **symlink to `linux-release-jammy`** — the same binary and the same `librexruntime.so`. Other projects' launchers run `linux-release/skate3` (skate3loader does), so every rebuild here changes the binary they run |
 | release install | `/home/nakas/Documents/skate3/Skate3Recomp-Linux` (Jul 24) — what `freeskate` launches unless told otherwise |
 | game root for runs | `freeskate/runtime/game` — a symlinked shadow of `Skate3Recomp-Linux/game`; checked stock, no map overrides |
 
@@ -114,9 +114,10 @@ so it is a hint rather than a filter.
 so close the window or `pkill -KILL -x skate3`. Once `skate3 trace: DUMPED` is in the log
 the trace file is complete.
 
-**Current state, 2026-09-11:** the hook is **applied** in `generated/skate3_init.h` and the
-jammy binary carries it; `out/build/linux-release/skate3` is still stock. It was left in for a second, human-played trace. The jammy binary also carries the Phase 1
-audio code; `linux-release` has neither.
+**Current state, 2026-09-11:** the hook is **applied** in `generated/skate3_init.h` and the jammy binary carries it — and so does `out/build/linux-release/skate3`, which is the same
+file through a symlink. An earlier version of this line called it stock; it never was. It was left in for a second, human-played trace. The same binary also carries the Phase 1 audio code and the input-script harness. A peer
+session's skate3loader run crashed on this build at 15:55 on 2026-09-11, not yet attributed;
+coordinate before relinking while another session is testing.
 
 **Undo.** `trace_hook.py remove` restores the header byte-for-byte, verified against the stock
 file. Its mtime is new, so the next build recompiles the same 127 objects back to stock.
