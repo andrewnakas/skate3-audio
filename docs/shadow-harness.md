@@ -59,6 +59,27 @@ from a generic PowerPC ABI table.
 packet's next pointer (`packet+0x0C`), and — when the list was non-empty on entry — the old
 tail's next pointer.
 
+### What the harness cannot verify at all
+
+The native body runs a **second time**, against rewound memory. That is safe for a function
+whose effects are memory this harness can rewind — and unsound for one that calls out to
+guest code with effects it cannot.
+
+`EVENT_STOP` (`sub_82B28C18`) is the first case: when a decoder is live it calls
+`sub_82B3C930`, whose four indirect calls release and unregister the voice. Replaying that
+against a rewound copy would tear down an already-released object, and no memory window can
+undo a release. So the hook compares only calls that arrive with no decoder, runs the
+original for the rest, and counts them (`g_event_stop_unverifiable`). A count that never
+drops to a small fraction means the function is mostly unverified, whatever the divergence
+figure says.
+
+The same test applies to every later candidate: **before writing a native version, check
+what it calls.** A leaf, or one calling only pure-memory helpers like `memset`, is fully
+comparable; anything that allocates, frees, releases, signals or submits is comparable only
+on the paths that avoid those calls. That is a property of the function, not a shortcoming
+to be engineered around — and a promoted native body still has to perform those calls for
+real, so the promoted path carries risk the shadow run never covered.
+
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,
 `msr` and the reservation state are not compared. Another thread writing a watched window
