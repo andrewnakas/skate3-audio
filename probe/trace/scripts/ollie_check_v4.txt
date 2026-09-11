@@ -1,0 +1,82 @@
+# Skate 3 scripted session v4: does the ollie fire, and what does a late flick do?
+#
+# Every bail attempt so far assumed the ollie works, and no frame has shown one. This pops
+# three ways - short wind-up, long wind-up, and a flip flicked late - and photographs each
+# at 200 ms intervals so the crouch, the pop, the air and the landing are all visible.
+# Flick-it: pull the right stick down, then flick it up. Sticks are -100..100, up positive.
+
+@capture v4_00_start
+1500
+
+@mark push_a
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+
+@mark ollie1_short_windup
+250 ry=-100
+150 ry=100
+@capture o1_t000
+200
+@capture o1_t200
+200
+@capture o1_t400
+200
+@capture o1_t600
+200
+@capture o1_t800
+200
+@capture o1_t1000
+1500
+
+@mark push_b
+150 a
+450
+150 a
+900
+
+@mark ollie2_long_windup
+500 ry=-100
+150 ry=100
+@capture o2_t000
+200
+@capture o2_t200
+200
+@capture o2_t400
+200
+@capture o2_t600
+200
+@capture o2_t800
+1500
+
+@mark push_c
+150 a
+450
+150 a
+900
+
+# The user's case: start the flip late, too low to catch the board.
+@mark late_flip
+300 ry=-100
+150 ry=100
+350
+150 rx=-100 ry=100
+@capture lf_t000
+200
+@capture lf_t200
+200
+@capture lf_t400
+200
+@capture lf_t600
+200
+@capture lf_t800
+200
+@capture lf_t1000
+2500
+@capture lf_settled
+@mark end
