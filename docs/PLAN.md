@@ -56,13 +56,24 @@ session covering menu, a skate run, and a crash/replay." It is an **upper bound*
 address-range filtered, not thread-filtered, breadth not frequency. Use it to order
 Phases 2 and 3 by what is actually reachable.
 
-**0b. VMX128 pathfinder spike.** Needs no game build at all — links
-`rex/ppc/context.h` plus two or three kernels extracted from `generated/` into a
-standalone host binary, against a Rust translation, bit-compared over adversarial float
-vectors.
+**0b. VMX128 pathfinder spike. DONE — result GO.** See `docs/vmx128-exactness.md`;
+reproduce with `probe/vmx128/run.sh`.
 
-*Exit criterion:* go/no-go on Rust bit-exactness, plus a translation cookbook (FMA vs.
-separate mul/add, FTZ toggle points, BE↔LE lane mask) for the other 37 kernels.
+45 of 45 operations bit-identical across 56,880 lane comparisons, covering every distinct
+lowering family in the 76-mnemonic surface, under both MXCSR flush-to-zero states.
+
+The spike was done per *operation* rather than per kernel: each of the five heaviest
+kernels calls between three and nine other guest functions, so a standalone link needs
+stubs, whereas the go/no-go question is answered more decisively and more cheaply at the
+instruction level — and that is also the form the cookbook wanted.
+
+One rule beyond those anticipated: **commutative float ops are not NaN-commutative**, and
+GCC's operand ordering is an unstable artifact of register allocation. That is the only
+divergence found and it is confined to NaN inputs. Rule 4 in the cookbook.
+
+Two corrections to what this section assumed: `sub_82B22898` has **zero** FMA sites (it is
+the largest kernel, not an FMA-heavy one — those are `sub_82B02C30`/`sub_82B09288`), and
+the build needs **`-std=c++23`**, not C++20.
 
 Neither blocks Phase 1. Run them while Phase 1's build is going.
 
@@ -214,9 +225,11 @@ touches functions disjoint from Phase 2's. Phase 4 is a rolling queue, not a gat
    bit-level control exactness needs. ARM64 bit-exactness is a materially larger problem —
    see non-goals.
 
-**The 0b spike:** extract two or three kernels (one FMA-heavy, one not, ideally
-`sub_82B22898`), compile standalone, write the Rust translation, bit-compare over
-denormals, NaN payload preservation, rounding boundaries and ±0.
+**The 0b spike: done, and it validated this strategy.** Mirroring RexGlue's lowering was
+the right call — the whole surface reduces to intrinsics Rust has 1:1, RexGlue helpers
+that are pure integer code, and two libm calls. `vrsqrtefp` is notably *not* a hardware
+estimate: RexGlue implements it as a 32-entry integer table lookup, so it ports as data.
+Full results in `docs/vmx128-exactness.md`.
 
 Note this is *not* a doctrine violation. The rule against synthetic tests is about
 container and format structure, where real data exposes distributional surprises. Here the
@@ -265,8 +278,12 @@ this plan does not pretend to close it.
 
 ## 8. Risks, ranked, each with its retiring measurement
 
-1. **VMX128 Rust bit-exactness.** Retire: 0b for go/no-go; fully by Phase 4's per-kernel
-   bit-compare, one at a time.
+1. ~~**VMX128 Rust bit-exactness.**~~ **Retired by 0b: GO.** 45/45 operations
+   bit-identical. Residual, both narrow: (a) `vexptefp128`/`vlogefp128` route through
+   libm and match only because Rust and glibc share a symbol on this platform — keep them
+   in the per-kernel bit-compare permanently; (b) NaN payload ordering on commutative
+   float ops, cookbook rule 4. Whole-kernel composition is still unproven and is Phase 3
+   work, but no longer a risk to the plan's viability.
 2. **The `audio_dump_path` tap is new RE work of unknown-until-attempted cost**, not the
    drop-in the docs' phrasing suggests. Retire: time the actual locate-and-hook work in
    Phase 1; do not estimate it from the other files' line counts.

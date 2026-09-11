@@ -62,14 +62,17 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
   `docs/buffer-size-bug.md`.
 - **Bug 2** (`0x8210A310` corruption): source string identified, but pinning the writer
   needs QCS8550 hardware.
-- **VMX128 exactness is unquantified.** 40 DSP kernels use Xenon vector instructions.
-  Whether scalar reproduction can be bit-identical is *unknown* and is the single biggest
-  risk in any effort estimate. Measure before promising.
-  Still true, but cheaper to settle than it reads: RexGlue already lowered every kernel to
-  SIMDe/SSE intrinsics and the result is on disk in `generated/`, so the probe needs no
-  Ghidra, no game build and no play session. `vmaddfp*` lowers to a real fused
-  `simde_mm_fmadd_ps`, and flush-to-zero is toggled **per instruction class**, not per
-  function — both matter for the translation. See `docs/environment-linux.md`.
+- ~~**VMX128 exactness is unquantified.**~~ **Measured, 2026-09-11: GO.** It was the
+  single biggest risk in any effort estimate; it is now retired as a blocker.
+  45 of 45 operations, spanning every distinct lowering family in the 76-mnemonic audio
+  surface, are bit-identical between RexGlue's C++ and a Rust translation — 56,880 lane
+  comparisons, both flush-to-zero states. Run `probe/vmx128/run.sh` to reproduce; it needs
+  no Ghidra, no game build and no play session. Full cookbook in
+  `docs/vmx128-exactness.md`. What survives, both narrow: `vexptefp128`/`vlogefp128` go
+  through libm and match only because Rust and glibc share a symbol here, so keep them
+  bit-checked forever; and commutative float ops are **not** NaN-commutative, where GCC's
+  operand order is an unstable artifact of register allocation (cookbook rule 4).
+  Whole-kernel composition is still unproven — that is Phase 3.
 
 ### The measurement to take first (still worth doing, but it no longer gates anything)
 

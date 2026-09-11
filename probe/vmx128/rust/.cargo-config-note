@@ -1,0 +1,2 @@
+Built with RUSTFLAGS="-C target-cpu=native" so FMA/SSE4.1 are available without
+runtime dispatch, matching the C++ side's -march=native.
