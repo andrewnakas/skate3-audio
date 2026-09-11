@@ -58,13 +58,33 @@ player several times a frame and stays true across a fall, so true polls within 
 previous one count as the same bail. In the first scripted session: 2 true polls out of
 24,952, one bail.
 
+### The counter is not filtered to the local skater
+
+`IsWipeoutRequested` is polled **per physical player**, and the worlds here are populated.
+The counter therefore reports anyone going down, including a pedestrian next to the skater,
+which is how a bail got attributed to an X press that did not cause one. `sk8-engine-linux`
+flagged exactly this: its own consumer filters on the local skater's animation interface and
+its note says the signal "needs a local-player filter before it is correct".
+
+Until the harness records which player each wipeout belongs to — the object pointer arrives
+in `r3` — **treat the count as "someone fell", not "the skater bailed", and confirm every
+bail against a frame.**
+
 **Frames.** `@capture` reads the presenter's guest output and writes a PPM;
 `probe/trace/frames_to_png.sh DIR [WIDTH]` converts a directory to PNG. In parallel,
 `run_play.sh` runs `skate3loader`'s `capture.py` against the game window every couple of
 seconds — the game draws through GTK, and with `GDK_BACKEND=x11` it is an X11 client whose
 pixels can be read. The first session produced 15 in-process frames and 62 window shots, 59
 of them distinct, so neither path hit the all-black capture failure recorded in the
-`skate3` project's notes.
+`skate3` project's notes. The in-process frames are current, not stale: a frame and the
+window shot taken in the same wall-clock second show the same thing.
+
+**The two capture clocks do not share an origin.** A window shot's name counts seconds from
+when `capture.py` started, which is after the game process appears — 10 s after launch in
+one session — while script time starts 3 s after gameplay is reached. Mapping one onto the
+other by assuming a shared start put the frames 6 s out and briefly looked like the
+in-process capture was showing something else entirely. Use the files' mtimes against the
+log's timestamps instead.
 
 ## What the controls did
 
@@ -74,12 +94,19 @@ Measured in the first scripted session, from frames and the bail counter:
 |---|---|---|
 | `a` taps | push | **works** — the skater crossed the plaza and reached a different area |
 | `back` | open the replay editor | **works** — timeline, transport controls and the A/B prompts are on screen |
+| `y` | (guessed: bail) | **steps off the board** — frames show the skater walking down the stairs on foot |
 | right stick down then up | ollie | not separable from the frames taken |
 | `lb` + `up` | session-marker reset | **no visible effect** — the view is identical before and after |
-| late flip, `lb`+`rb`+`y`, `x`, double flick, full-speed collision | bail | one bail in the session, during the pushes after the third reset rather than in any attempt window; **unattributed** |
+| late flip, `lb`+`rb`+`y`, `x`, double flick, full-speed collision | bail on demand | **none demonstrated** — see below |
 
-So bails happen, but the script does not yet cause them on demand. Attribution needs
-attempts spaced further apart with frames around each, or the sequence you know produces one.
+Two sessions, eleven attempts, two wipeout events, and **not one of them is attributable to
+an input**. The second session's single bail landed during the pushes rather than in any
+attempt window, and its frame does show the local skater mid-fall. The third session spaced
+each attempt about eight seconds apart, so the log could name the marker a bail followed —
+it named `A3_x` — but the frames refute it: at that instant the local skater is riding
+upright while a pedestrian stumbles beside him.
+
+So the script still cannot bail on demand, and the remaining question is not timing.
 
 ## Running a session
 

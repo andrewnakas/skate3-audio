@@ -56,8 +56,8 @@ branch targets by address instead of by lowered call recovers nothing more.
 session covering menu, a skate run, and a crash/replay." It is an **upper bound**:
 address-range filtered, not thread-filtered, breadth not frequency. Use it to order Phases 2 and 3 by what is actually reachable.
 
-**Result, 2026-09-11: 789 of 1,693 (46.6%)** across two automated sessions, and the exit
-criterion is **met**. The first covered boot, free play and a map switch (784). The second
+**Result, 2026-09-11: 789 of 1,693 (46.6%)** across three automated sessions — the last one
+reaches all 789 by itself — and the exit criterion is **met**. The first covered boot, free play and a map switch (784). The second
 was driven by a scripted pad timeline — skating, a bail confirmed by the game's own
 wipeout decision, and the replay editor — and added 5. Breadth saturates: playing more
 does not reach more. The number stays a ceiling on audio work, because the corpus holds

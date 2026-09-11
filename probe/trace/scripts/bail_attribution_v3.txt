@@ -1,0 +1,106 @@
+# Skate 3 scripted session v3: one bail attempt at a time, spaced so the wipeout log
+# attributes itself. Each attempt is four pushes, the attempt, then ~4.5 s of settling
+# with frames. Wipeouts are collapsed within 1.5 s, and every attempt window is longer
+# than that, so at most one bail can be attributed to each.
+#
+# v2 found the controls do work - the skater skated and Back opened the replay editor -
+# but its one bail landed during the pushes rather than inside an attempt window.
+# The session-marker reset (LB + D-pad Up) did nothing visible in v2 and is dropped here.
+
+@capture w00_start
+1500
+
+@mark A1_late_flip
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+150 ry=-100
+100 ry=100
+420
+150 rx=-100 ry=100
+1200
+@capture w01_A1_after
+3000
+@capture w02_A1_settled
+
+@mark A2_lb_rb_y
+150 a
+450
+150 a
+450
+150 a
+900
+600 lb rb
+300 lb rb y
+600 lb rb
+1200
+@capture w03_A2_after
+3000
+@capture w04_A2_settled
+
+@mark A3_x
+150 a
+450
+150 a
+450
+150 a
+900
+400 x
+1500
+@capture w05_A3_after
+3000
+@capture w06_A3_settled
+
+@mark A4_y
+150 a
+450
+150 a
+450
+150 a
+900
+400 y
+1500
+@capture w07_A4_after
+3000
+@capture w08_A4_settled
+
+@mark A5_double_flip
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+150 ry=-100
+100 ry=100
+180
+120 rx=-100 ry=100
+120 rx=100 ry=100
+1500
+@capture w09_A5_after
+3000
+@capture w10_A5_settled
+
+@mark A6_collide
+150 a
+400
+150 a
+400
+150 a
+400
+150 a
+400
+150 a
+400
+5000 lx=100
+@capture w11_A6_after
+3000
+@capture w12_A6_settled
+@mark end

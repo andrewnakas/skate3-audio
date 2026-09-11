@@ -130,7 +130,12 @@ the replay editor opened with its timeline and transport controls on screen.
 |---|---|---|
 | session 1: boot, free play, map switch | 784 | — |
 | session 2: scripted skating, bail, replay | 760 | 5 |
+| session 3: scripted bail attempts, spaced | 789 | 0 |
 | **union** | **789 of 1,693 (46.6%)** | |
+
+The third session reached all 789 **on its own**, and no session holds a function the others
+lack. Boot into a world plus a few minutes of scripted play is the whole reachable set these
+sessions find.
 
 The five the played session added are all in the audio window: `sub_82B301C0`,
 `sub_82B301C8` (first called on a worker thread), `sub_82B305C0`, `sub_82B33870` (audio
