@@ -10,6 +10,9 @@ Read this before trusting a path, a build instruction, or a "trap" from the othe
 
 Linux, 12 cores, 30 GB RAM, 25 GB free on `/`. `rustc`/`cargo` **1.98.1** in `~/.cargo/bin`
 (installed 2026-09-11). `gcc` 15.2. `python3` 3.14. `ffmpeg` CLI 8.0.1.
+The recomp is built with **clang++-20** (`CMAKE_CXX_COMPILER` in the jammy build cache).
+There is no unversioned `clang++`, so `which clang++` finding nothing does not mean clang
+is absent.
 
 The macOS notes about `polite_build.sh` throttling on low memory, and about a build and a
 play session not being able to coexist on 8 GB, **do not apply**. Full parallel builds are
@@ -25,6 +28,9 @@ fine.
 | lifted C++ | `…/skate3recomp-dev/generated/` — 289 MB, 113 `skate3_recomp.*.cpp` |
 | game data | `/home/nakas/Documents/skate3/freeskate/runtime/game/data/audio/` |
 | disc image | `/home/nakas/Documents/skate3/skate3.iso` |
+| second build dir | `…/out/build/linux-release/skate3` — byte-identical to the jammy binary until the 2026-09-11 trace rebuild, which touched only jammy |
+| release install | `/home/nakas/Documents/skate3/Skate3Recomp-Linux` (Jul 24) — what `freeskate` launches unless told otherwise |
+| game root for runs | `freeskate/runtime/game` — a symlinked shadow of `Skate3Recomp-Linux/game`; checked stock, no map overrides |
 
 All retail audio data is present: `ambience.big`, `ambienceresident.big`, `wheels.big`,
 `grains.big`, `post.big`, `audiofiles.big`, per-language speech under `english/` etc., and
@@ -50,8 +56,13 @@ This is the single most important difference, because it moves work onto the cri
 - `src/` contains **no** `skate3_audio_*.cpp`. `git log --all -- '*audio*'` is **empty** on
   every branch.
 - The built binary has **no** `audio_dump_path`, **no** `audio_stats`, **no** `xma_stats`.
-- It **does** have the guest tracer compiled in: `skate3_trace`, `skate3_trace_mode`,
-  `skate3_trace_arm`, `skate3_trace_capacity`, `skate3_trace_dump_delay_ms`.
+- It has the guest tracer's **cvars and controller** compiled in (`skate3_trace`,
+  `skate3_trace_mode`, `skate3_trace_arm`, `skate3_trace_capacity`,
+  `skate3_trace_dump_delay_ms`) but **not its recording hook**. An earlier version of this
+  file said the tracer was compiled in and a trace was free; that was wrong. The hook is a
+  local edit to `generated/skate3_init.h`, and this checkout's header was stock: the stock
+  binary has **zero** per-function `_skate3_seen` statics, so an armed trace would have
+  dumped an empty file. See "Running the guest trace" below.
 - The SDK source has an `audio_stats` cvar
   (`third_party/rexglue-sdk/src/audio/sdl/sdl_audio_driver.cpp:38`), but the binary
   predates even that.
@@ -59,11 +70,52 @@ This is the single most important difference, because it moves work onto the cri
   (`audio_system`, `audio_driver`, `xma_context`, `xma_decoder`, `xma_register_file`) and
   `src/kernel/xboxkrnl/xboxkrnl_audio_xma.cpp`.
 
-**Consequences.** The guest trace is free — run it today, no rebuild. The bit-exact
+**Consequences.** The guest trace is **not** free: it needs the hook applied and a rebuild,
+measured below at a little over three minutes. The bit-exact
 reference capture is **not** available: `audio_dump_path` has to be written, and no source
 for it exists in this tree or its history, so it is new reverse-engineering work rather
 than a drop-in. `recomp/src/*.cpp` in this repo are the drop-in sources for the probe,
 shadow harness and native functions.
+
+## Running the guest trace (measured 2026-09-11)
+
+Tooling is in `probe/trace/`.
+
+1. **Apply the hook.** `probe/trace/trace_hook.py apply` inserts the macro documented at the
+   top of `src/skate3_guest_trace.cpp` into `generated/skate3_init.h`.
+2. **Rebuild.** That header is included by **127 objects** (111 generated, 16 in `src/`).
+   `ninja -j10 skate3` in `out/build/linux-release-jammy`: **195 s wall**, peak **820 MB**
+   per compile, binary 89.8 → 100.1 MB. This is the real cost of a header touch here, and
+   the first build timing taken on this machine.
+3. **Check it took.** `nm skate3 | grep -c _skate3_seen` gives 47,889 with the hook and 0
+   without. **Do not grep `objdump` for `call <skate3_trace_enter>`** — it finds 0 either
+   way, because the recomp is built with the large code model and the call goes through a
+   register.
+4. **Run** `probe/trace/run_trace.sh LABEL [MACRO]` and **analyze** with
+   `probe/trace/analyze_trace.py`, against the corpus from `probe/trace/corpus.py`.
+
+What the arm modes actually do, read from `ControllerMain`: `boot` arms at startup and dumps
+`skate3_trace_dump_delay_ms` after gameplay context 1, capped at 120 s; `gameplay` arms at
+gameplay context 1 and dumps after the same delay; `macro-final` needs a demo-path macro;
+`manual` arms and **never dumps** — there is no other dump path, not even at exit. So one
+trace covers at most two minutes past reaching gameplay.
+
+The dump has a thread column. In `first` mode it is the thread of the **first** call only,
+so it is a hint rather than a filter.
+
+**Stopping a session.** The game **ignores SIGTERM** — it was still running 15 s later —
+so close the window or `pkill -KILL -x skate3`. Once `skate3 trace: DUMPED` is in the log
+the trace file is complete.
+
+**Current state, 2026-09-11:** the hook is **applied** in `generated/skate3_init.h` and the
+jammy binary carries it; `out/build/linux-release/skate3` is still stock. It was left in
+for a second, human-played trace.
+
+**Undo.** `trace_hook.py remove` restores the header byte-for-byte, verified against the stock
+file. Its mtime is new, so the next build recompiles the same 127 objects back to stock.
+Codegen also regenerates the header and drops the edit. The hook is cheap to leave in while
+disarmed — two global loads and a not-taken branch per guest call — but a binary carrying it
+is not the stock binary, which matters for any timing comparison.
 
 ## The hook rebuild trap does not apply here
 
@@ -158,11 +210,17 @@ FMA3 and SSE4.x natively, so a bit-exact hardware-backed probe needs no emulatio
 holding a critical section, and audio reports 100% silent submits with zero XMA voices,
 which looks exactly like total audio failure.
 
-No `TU_*` package file exists on this machine. The TU patch appears to be **already staged**
+No `TU_*` package file exists on this machine. Both payloads are staged as symlinks in
+`freeskate/runtime/game` and match `IsTitleUpdateInstalled`'s size and SHA-256
+(`default.xexp` 1,701,888 bytes, `eb9ef910…`; `EAWebkit.xexp` 4,096 bytes, `5d4a308d…`), so
+that check passes. On Linux a failing check runs the installer blocking; the empty-to-ask
+overlay described below is the `__APPLE__` path. The TU patch appears to be **already staged**
 as `default.xexp` in the game directory
 (`freeskate/runtime/game/default.xexp`, and in `out/build/linux-release-jammy/game/`).
 `SKATE3_INSTALL_TU` is read as an environment variable at
 `src/skate3_app_common.cpp:658` and `src/skate3_title_update_installer.cpp:851`.
 
-**Unconfirmed.** Verify on the first run with audio stats enabled rather than assuming —
-the failure mode is designed to look like something else.
+**Confirmed 2026-09-11.** Launched with no `SKATE3_INSTALL_TU`, the game reached gameplay
+13 s after launch, and the trace captured music, sound-bank and speech loads. That rules
+out the installer stall. This binary has no audio stats, so actual audio output was not
+measured that way.

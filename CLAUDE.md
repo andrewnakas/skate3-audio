@@ -86,10 +86,16 @@ into a number. Do this before committing to a plan.
 Note it traces breadth, not frequency, and filters by address range rather than thread — so
 treat the result as an **upper bound**.
 
-On the Linux box the tracer is **already compiled into the built binary**, so this costs a
-play session and no rebuild at all. Run it. But it no longer gates the plan: that framing
+On the Linux box the tracer's cvars are compiled in but **its recording hook is not** —
+the docs said otherwise until 2026-09-11, and an armed trace would have dumped nothing.
+Apply it with `probe/trace/trace_hook.py apply` and rebuild (195 s, measured). Run it. But it no longer gates the plan: that framing
 assumed no audio instrumentation existed anywhere, and the work it informs (which functions
 to port first) comes after the harness is up. See `docs/PLAN.md` phase 0a.
+
+**Measured 2026-09-11: 784 of 1,693 corpus functions ran** in an automated session (boot,
+free play, pause menu, 120 s). No skating, bails or replay, so that is a floor for a full
+session and still a ceiling on audio work. Of the four heaviest VMX128 kernels only
+`sub_82B22898` ran. `docs/execution-trace.md` has the lists.
 
 ## Workflow for native audio
 

@@ -41,20 +41,26 @@ Read once, prove once in C++, port and re-check once in Rust.
 
 ### Phase 0 — free measurements, no rebuild, start immediately
 
-**0a. Guest execution trace.** The tracer is already compiled into
-`out/build/linux-release-jammy/skate3`. No code change, no rebuild.
+**0a. Guest execution trace.** This section originally said the tracer was already compiled
+in and needed no rebuild. **Wrong:** its cvars are, its recording hook is not. Apply the hook
+with `probe/trace/trace_hook.py apply` and rebuild — 127 objects, 195 s, measured. Then
+`probe/trace/run_trace.sh LABEL [MACRO]`. Details in `docs/environment-linux.md`.
 
-```sh
-./skate3 --game_data_root=<game> --skate3_install_tu=<TU> \
-         --skate3_trace=true --skate3_trace_mode=first
-```
-
-Intersect the traced address set with the 1,694-function audio corpus.
+Intersect the traced address set with the audio corpus. The 1,694-function list did not
+survive (`out/` is not committed); `probe/trace/corpus.py` rebuilds it from `generated/`. The
+documented 1,536-function seed comes back **exactly** as the audio window plus the three
+out-of-band audio functions; one closure round gives **1,693**, one short, and resolving
+branch targets by address instead of by lowered call recovers nothing more.
 
 *Exit criterion:* a number — "N of 1,694 functions execute during a representative
 session covering menu, a skate run, and a crash/replay." It is an **upper bound**:
-address-range filtered, not thread-filtered, breadth not frequency. Use it to order
-Phases 2 and 3 by what is actually reachable.
+address-range filtered, not thread-filtered, breadth not frequency. Use it to order Phases 2 and 3 by what is actually reachable.
+
+**Result, 2026-09-11: 784 of 1,693 (46.3%)** in one automated session — boot, University
+free play, pause-menu macro, 120 s. The exit criterion is **only partly met**: no skate
+run, no bail, no replay, so 784 is a floor for a representative session as well as a
+ceiling on audio work. Full breakdown and the reordered kernel list in
+`docs/execution-trace.md`. A human-played trace, unioned with this one, closes it.
 
 **0b. VMX128 pathfinder spike. DONE — result GO.** See `docs/vmx128-exactness.md`;
 reproduce with `probe/vmx128/run.sh`.
@@ -105,8 +111,10 @@ This is step one because every later verification depends on both halves working
 
 In Phase 0a frequency order where available, else call-graph order:
 
-- Command queue producer/consumer (`sub_82B28A00`, `sub_82B28B78/C18/CC0`,
-  `sub_82B48530`) — land the ordering fix from `docs/command-queue.md` natively.
+- Command queue producer/consumer (`sub_82B28A00`, `sub_82B28B78/C18/CC0`, `sub_82B48530`) —
+  land the ordering fix from `docs/command-queue.md` natively. **In the 0a session
+  `sub_82B28B78` and `sub_82B28CC0` never ran**, so they need a session that reaches
+  their command types before they can be shadow-verified.
 - Scheduler tick (`sub_82B48A50`, `sub_82B482F8`, `sub_82B48440`).
 - Buffer-pair init/measure (`sub_82B7F828`, `sub_82B7F998`, `sub_82B7F8A8`) — land the
   fix from `docs/buffer-size-bug.md`.
@@ -121,8 +129,12 @@ one-function-at-a-time loop**, not batched per build cycle.
 
 ### Phase 3 — VMX128 kernels, native C++
 
-Heaviest first: `sub_82B22898` (583 instrs), `sub_82B3A048` (557), `sub_82B02C30` and
-`sub_82B09288` (389 each).
+**Executed first, then heaviest.** The original order was heaviest first — `sub_82B22898`
+(583), `sub_82B3A048` (557), `sub_82B02C30` and `sub_82B09288` (389 each) — and **only
+`sub_82B22898` ran** in the 0a session. On `RwAudioCore Dac`, by vector instruction
+count: `sub_82B22898` (583), `sub_82B50380` (217), `sub_82B42C98` (99), `sub_82B399D0`
+(98), `sub_82B44D18` (84), then twelve smaller; full list in `docs/execution-trace.md`.
+Recheck this once a skate/bail/replay trace exists.
 
 1. Read the lifted form in `generated/skate3_recomp.*.cpp` — already on disk, no Ghidra.
 2. Write native C++. Since RexGlue's lifted form is already the correct SIMDe/SSE
@@ -296,7 +308,9 @@ this plan does not pretend to close it.
    prior coherent stories were all wrong; no shortcuts.
 5. **0a's number could still mislead** — it is address-range filtered and thread-unaware.
    Retire: cross-check against which functions actually produce shadow comparisons in
-   Phases 2–3. A "hot" function that never shows one means the filter is off.
+   Phases 2–3. A "hot" function that never shows one means the filter is off. Already
+   visible in the first trace: seven vector functions inside the audio window were first
+   called on the render thread.
 6. **Disk creep** over dozens of relinks (25 GB free; `out/build/linux-release-jammy` is
    363 MB, `rexglue-sdk/out` 1.1 GB). Retire: watch `df -h`. Cheap to check.
 
