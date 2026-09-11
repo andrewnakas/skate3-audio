@@ -1,0 +1,21 @@
+# Derived from the retail game — regenerate with docs/REPRODUCING.md, never commit.
+out/
+*.bin
+*.xex
+*.xexp
+*.xchk
+*.pcm
+*.wav
+*.raw
+*.big
+*.sns
+*.snr
+*.mus
+*.mpf
+
+# Build output
+target/
+build/
+__pycache__/
+*.o
+.DS_Store
