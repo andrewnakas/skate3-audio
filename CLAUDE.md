@@ -45,8 +45,9 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Container formats | all three decoded and documented |
 | Conversion | **sample-exact** on ambience, speech and music |
 | Rust crate | 33 tests, three containers, validated on real archives |
-| Shadow harness | built and compiles; **nothing verified through it yet** |
-| Native functions | one written (`EVENT_SUBMIT`), unverified |
+| Shadow harness | **proven**: `EVENT_SUBMIT` 1,678 runs, zero divergence (`docs/shadow-harness.md`) |
+| Native functions | one: `EVENT_SUBMIT`, shadow-verified and promoted |
+| Guest-mix capture | `audio_dump_path` written for Linux and validated; **not reproducible run to run** |
 
 ### Open
 
@@ -101,8 +102,11 @@ session and still a ceiling on audio work. Of the four heaviest VMX128 kernels o
 
 1. Read the decompiled function (`out/decomp/sub_XXXXXXXX.c`).
 2. Write the native version in `recomp/src/skate3_audio_native.cpp`.
-3. Register the hook: add `REX_FUNC(sub_XXXXXXXX)`, run `tools/gen_hooked_funcs.sh`.
-4. Build, run with `--skate3_audio_shadow=true`, play.
+3. Register the hook: add `REX_FUNC(sub_XXXXXXXX)`, run `tools/gen_hooked_funcs.sh`. On Linux
+   there is no registration step: an `extern "C" REX_FUNC(sub_XXXXXXXX)` definition wins at
+   link time.
+4. Build, run with `--skate3_audio_shadow=true`, play. On Linux `probe/harness/run_session.sh`
+   does this. Functions on the PacketPlayer path only run while a frontend movie plays.
 5. Promote to `--skate3_audio_native=true` **only** after zero divergence.
 
 The harness runs the original first and keeps its result, then runs yours against a rewound
@@ -120,6 +124,11 @@ is documented "empty to ask", so without it the game sits on an installer overla
 guest thread blocks holding a critical section, and audio reports *100% silent submits with
 zero XMA voices*. Always pass
 `--skate3_install_tu=<TU_12K2276_...>`. This cost an hour.
+
+**Host float work inside a guest call can SIGFPE.** The audio worker thread enters guest
+code with MXCSR `0x0000`, every FP exception unmasked. The first capture tap divided a
+double on close and killed the game at the 4,000th submit. Mask exceptions around host-only
+work in hooks — `FloatExceptionsMasked` in `skate3_audio_dump.cpp`.
 
 **Adding a hook forces a full rebuild.** `generated/skate3_hooked_funcs.h` is included by
 `skate3_init.h`, which every translation unit includes. One new hook rebuilds everything.

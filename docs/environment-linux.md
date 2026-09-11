@@ -23,7 +23,7 @@ fine.
 | what | where |
 |---|---|
 | this repo | `/home/nakas/Documents/sk8Audio` |
-| recomp | `/home/nakas/Documents/skate3/skate3recomp-dev` (HEAD `aa671f5`, branch `diag/white-fallback-attribution`) |
+| recomp | `/home/nakas/Documents/skate3/skate3recomp-dev` (was HEAD `aa671f5` on `diag/white-fallback-attribution`; audio work is on `audio/phase1-harness`) |
 | built binary | `…/out/build/linux-release-jammy/skate3` |
 | lifted C++ | `…/skate3recomp-dev/generated/` — 289 MB, 113 `skate3_recomp.*.cpp` |
 | game data | `/home/nakas/Documents/skate3/freeskate/runtime/game/data/audio/` |
@@ -51,11 +51,18 @@ Read the lifted form and only stand up the Ghidra pipeline if that proves too sl
 
 ## The audio instrumentation is absent from this recomp checkout
 
+> **Update 2026-09-11:** Phase 1 added it, on recomp branch `audio/phase1-harness`
+> (`e581969`), and the jammy binary is built from that branch. This section describes the
+> checkout before that commit. Results are in `docs/shadow-harness.md`.
+
 This is the single most important difference, because it moves work onto the critical path.
 
 - `src/` contains **no** `skate3_audio_*.cpp`. `git log --all -- '*audio*'` is **empty** on
   every branch.
-- The built binary has **no** `audio_dump_path`, **no** `audio_stats`, **no** `xma_stats`.
+- The build has **no** `audio_dump_path` and **no** `xma_stats`. It **does** have
+  `audio_stats`: the SDK is linked as `librexruntime.so`, and its cvars live in that
+  library, not in the `skate3` executable. An earlier version of this file checked only
+  the executable and reported `audio_stats` missing.
 - It has the guest tracer's **cvars and controller** compiled in (`skate3_trace`,
   `skate3_trace_mode`, `skate3_trace_arm`, `skate3_trace_capacity`,
   `skate3_trace_dump_delay_ms`) but **not its recording hook**. An earlier version of this
@@ -63,9 +70,9 @@ This is the single most important difference, because it moves work onto the cri
   local edit to `generated/skate3_init.h`, and this checkout's header was stock: the stock
   binary has **zero** per-function `_skate3_seen` statics, so an armed trace would have
   dumped an empty file. See "Running the guest trace" below.
-- The SDK source has an `audio_stats` cvar
-  (`third_party/rexglue-sdk/src/audio/sdl/sdl_audio_driver.cpp:38`), but the binary
-  predates even that.
+- `audio_stats` is defined at
+  `third_party/rexglue-sdk/src/audio/sdl/sdl_audio_driver.cpp:38` and is in the built
+  runtime library. Grep `librexruntime.so`, not `skate3`, for any SDK cvar.
 - Host audio lives in the SDK, not the game: `third_party/rexglue-sdk/src/audio/`
   (`audio_system`, `audio_driver`, `xma_context`, `xma_decoder`, `xma_register_file`) and
   `src/kernel/xboxkrnl/xboxkrnl_audio_xma.cpp`.
@@ -108,8 +115,8 @@ so close the window or `pkill -KILL -x skate3`. Once `skate3 trace: DUMPED` is i
 the trace file is complete.
 
 **Current state, 2026-09-11:** the hook is **applied** in `generated/skate3_init.h` and the
-jammy binary carries it; `out/build/linux-release/skate3` is still stock. It was left in
-for a second, human-played trace.
+jammy binary carries it; `out/build/linux-release/skate3` is still stock. It was left in for a second, human-played trace. The jammy binary also carries the Phase 1
+audio code; `linux-release` has neither.
 
 **Undo.** `trace_hook.py remove` restores the header byte-for-byte, verified against the stock
 file. Its mtime is new, so the next build recompiles the same 127 objects back to stock.

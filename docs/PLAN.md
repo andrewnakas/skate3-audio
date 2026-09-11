@@ -84,7 +84,7 @@ the build needs **`-std=c++23`**, not C++20.
 
 Neither blocks Phase 1. Run them while Phase 1's build is going.
 
-### Phase 1 — instrumentation in this tree, harness proven (critical path, step one)
+### Phase 1 — instrumentation in this tree, harness proven (critical path, step one) — DONE
 
 1. Add `recomp/src/skate3_audio_{native,probe,shadow}.cpp` to `SKATE3_COMMON_SOURCES` in
    `skate3recomp-dev/CMakeLists.txt`, the same list `src/skate3_native_scene.cpp` is in.
@@ -106,6 +106,22 @@ Neither blocks Phase 1. Run them while Phase 1's build is going.
 One proves the shadow mechanism, the other proves the oracle tap.
 
 This is step one because every later verification depends on both halves working.
+
+**Result, 2026-09-11: both halves met.** (a) `EVENT_SUBMIT` ran 1,678 times under shadow
+with zero register and memory divergence, then ran natively at least 1,024 times from boot
+to gameplay. (b) A 4,000-submit capture passes a signal-level layout check and `mixdiff.py`
+reads it. Recomp branch `audio/phase1-harness`, commit `e581969`. What changed on the way,
+all detailed in `docs/shadow-harness.md`:
+
+- `ShadowCompare` had to be reworked before it could pass a correct function: a whole-context
+  memcmp became ABI-preserved registers, and one window became a list.
+- `EVENT_SUBMIT` only runs while a frontend movie plays. The demo path skips movies unless
+  `skate3_demo_path_play_movies=true`.
+- The tap overrides the `XAudioSubmitRenderDriverFrame` import rather than hooking the System
+  tick. Its first version crashed the game: the audio worker enters guest code with MXCSR
+  `0x0000`, so host float work there has to mask exceptions.
+- **Captures are not reproducible run to run** — 72–78% of aligned submits match between
+  sessions. See the caveats on Phases 4 and 6, and risk 7.
 
 ### Phase 2 — struct layouts and scalar plug-in logic, native C++
 
@@ -159,8 +175,12 @@ verified; no need to wait for either phase to finish. Two tiers:
 - **End-to-end**: once enough graph exists, render a real scene and compare against that
   scene's `audio_dump_path` capture with `tools/mixdiff.py`.
 
-*Exit criterion:* every ported function passes its bit-compare; a representative scene
-(one ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
+*Exit criterion:* every ported function passes its bit-compare; a representative scene (one
+ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
+
+**Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
+same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
+process, before it can be tested. Open — risk 7.
 
 ### Phase 5 — containers and codec, Rust-only, fully parallel
 
@@ -184,6 +204,7 @@ drive playback from Bevy.
 
 *Exit criterion:* the engine plays a real in-game sound through the ported graph, and a
 capture of it matches the recomp's `audio_dump_path` for the same trigger, bit-for-bit.
+Same caveat as Phase 4: the recomp's own captures differ between runs.
 
 ## 3. Critical path and parallelism
 
@@ -297,12 +318,14 @@ this plan does not pretend to close it.
    in the per-kernel bit-compare permanently; (b) NaN payload ordering on commutative
    float ops, cookbook rule 4. Whole-kernel composition is still unproven and is Phase 3
    work, but no longer a risk to the plan's viability.
-2. **The `audio_dump_path` tap is new RE work of unknown-until-attempted cost**, not the
-   drop-in the docs' phrasing suggests. Retire: time the actual locate-and-hook work in
-   Phase 1; do not estimate it from the other files' line counts.
+2. ~~**The `audio_dump_path` tap is new RE work of unknown-until-attempted cost.**~~ **Retired
+   in Phase 1.** The mix point is the `XAudioSubmitRenderDriverFrame` import, and the tap is
+   one small file. Its one real cost was a SIGFPE from unmasked host FP exceptions on the
+   audio worker thread.
 3. **`ShadowCompare`'s window diff does not fit DSP output buffers** — its own comment says
-   so. Retire: build the buffer-output variant at the start of Phase 3 and prove it on the
-   first kernel before assuming it generalises to the other 39.
+   so. Retire: build the buffer-output variant at the start of Phase 3 and prove it on the first kernel before assuming it generalises to the other 39. Partly done
+   in Phase 1: it now takes a list of windows, up to 64 KB in total. A kernel writing more
+   still needs a buffer-output variant.
 4. **`.mpf` sequencing undecoded.** Blocks interactive music as a feature, not bit-exact
    playback of a given segment. Retire: Phase 5. This is exactly the field where three
    prior coherent stories were all wrong; no shortcuts.
@@ -313,6 +336,11 @@ this plan does not pretend to close it.
    called on the render thread.
 6. **Disk creep** over dozens of relinks (25 GB free; `out/build/linux-release-jammy` is
    363 MB, `rexglue-sdk/out` 1.1 GB). Retire: watch `df -h`. Cheap to check.
+7. **The mix is not reproducible run to run.** Two sessions booted the same way differ in
+   22–28% of aligned submits, starting with values near 1e-15 and growing to full scale.
+   This blocks bit-for-bit comparison across sessions (Phases 4 and 6), not per-function
+   verification. Retire: find the source — thread timing, random variation or streaming —
+   before relying on any cross-session capture comparison.
 
 ## 9. Non-goals, deliberately
 
