@@ -70,8 +70,9 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
   no Ghidra, no game build and no play session. Full cookbook in
   `docs/vmx128-exactness.md`. What survives, both narrow: `vexptefp128`/`vlogefp128` go
   through libm and match only because Rust and glibc share a symbol here, so keep them
-  bit-checked forever; and commutative float ops are **not** NaN-commutative, where GCC's
-  operand order is an unstable artifact of register allocation (cookbook rule 4).
+  bit-checked forever; and commutative float ops are **not** NaN-commutative, where the
+  winning operand is chosen by register allocation in GCC and in clang-20, the recomp's own
+  compiler, so it cannot be derived from source (cookbook rule 4).
   Whole-kernel composition is still unproven — that is Phase 3.
 
 ### The measurement to take first (still worth doing, but it no longer gates anything)

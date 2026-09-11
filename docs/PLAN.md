@@ -67,8 +67,9 @@ kernels calls between three and nine other guest functions, so a standalone link
 stubs, whereas the go/no-go question is answered more decisively and more cheaply at the
 instruction level — and that is also the form the cookbook wanted.
 
-One rule beyond those anticipated: **commutative float ops are not NaN-commutative**, and
-GCC's operand ordering is an unstable artifact of register allocation. That is the only
+One rule beyond those anticipated: **commutative float ops are not NaN-commutative**, and the
+winning operand slot is chosen by register allocation — in GCC and in clang-20, the
+recomp's own compiler — so it is not stable across calling contexts. That is the only
 divergence found and it is confined to NaN inputs. Rule 4 in the cookbook.
 
 Two corrections to what this section assumed: `sub_82B22898` has **zero** FMA sites (it is

@@ -56,7 +56,8 @@ and the BE↔LE lane mask.
 without fast-math, so the failure mode is a human writing the algebraic form, not the
 compiler. A `vmulfp128` followed by a separate `vaddfp128` must stay two operations.
 
-Verified: `vmaddfp` and `vnmsubfp` are bit-identical over the full adversarial set.
+Verified: `vmaddfp` and `vnmsubfp` are bit-identical over the full adversarial set under both
+GCC and clang-20, with NaN-operand order pinned per rule 4.
 
 ### 2. Flush-to-zero is toggled per instruction class, not per function
 
@@ -81,41 +82,56 @@ Verified as `lvx128_swap` and `lvlx128_swap5`.
 
 ### 4. Commutative float ops are not NaN-commutative — pin the operand order
 
-**This is the one rule that is not mechanical, and the only source of divergence found.**
+**The one rule that is not mechanical, and the only source of divergence found.** It is
+confined to lanes where two operands are NaN.
 
-`_mm_add_ps` and `_mm_mul_ps` are commutative in value but not in NaN payload: the result
-carries the NaN of whichever operand the compiler placed in `src1`. **GCC's choice is an
-artifact of register allocation and is not stable**, so the same source produces different
-NaN behaviour in different contexts:
+With two NaN operands, x86 returns the payload of one particular operand slot. Measured on
+this CPU: for `vaddps`/`vmulps` the first source wins; for `vfmadd*`/`vfnmadd*` the first
+*factor* of the encoded form wins (op2 in the 213 form, op1 in the 132 form). Which program
+variable lands in that slot is a register-allocation decision, so for the same source
+expression it changes with calling context — **in both compilers**, including clang-20,
+which is what the recomp is built with (`CMAKE_CXX_COMPILER` in the jammy build cache):
 
-| context | GCC emits | picks |
+| same expression, noinline function with signature | GCC 15.2 | clang 20 |
 |---|---|---|
-| inlined, straight-line | `vaddps` with `src1 = a` | `a` |
-| noinline, args in `xmm0`/`xmm1` (RexGlue's actual shape) | `vaddps %xmm0,%xmm1,%xmm0` | `b` |
+| `add_ps(a,b)` in `f(a,b,c)` | a | a |
+| `add_ps(a,b)` in `f(a,b)` | a | a |
+| `add_ps(a,b)` in `f(b,a)` | a | **b** |
+| `fmadd_ps(a,b,c)` in `f(a,b,c)` | a | **b** |
+| `fmadd_ps(a,b,c)` in `f(c,a,b)` | a | **b** |
+| `fmadd_ps(a,b,c)` in `f(b,a,c)` | **b** | a |
+| `fmadd_ps(a,b,c)`, operands loaded from memory | a | a |
 
-Adding one unused third argument to the function signature was enough to flip it. LLVM
-consistently chose `a` in every context tested, so C++ and Rust disagree whenever a NaN
-reaches `vaddfp`/`vmulfp`.
+In the probe's op table the two compilers fail on *different* pairs: GCC diverges from Rust
+on `vaddfp128`/`vmulfp128`, clang-20 on `vmaddfp`/`vnmsubfp`. Rust returned `a` in every
+op, but that too is only what its own calling context produced.
+The op table passes `__m128i`
+arguments through a function pointer, and that alone is enough to flip GCC's add to `b`
+relative to the direct `__m128` calls in the table above.
 
-Three consequences, in order of importance:
+Consequences, in order of importance:
 
-1. **`a`-first is the architecturally correct answer.** AltiVec returns the first NaN
-   operand in the order `vA`, `vB`. Rust matched real Xenon semantics here; the
-   GCC-compiled C++ did not.
-2. **The C++ recomp is not bit-stable against itself** on NaN inputs. A refactor that
-   changes inlining can change NaN propagation without touching a line of arithmetic.
-   This is a latent RexGlue property, not something the Rust port introduces.
-3. **A register barrier is not enough.** `asm("" : "+x"(a))` pins the operand to a
-   register and GCC still commutes the instruction. Only writing the instruction out —
-   `asm("vaddps %2,%1,%0" : "=x"(r) : "x"(a), "x"(b))` — fixes `src1`.
+1. **The recomp is not NaN-stable against itself.** Which operand's NaN a lifted kernel
+   propagates is chosen per site by clang's optimizer, not by the PPC source. A change to
+   inlining or register pressure can change it without touching a line of arithmetic.
+2. **So no translation can match the recomp from source alone.** If NaN reaches these
+   kernels, matching the recomp at a given site means reading the winning slot out of the
+   recomp binary's disassembly. If NaN never reaches them, none of this matters. That is an
+   empirical question — see "What this does not settle".
+3. **Xenon's own NaN precedence is not established.** An earlier version of this document
+   asserted that AltiVec returns the first NaN operand. That was never sourced and is
+   withdrawn. This project's definition of exact does not depend on it: the oracle is the
+   recomp's mixer output, not Xenon.
+4. **Pinning works, and has to write the instruction out.** A `"+x"` register barrier pins
+   an operand to a register and the compiler still commutes the instruction.
+   `-DPIN_COMMUTATIVE_OPERAND_ORDER` routes the four ops through naked functions whose
+   encoding puts `a` in the winning slot. With it, **GCC and clang-20 are both 45/45**
+   against Rust. `vmaxps`/`vminps` need no pinning: SSE defines them to return the second
+   operand on NaN, so compilers must already preserve their order.
 
-With operand order pinned this way, the probe reports **ALL OPS BIT-IDENTICAL**. Without
-it, 43 of 45, the two exceptions being `vaddfp128` and `vmulfp128` and only on NaN lanes.
-
-**Rule:** for `vaddfp*`, `vmulfp*`, `vmaxfp*` and `vminfp*`, treat `src1 = a` as part of
-the semantics. How much this matters in practice depends on whether NaN ever reaches these
-kernels, which is an empirical question the shadow harness should answer — see "What this
-does not settle".
+**Rule:** for `vaddfp*`, `vmulfp*`, `vmaddfp*` and `vnmsubfp*`, the operand slot is part of
+the semantics. Native C++ and Rust should both pin it explicitly, and agree on one
+convention, rather than inherit whatever each optimizer picks.
 
 ### 5. `vexptefp128` and `vlogefp128` go through libm
 
@@ -140,7 +156,9 @@ about the reference, not about Xenon.
 
 `rex/ppc/context.h` compiles standalone in 0.6 s against `rex/types.h`, `rex/platform/fpscr.h`
 and vendored SIMDe. It needs **`-std=c++23`** (`rex::byte_swap` uses `std::byteswap`);
-C++20 fails. `sizeof(PPCContext)` is 2688 bytes. Build both sides with `-march=native` /
+C++20 fails. `sizeof(PPCContext)` is 2688 bytes. The recomp itself is built with clang-20,
+installed here only as `clang++-20` — there is no unversioned `clang++`, so check that name
+before concluding clang is absent. Build both sides with `-march=native` /
 `-C target-cpu=native` so FMA and SSE4.1 are available without runtime dispatch.
 
 ## What this does not settle
@@ -154,8 +172,8 @@ C++20 fails. `sizeof(PPCContext)` is 2688 bytes. Build both sides with `-march=n
   enters these kernels during play, it is a non-issue; if it does, it is a real divergence
   source in both directions. The shadow harness can answer this cheaply once Phase 1 is
   up — add a NaN counter at the kernel boundary.
-- **ARM64.** Deliberately out of scope per `PLAN.md` non-goals. Note rule 4 would need
-  re-deriving there: NEON `FADD` has its own NaN ordering.
+- **ARM64.** Deliberately out of scope per `PLAN.md` non-goals. Rule 4 would need
+  re-measuring there.
 
 ## Corrections to the planning documents
 
@@ -174,7 +192,7 @@ C++20 fails. `sizeof(PPCContext)` is 2688 bytes. Build both sides with `-march=n
 
 | file | what |
 |---|---|
-| `probe/vmx128/run.sh` | builds both sides, runs, compares. One command. |
+| `probe/vmx128/run.sh` | builds the reference under GCC and clang-20, plain and pinned, plus the Rust candidate; runs and compares all four. One command. |
 | `probe/vmx128/gen_vectors.py` | adversarial vectors — denormals, NaN payloads, ±0, ±inf, rounding boundaries, conversion edges, an `rsqrt` table sweep, 512 xorshift patterns. Written once to a file both sides read, so the two cannot disagree about inputs. |
 | `probe/vmx128/cpp/runner.cpp` | the reference. Every body is RexGlue's lowering verbatim. `-DPIN_COMMUTATIVE_OPERAND_ORDER` applies rule 4. |
 | `probe/vmx128/rust/src/main.rs` | the candidate: hand translation to `core::arch::x86_64`. |

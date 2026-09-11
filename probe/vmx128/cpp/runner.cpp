@@ -173,52 +173,14 @@ typedef simde__m128i (*OpFn)(simde__m128i, simde__m128i, simde__m128i);
 
 struct Op { const char* name; int arity; OpFn fn; };
 
-// A value-commutative float op is NOT NaN-payload-commutative: the result takes the
-// NaN of whichever operand the compiler placed in src1. GCC's choice depends on
-// register allocation, so it is not stable across inlining contexts. Building with
-// -DPIN_COMMUTATIVE_OPERAND_ORDER forces src1 = a, which is also the AltiVec rule
-// (first NaN in the order vA, vB). See docs/vmx128-exactness.md.
-// A "+x" register barrier is NOT enough - it pins the operand to a register but
-// leaves the compiler free to commute the instruction. Only writing the instruction
-// out fixes src1.
-#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
-#define VBINOP(mnem, a, b) ({ simde__m128 r_; \
-    asm(mnem " %2,%1,%0" : "=x"(r_) : "x"(a), "x"(b)); r_; })
-#else
-#define VBINOP(mnem, a, b) SIMDE_CAT(simde_mm_, SIMDE_CAT(mnem, _ps))(a, b)
-#endif
 
-static simde__m128i op_vaddfp   (simde__m128i a, simde__m128i b, simde__m128i) {
-#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
-  simde__m128 r; asm("vaddps %2,%1,%0" : "=x"(r) : "x"(P(a)), "x"(P(b))); return F(r);
-#else
-  return F(simde_mm_add_ps(P(a), P(b)));
-#endif
-}
+static simde__m128i op_vaddfp   (simde__m128i a, simde__m128i b, simde__m128i) {return F(simde_mm_add_ps(P(a), P(b))); }
 static simde__m128i op_vsubfp   (simde__m128i a, simde__m128i b, simde__m128i) { return F(simde_mm_sub_ps(P(a), P(b))); }
-static simde__m128i op_vmulfp   (simde__m128i a, simde__m128i b, simde__m128i) {
-#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
-  simde__m128 r; asm("vmulps %2,%1,%0" : "=x"(r) : "x"(P(a)), "x"(P(b))); return F(r);
-#else
-  return F(simde_mm_mul_ps(P(a), P(b)));
-#endif
-}
+static simde__m128i op_vmulfp   (simde__m128i a, simde__m128i b, simde__m128i) {return F(simde_mm_mul_ps(P(a), P(b))); }
 static simde__m128i op_vmaddfp  (simde__m128i a, simde__m128i b, simde__m128i c) { return F(simde_mm_fmadd_ps(P(a), P(b), P(c))); }
 static simde__m128i op_vnmsubfp (simde__m128i a, simde__m128i b, simde__m128i c) { return F(simde_mm_fnmadd_ps(P(a), P(b), P(c))); }
-static simde__m128i op_vmaxfp   (simde__m128i a, simde__m128i b, simde__m128i) {
-#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
-  simde__m128 r; asm("vmaxps %2,%1,%0" : "=x"(r) : "x"(P(a)), "x"(P(b))); return F(r);
-#else
-  return F(simde_mm_max_ps(P(a), P(b)));
-#endif
-}
-static simde__m128i op_vminfp   (simde__m128i a, simde__m128i b, simde__m128i) {
-#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
-  simde__m128 r; asm("vminps %2,%1,%0" : "=x"(r) : "x"(P(a)), "x"(P(b))); return F(r);
-#else
-  return F(simde_mm_min_ps(P(a), P(b)));
-#endif
-}
+static simde__m128i op_vmaxfp   (simde__m128i a, simde__m128i b, simde__m128i) {return F(simde_mm_max_ps(P(a), P(b))); }
+static simde__m128i op_vminfp   (simde__m128i a, simde__m128i b, simde__m128i) {return F(simde_mm_min_ps(P(a), P(b))); }
 static simde__m128i op_vrefp    (simde__m128i a, simde__m128i, simde__m128i) { return F(simde_mm_div_ps(simde_mm_set1_ps(1.0f), P(a))); }
 static simde__m128i op_vrsqrtefp(simde__m128i a, simde__m128i, simde__m128i) { return F(rex_ppc::simde_mm_vrsqrtefp_ps(P(a))); }
 static simde__m128i op_vrfiz    (simde__m128i a, simde__m128i, simde__m128i) { return F(simde_mm_round_ps(P(a), SIMDE_MM_FROUND_TO_ZERO | SIMDE_MM_FROUND_NO_EXC)); }
@@ -279,10 +241,40 @@ static simde__m128i op_lvlx_swap5(simde__m128i a, simde__m128i, simde__m128i) {
   return simde_mm_shuffle_epi8(a, simde_mm_loadu_si128((const simde__m128i*)(rex_ppc::VectorMaskL + 5 * 16)));
 }
 
+
+// ---------------------------------------------------------------- operand-order pinning
+// Commutative float ops are not NaN-commutative: with two NaN operands, x86 returns the
+// payload of one particular operand slot, and which program variable a compiler puts in
+// that slot follows register allocation. Measured on this CPU:
+//   vaddps/vmulps     the first source (src1) wins
+//   vfmadd/vfnmadd    the first FACTOR of the encoded form wins (213: op2; 132: op1)
+// GCC and clang-20 disagree, in opposite directions, on add and on FMA. Building with
+// -DPIN_COMMUTATIVE_OPERAND_ORDER routes these four through naked functions whose
+// encoding puts `a` in the winning slot. vmaxps/vminps need no pinning: SSE defines them
+// to return the second operand on NaN, so compilers already preserve their order.
+// SysV: a, b, c arrive in xmm0, xmm1, xmm2; the result returns in xmm0.
+#ifdef PIN_COMMUTATIVE_OPERAND_ORDER
+__attribute__((naked, noinline)) static simde__m128i op_vaddfp_pin(simde__m128i, simde__m128i, simde__m128i) {
+  __asm__("vaddps %xmm1, %xmm0, %xmm0\n ret");                       // xmm0 = a + b, src1 = a
+}
+__attribute__((naked, noinline)) static simde__m128i op_vmulfp_pin(simde__m128i, simde__m128i, simde__m128i) {
+  __asm__("vmulps %xmm1, %xmm0, %xmm0\n ret");                       // xmm0 = a * b, src1 = a
+}
+__attribute__((naked, noinline)) static simde__m128i op_vmaddfp_pin(simde__m128i, simde__m128i, simde__m128i) {
+  __asm__("vmovaps %xmm1, %xmm3\n vfmadd213ps %xmm2, %xmm0, %xmm3\n vmovaps %xmm3, %xmm0\n ret");  // a*b + c
+}
+__attribute__((naked, noinline)) static simde__m128i op_vnmsubfp_pin(simde__m128i, simde__m128i, simde__m128i) {
+  __asm__("vmovaps %xmm1, %xmm3\n vfnmadd213ps %xmm2, %xmm0, %xmm3\n vmovaps %xmm3, %xmm0\n ret"); // -(a*b) + c
+}
+#define PIN_OR(fn) fn##_pin
+#else
+#define PIN_OR(fn) fn
+#endif
+
 static const Op OPS[] = {
-  {"vaddfp128",    2, op_vaddfp},    {"vsubfp128",    2, op_vsubfp},
-  {"vmulfp128",    2, op_vmulfp},    {"vmaddfp",      3, op_vmaddfp},
-  {"vnmsubfp",     3, op_vnmsubfp},  {"vmaxfp128",    2, op_vmaxfp},
+  {"vaddfp128",    2, PIN_OR(op_vaddfp)},    {"vsubfp128",    2, op_vsubfp},
+  {"vmulfp128",    2, PIN_OR(op_vmulfp)},    {"vmaddfp",      3, PIN_OR(op_vmaddfp)},
+  {"vnmsubfp",     3, PIN_OR(op_vnmsubfp)},  {"vmaxfp128",    2, op_vmaxfp},
   {"vminfp128",    2, op_vminfp},    {"vrefp",        1, op_vrefp},
   {"vrsqrtefp",    1, op_vrsqrtefp}, {"vrfiz128",     1, op_vrfiz},
   {"vmsum3fp128",  2, op_vmsum3fp},  {"vmsum4fp128",  2, op_vmsum4fp},
