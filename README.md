@@ -36,7 +36,8 @@ retail content either.
 | Structure layouts | 7 structs, 35 machine-checked offsets (`docs/rw_audio_structs.h`) |
 | Container formats | all three decoded — `.sns`, `.dat`, `.mus` |
 | Audio conversion | **sample-exact** on all three classes |
-| Rust container parsing | 28 tests, validated against real archives |
+| Real-data coverage | 33,448 speech sub-sounds, 8,179 music segments, 1,384 ambience blocks |
+| Rust container parsing | 33 tests, validated against real archives |
 | Exactness harness | shadow verification + bit-exact mixer comparator |
 
 ## Layout

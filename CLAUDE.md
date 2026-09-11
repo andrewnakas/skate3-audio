@@ -4,6 +4,14 @@ You are picking up reverse-engineering of Skate 3's audio. Read this before touc
 anything; it encodes several days of work and the specific mistakes that cost the most
 time.
 
+**Then read two more files, in this order:**
+
+1. **`docs/environment-linux.md`** — this document was written on an 8 GB macOS M1. If you
+   are on the Linux box, several statements below are **false there**, including the build
+   trap about hooks forcing a full rebuild. That file says what was actually measured.
+2. **`docs/PLAN.md`** — the sequenced plan. Sequencing is settled: **recomp first, verified
+   under the shadow harness, then port the proven result to Rust.**
+
 ## The goal
 
 Audio that is **exact** in two places:
@@ -36,7 +44,7 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Structures | 7 structs, 35 asserted offsets (`docs/rw_audio_structs.h`) |
 | Container formats | all three decoded and documented |
 | Conversion | **sample-exact** on ambience, speech and music |
-| Rust crate | 28 tests, three containers, validated on real archives |
+| Rust crate | 33 tests, three containers, validated on real archives |
 | Shadow harness | built and compiles; **nothing verified through it yet** |
 | Native functions | one written (`EVENT_SUBMIT`), unverified |
 
@@ -45,7 +53,9 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 - **`.mpf` sequencing semantics.** Top-level structure decoded (72-byte header, 9 sections,
   section 7 links to the `.mus` by content hash, section 8 is 8 bytes per segment). How
   sections 0–3 drive transitions is untouched. Interactive music needs segments *plus* a
-  usable map.
+  usable map. The `.mus` side is now complete: its header is decoded and all 8,179
+  segments walk against the SNR table (`docs/rust-port.md`). Note the `.mus` field at
+  `0x28` is **not** the hash `.mpf` links by — that was checked and found absent.
 - **The low-bit flag** in the chunk length field. Constant per stream, meaning unknown.
 - **Two recomp bugs** root-caused with fixes written up but not landed — neither reproduces
   on macOS, so they need device testing. See `docs/command-queue.md` and
@@ -55,8 +65,13 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 - **VMX128 exactness is unquantified.** 40 DSP kernels use Xenon vector instructions.
   Whether scalar reproduction can be bit-identical is *unknown* and is the single biggest
   risk in any effort estimate. Measure before promising.
+  Still true, but cheaper to settle than it reads: RexGlue already lowered every kernel to
+  SIMDe/SSE intrinsics and the result is on disk in `generated/`, so the probe needs no
+  Ghidra, no game build and no play session. `vmaddfp*` lowers to a real fused
+  `simde_mm_fmadd_ps`, and flush-to-zero is toggled **per instruction class**, not per
+  function — both matter for the translation. See `docs/environment-linux.md`.
 
-### The measurement to take first
+### The measurement to take first (still worth doing, but it no longer gates anything)
 
 Nobody knows how many of the 1,694 functions actually *execute* during play. The recomp
 has a guest tracer (`src/skate3_guest_trace.cpp`, compiled out by default). Build with
@@ -66,6 +81,11 @@ into a number. Do this before committing to a plan.
 
 Note it traces breadth, not frequency, and filters by address range rather than thread — so
 treat the result as an **upper bound**.
+
+On the Linux box the tracer is **already compiled into the built binary**, so this costs a
+play session and no rebuild at all. Run it. But it no longer gates the plan: that framing
+assumed no audio instrumentation existed anywhere, and the work it informs (which functions
+to port first) comes after the harness is up. See `docs/PLAN.md` phase 0a.
 
 ## Workflow for native audio
 
@@ -81,7 +101,7 @@ is safe to leave armed through normal play — and the game generates far better
 than anything you would write, at 187.5 frames a second.
 
 **Batch several native functions per build cycle.** Adding a hook forces a full rebuild
-(see traps).
+(see traps) — **on macOS only**. On Linux run a tight one-function-at-a-time loop instead.
 
 ## Traps that cost real time
 
@@ -93,6 +113,11 @@ zero XMA voices*. Always pass
 
 **Adding a hook forces a full rebuild.** `generated/skate3_hooked_funcs.h` is included by
 `skate3_init.h`, which every translation unit includes. One new hook rebuilds everything.
+
+> **Not true on the Linux tree.** That header and `gen_hooked_funcs.sh` do not exist
+> there; hooking is link-time weak-symbol override, so a new hook costs one TU compile
+> plus a relink. Batching is unnecessary. Verified with `nm` — see
+> `docs/environment-linux.md`.
 
 **Never put defines in `CMAKE_CXX_FLAGS`.** It invalidates every third-party library in the
 tree — turns a 200-file rebuild into a 700-file one. Use `target_compile_definitions` on

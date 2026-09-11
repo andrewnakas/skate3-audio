@@ -50,20 +50,71 @@ validation.
 |---|---|---|
 | `eb` | EA "EB" v3 archives | sizes match the file byte-for-byte, all members in bounds |
 | `eaac` | stream headers, block chains, chunk splitting, `.sth` sub-sounds | 1384 ambience + 18 speech blocks, **every payload accounted for exactly** |
-| `mus` | interactive-music segments | 8 segments, **all matching the file's own SNR table** |
+| `mus` | interactive-music segments | **all 8,179 segments** on the disc, every one matching the file's own SNR table |
 
-28 unit tests, plus three `examples/` that run the same code over the user's own archives.
+33 unit tests, plus five `examples/` that run the same code over the user's own archives.
 
 ### The music container
 
 Structurally distinct: the length field sits in a **12-byte block header** rather than
 inline before each chunk, `size` counts the header itself, and flag `0x80` marks a
-segment's final block. Segment boundaries need locating rather than computing, because the
-inter-segment padding width varies.
+segment's final block.
 
 The SNR table check matters because that table states each segment's sample count
 independently of the block headers the walk uses. Agreement is a real cross-check, not a
 self-consistency one.
+
+#### The file header, and why "8 segments" was wrong
+
+The SNR table offset and the segment count used to be command-line arguments, and the
+value passed for the count was **8**. Eight is the constant at header `0x38`. It is not a
+count of anything. The real totals are 1074, 5725 and 1380 — so the claim "8 segments,
+all matching" rested on 0.1% of the data.
+
+The header carries what was being passed by hand:
+
+```text
+0x04  u32 LE   segment_count          the format's one little-endian field
+0x28  u32 be   unidentified           distinct per file
+0x30  u32 be   snr_table_offset >> 4
+0x34  u32 be   first_block_offset >> 7
+0x38  u32 be   8 on all three files
+```
+
+`0x28` looked like the content hash the `.mpf` uses to name its `.mus`. It is not:
+searching all three `.mpf` files for all three values, big- and little-endian, returns
+nothing. It is recorded raw rather than named.
+
+#### Segments are aligned, not searched
+
+`next_segment_start` scanned: step forward four bytes at a time from the previous
+segment's end until a block header parses. That is now a computation —
+**segments begin on a 0x80 boundary** — because the scan was wrong.
+
+It worked on `Game_Stream` and `World_Stream` by luck: their segments happen to end
+4-aligned. `Ipod_Stream`'s end on every residue mod 4 (`0x3DCBD`, `0x9726F`, `0xC47D2`…),
+and a scan anchored at an unaligned offset stepping by four can only ever visit offsets
+congruent to its anchor. It never saw another header, so the walk stopped after
+`Ipod_Stream`'s first segment and reported success — 1 of 1380 — because the one segment
+it did walk matched.
+
+That is the failure mode this project keeps meeting: **the check passed on the data it
+reached, and said nothing about the data it never reached.** A partial walk that reports
+only on what it walked is indistinguishable from a complete one unless the total is known
+independently. The segment count from the header is what makes it falsifiable.
+
+With the rounding rule, all three files walk end to end, and two of the three consume the
+file to the last byte:
+
+| file | segments | blocks | samples | bytes left over |
+|---|---|---|---|---|
+| `Game_Stream.mus` | 1074 | 13,981 | 68,717,547 | 0 |
+| `World_Stream.mus` | 5725 | 108,034 | 535,970,668 | 0 |
+| `Ipod_Stream.mus` | 1380 | 93,706 | 384,218,631 | 4 |
+
+Consuming the file exactly is a stronger statement than any per-segment check: a wrong
+stride would have to be wrong in a way that still lands on the final byte after 8,179
+segments.
 
 ### On the value of the real-data examples
 
@@ -74,6 +125,8 @@ The unit tests use synthetic payloads and have never once caught a bug in this c
 2. the `.snr` record being variable length (8 or 16 bytes), not fixed
 3. the chunk length formula failing on every speech block
 4. a stream's final block carrying alignment padding
+5. `next_segment_start` scanning by 4 from an unaligned anchor, which silently truncated
+   the `Ipod_Stream.mus` walk to its first segment of 1380
 
 Synthetic fixtures prove the code is self-consistent, which is exactly what a wrong format
 assumption preserves. Both kinds of test are worth having, but only one of them finds
