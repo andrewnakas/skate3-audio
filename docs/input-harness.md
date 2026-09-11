@@ -99,14 +99,24 @@ Measured in the first scripted session, from frames and the bail counter:
 | `lb` + `up` | session-marker reset | **no visible effect** — the view is identical before and after |
 | late flip, `lb`+`rb`+`y`, `x`, double flick, full-speed collision | bail on demand | **none demonstrated** — see below |
 
-Two sessions, eleven attempts, two wipeout events, and **not one of them is attributable to
-an input**. The second session's single bail landed during the pushes rather than in any
+Four sessions, eleven deliberate attempts, three wipeout events, and **not one of them is
+attributable to an input**. Later sessions walked the flick out to 600, 800 and 1000 ms after
+the pop — the "start a trick too low" case — and every one landed: zero wipeouts across 11,340
+polls. The second session's single bail landed during the pushes rather than in any
 attempt window, and its frame does show the local skater mid-fall. The third session spaced
 each attempt about eight seconds apart, so the log could name the marker a bail followed —
 it named `A3_x` — but the frames refute it: at that instant the local skater is riding
 upright while a pedestrian stumbles beside him.
 
 So the script still cannot bail on demand, and the remaining question is not timing.
+
+**Terrain is the variable these experiments never controlled.** The frames show why the late
+flicks landed: one popped a 5.1 m stair gap and rode away, another ollied *up a wall* beside a
+3.3 m gap. The script pushes in whatever direction the skater happens to face, so each attempt
+met different ground, and a flip with no height to fail from cannot fail. Until the skater can
+be put somewhere known — a drop, a gap, a ledge — the bail attempts are weak evidence rather
+than a negative result. `skate3_warp` does not help: it retargets which world loads, not where
+the skater stands.
 
 ## Running a session
 

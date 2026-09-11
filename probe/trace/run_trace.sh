@@ -24,6 +24,11 @@ BIN=${RECOMP_BIN:-/home/nakas/Documents/skate3/skate3recomp-dev/out/build/linux-
 GAME=${GAME_ROOT:-/home/nakas/Documents/skate3/freeskate/runtime/game}
 USER_SRC=${USER_SRC:-/home/nakas/Documents/skate3/freeskate/runtime/user}
 DELAY=${SKATE3_TRACE_DELAY_MS:-120000}
+# first = one entry per function (breadth); ring = every call, last N before the dump.
+TRACE_MODE=${TRACE_MODE:-first}
+TRACE_ARM=${TRACE_ARM:-boot}
+# Flush the buffer from the crash handler too, so a run that faults still leaves a trace.
+TRACE_ON_CRASH=${TRACE_ON_CRASH:-false}
 INPUT_SCRIPT=${INPUT_SCRIPT:-}
 # Resolve now: the script cds into $OUT before launching, which breaks relative paths.
 [ -n "$INPUT_SCRIPT" ] && INPUT_SCRIPT=$(realpath "$INPUT_SCRIPT")
@@ -49,8 +54,9 @@ args=(
   --skate3_demo_path_input_settle_ms=2500
   --skate3_demo_path_input_delay_ms=600
   --skate3_trace=true
-  --skate3_trace_mode=first
-  --skate3_trace_arm=boot
+  --skate3_trace_mode="$TRACE_MODE"
+  --skate3_trace_arm="$TRACE_ARM"
+  --skate3_trace_dump_on_crash="$TRACE_ON_CRASH"
   --skate3_trace_dump_delay_ms="$DELAY"
 )
 [ -n "$MACRO" ] && args+=( "--skate3_demo_path_gameplay_inputs=$MACRO" )

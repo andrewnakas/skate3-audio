@@ -110,6 +110,20 @@ trace covers at most two minutes past reaching gameplay.
 The dump has a thread column. In `first` mode it is the thread of the **first** call only,
 so it is a hint rather than a filter.
 
+**`ring` mode was a crash generator until 2026-09-11.** The recorder dereferences r3, r4
+and r5 looking for strings, and its readable window ran to `0x80000000` — which includes
+the guest **stack** band (`0x70030000`..`0x707BFB20`). Stacks are 1 MB allocations in a
+sparsely committed view where reserved pages are `PROT_NONE`, so one page past a live
+stack faults on read. `first` mode reads once per function and three sessions never hit
+it; `ring` reads on every call and faulted 217 ms after arming. Fixed: the window stops
+at `0x60000000` and `ring` skips string capture. Verified by re-running the same ring
+session to completion with zero faults.
+
+**`--skate3_trace_dump_on_crash=true` writes the trace from the crash handler**, so a run
+that faults before any dump trigger still leaves its buffer (measured: 262,144 entries on
+a guest fault). It catches guest faults and aborts — not SIGKILL, which is uncatchable, so
+a killed session still writes nothing. Off by default: the dump is not async-signal-safe.
+
 **Stopping a session.** The game **ignores SIGTERM** — it was still running 15 s later —
 so close the window or `pkill -KILL -x skate3`. Once `skate3 trace: DUMPED` is in the log
 the trace file is complete.

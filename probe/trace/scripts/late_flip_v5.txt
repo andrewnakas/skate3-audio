@@ -1,0 +1,87 @@
+# Skate 3 scripted session v5: flick the flip later and later, until it is too low to land.
+#
+# v4 settled that the pop works (HUD: "Ollie 10", then a 5.1 m stair gap for 290) and that
+# a flip flicked 350 ms after the pop lands cleanly into a grind. The user's case is a trick
+# started too LATE - too close to the ground to finish - so this walks the flick delay out
+# toward the landing: 600, 800, 1000 ms after the pop, each photographed every 200 ms.
+#
+# Bails are judged by the wipeout counter AND the frames, never by the attempt's name: the
+# counter is not yet filtered to the local skater (docs/input-harness.md).
+
+@capture v5_00_start
+1500
+
+@mark push_a
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+@mark pop_flick600
+250 ry=-100
+150 ry=100
+600
+150 rx=-100 ry=100
+@capture f6_t000
+200
+@capture f6_t200
+200
+@capture f6_t400
+200
+@capture f6_t600
+200
+@capture f6_t800
+2000
+@capture f6_settled
+
+@mark push_b
+150 a
+450
+150 a
+450
+150 a
+900
+@mark pop_flick800
+250 ry=-100
+150 ry=100
+800
+150 rx=-100 ry=100
+@capture f8_t000
+200
+@capture f8_t200
+200
+@capture f8_t400
+200
+@capture f8_t600
+200
+@capture f8_t800
+2000
+@capture f8_settled
+
+@mark push_c
+150 a
+450
+150 a
+450
+150 a
+900
+@mark pop_flick1000
+250 ry=-100
+150 ry=100
+1000
+150 rx=-100 ry=100
+@capture f10_t000
+200
+@capture f10_t200
+200
+@capture f10_t400
+200
+@capture f10_t600
+200
+@capture f10_t800
+2500
+@capture f10_settled
+@mark end
