@@ -214,6 +214,53 @@ functions and about 4,854 vector instructions**, topped by `sub_82B3A048` (645),
 `sub_82B22898` (583, the only one of the four heaviest that ran), `sub_82B02C30` and
 `sub_82B09288` (476 each).
 
+## Phase 3's gate-1 screen: the vector family is clean
+
+Screened 2026-09-11 from `docs/audio-executed-set.txt`, which is what having that artifact
+tracked buys. **16 vector functions executed on the audio thread**, 1,487 vector instructions
+between them, heaviest first: `sub_82B22898` (583), `sub_82B50380` (217), `sub_82B42C98` (99),
+`sub_82B399D0` (98), `sub_82B44D18` (84), `sub_82B3C098` (69), `sub_82B3D0A8` (56),
+`sub_824531C8` (43), `sub_82B389A0` (42), `sub_82B427D8` (36), `sub_82B44B20` (33),
+`sub_82B4FD40` (32), `sub_82B373C8` (29), `sub_82B3CF58` (25), `sub_82B3BED8` (25),
+`sub_82B238A8` (16).
+
+**Gate 1 closes on the whole subtree: 24 functions screened, zero indirect calls.** Eleven of
+the sixteen are outright leaves; the rest bottom out in leaves (`sub_82F52FB8`, `sub_82473930`,
+`sub_82F52B30` = `memcpy`, `sub_82B41FC8`, `sub_82B43978`, `sub_82EE7460`, `sub_82F4DFB0`,
+`sub_82F4DED0`). That is a structural difference from Phase 2, where gate 1 killed three
+candidates outright — worth knowing before estimating Phase 3, because the bottleneck there
+will not be finding checkable functions.
+
+Only `sub_82B22898` is entangled: 2,339 lines and five callees, with a subtree that took four
+further levels to close. Porting it first would be the wrong order while eleven leaves wait.
+
+### `sub_82B50380`, the first target, and one hazard it carries
+
+217 vector instructions, 1,284 lines, **no callees**. Gate 3 passes outright: no timebase, no
+clock, no indirect resolution. Gate 2 passes too, but only once the store pattern is read
+properly:
+
+- 111 stores against 28 loads, so the work is overwhelmingly register-to-register SIMDe
+  computation with few memory touches.
+- 25 stores go through `ctx.r1` — its own stack frame, scratch that dies with the call. Not
+  output, so not something a window has to cover.
+- The rest are `stvlx128`/`stvrx128` pairs: **unaligned** VMX stores, each lowered as two byte
+  loops that together write one 16-byte vector straddling an alignment boundary. Addresses are
+  always `base + offset` register pairs (`ea = r11`, `ea = r11 + r7`, `ea = r11 + r6`, …), never
+  a pointer advanced by chasing memory. So every written address is computable from entry
+  state — the property `BUFPAIR` has and `sub_82B482F8` lacks.
+- Four sites use `ea = (r10 + r9) & ~0xF`, the *aligned* form, so one kernel mixes both.
+
+Two consequences to plan for rather than discover. **The window set is wide** — 14 distinct
+base/offset registers feed the stores — so its hook assembles many small spans, which is
+bookkeeping rather than a gate failure, and the 64 KB budget wants checking against measured
+lengths. And **the unaligned store lowering is a porting hazard in its own right**: `stvlx`
+writes `16 - (ea & 0xF)` bytes with lanes indexed `15 - i`, `stvrx` writes `ea & 0xF` bytes
+indexed `i`, so a translation that stores a whole vector or reverses the lane order is wrong
+**only on unaligned inputs**. `docs/vmx128-exactness.md` probed arithmetic lowerings, not these
+store forms, so Phase 0b's GO does not cover it. The per-function bit-compare is what would
+catch it.
+
 ## The 789-function list is not on disk
 
 Only the **count** survives, in this document. `probe/trace/out/corpus.json` is the 1,693

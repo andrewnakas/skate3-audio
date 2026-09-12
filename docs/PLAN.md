@@ -213,6 +213,15 @@ and bug 1's ordering fix is specified only as an objective, not an implementatio
 
 ### Phase 3 — VMX128 kernels, native C++
 
+**Screened 2026-09-11 (`docs/execution-trace.md`).** The audio-thread surface is **16 kernels,
+1,487 vector instructions**, and **gate 1 closes across all 24 functions in the subtree with
+zero indirect calls** — unlike Phase 2, where gate 1 killed three candidates. Eleven are leaves.
+First target is `sub_82B50380` (217 vec, 1,284 lines, no callees), which passes gates 2 and 3;
+`sub_82B22898` (583 vec) is the heaviest but has five callees and a four-level subtree, so it is
+not the place to start. One hazard is named there and not covered by Phase 0b: the
+`stvlx128`/`stvrx128` unaligned store lowering writes partial vectors with opposite lane
+orders, so a wrong translation fails **only** on unaligned inputs.
+
 **Executed first, then heaviest.** The original order was heaviest first — `sub_82B22898`
 (583), `sub_82B3A048` (557), `sub_82B02C30` and `sub_82B09288` (389 each) — and **only
 `sub_82B22898` ran** in the 0a session. On `RwAudioCore Dac`, by vector instruction
