@@ -304,7 +304,19 @@ properly:
   state — the property `BUFPAIR` has and `sub_82B482F8` lacks.
 - Four sites use `ea = (r10 + r9) & ~0xF`, the *aligned* form, so one kernel mixes both.
 
-Two consequences to plan for rather than discover. **The window set is wide** — 14 distinct
+**Measured 2026-09-12: gate 2 fails.** A probe logging its address registers at entry
+(`skate3_audio_kernel_windows`, 29 samples) shows them reassigned inside the function:
+`r11 = 49600060`, `r3 = 4B399B80`, `r10 = 707BF900` (stack), `r7 = 1`, `r6` advancing exactly
++0x10E per call, and `r5 = E2E3F000` — not a guest address. So `ea = r11 + r3` would resolve
+outside guest range, and the written set is **not** enumerable from pre-call state. Porting it on
+the earlier reading would have produced windows that miss writes, and uncovered writes are never
+rewound, so native output would have reached the live game.
+
+The lesson is the same one gate 2 keeps teaching: the `ea` expressions' *shape* (`base + offset`
+register pairs, no pointer chasing) is not evidence that the operands hold entry values. Reading
+form is not measuring content.
+
+The original note, kept because the observations still hold: **the window set is wide** — 14 distinct
 base/offset registers feed the stores — so its hook assembles many small spans, which is
 bookkeeping rather than a gate failure, and the 64 KB budget wants checking against measured
 lengths. And **the unaligned store lowering is a porting hazard in its own right**: `stvlx`

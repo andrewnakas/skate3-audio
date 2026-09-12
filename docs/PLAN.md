@@ -223,8 +223,15 @@ A **fourth gate** came out of it: the result must land where the harness can obs
 `sub_824531C8` has zero stores and returns in `v0/v1/v12/v13/v59/v60`, none of which is in
 `SHADOW_PRESERVED_VRS` or reachable by a `kReturn*` flag, so comparing it would check nothing on
 eight million calls. Fixable by extending `ShadowReturn`; until then, register-only kernels are
-out. First target is `sub_82B50380` (217 vec, 1,284 lines, no callees, 254,917 calls, 111
-observable stores), which passes gates 2, 3 and 4;
+out. First target **was** `sub_82B50380` (217 vec, 1,284 lines, no callees, 254,917 calls, 111
+observable stores) — **and it fails gate 2, measured 2026-09-12.** Its address registers are
+reassigned inside the function, so the window set cannot be derived from entry state: with
+`r11 = 49600060` and `r3 = 4B399B80` at entry, the body's `ea = r11 + r3` would land at
+`0x94999BE0`, outside guest range, and `r5 = E2E3F000` is not an address at all. The earlier
+pass was reached by reading the *form* of the `ea` expressions rather than measuring their
+operands — the same error as the `BUFPAIR` inference and the bit-offset reading, and the reason
+the measurement was worth taking. Windowing it would need per-store instrumentation inside the
+lifted body, not a hook that reads entry registers;
 `sub_82B22898` (583 vec) is the heaviest but has five callees and a four-level subtree, so it is
 not the place to start. One hazard is named there and not covered by Phase 0b: the
 `stvlx128`/`stvrx128` unaligned store lowering writes partial vectors with opposite lane
