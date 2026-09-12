@@ -48,13 +48,25 @@ def extract(path, start_line):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("addrs")
-    ap.add_argument("outdir")
+    ap.add_argument("addrs", nargs="?")
+    ap.add_argument("outdir", nargs="?")
+    ap.add_argument("--one", help="extract one address to stdout")
     ap.add_argument("--generated",
-                    default="/Users/nakas/skate3/skate3recomp-dev/generated")
+                    default="/home/nakas/Documents/skate3/skate3recomp-dev/generated")
     args = ap.parse_args()
 
     index = index_functions(args.generated)
+    if args.one:
+        a = args.one.upper().removeprefix("SUB_")
+        if a not in index:
+            print(f"{a} not lifted", file=sys.stderr)
+            return 1
+        path, line = index[a]
+        sys.stdout.write(f"// Lifted by RexGlue from {os.path.basename(path)}:{line + 1}\n")
+        sys.stdout.write(extract(path, line))
+        return 0
+    if not args.addrs or not args.outdir:
+        ap.error("addrs and outdir are required unless --one is given")
     os.makedirs(args.outdir, exist_ok=True)
 
     wanted = [l.strip().upper() for l in open(args.addrs) if l.strip()]
