@@ -1,6 +1,6 @@
 // sub_82B2DBA8  role: resample one block of a stream -- carry the previous block's tail into a scratch run, append the new input, resample each channel into the destination buffer, keep the new tail, then swap the buffer pair and republish the rate   lifted: skate3_recomp.67.cpp:39040 (356 lines)
-// STATUS: pending
-// calls/session: boot 141508  play ?  map ?          thread: RwAudioCore Dac
+// STATUS: verified
+// calls/session: boot 114884  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2DBA8.md
 namespace port_82B2DBA8 {
 
@@ -271,38 +271,193 @@ REX_FUNC(Native) {
   saved.restore(ctx);     // __restgprlr_17
 }
 
-// Two paths, and only the first is enumerable.
+// Two spans per channel plus six scalar ones, against kPortMaxSpans = 32. A voice with more
+// channels than this is refused rather than truncated: spec.write() would set `overflowed` and the
+// hook would skip anyway, but refusing says why.
+constexpr uint32_t kMaxChannels = 12;
+
+// What the resample path will do, predicted from entry state alone.
 //
-// The rate-changed path is predicted exactly from entry state -- one fcmpu on two singles, neither
-// of them written before the test -- and writes exactly two words: the voice's rate cache at +64 and
-// the stream's rate at +52.
+// Everything in that path was always entry-derived except one length: each channel's tail row is
+// written for `available - consumed` singles, where `consumed` is the input cursor sub_82B43FB8
+// leaves in this frame's slot at r1+80. This note's predecessor called that unknowable before the
+// call. It is not -- the resampler's cursor telescopes.
 //
-// The resample path is NOT enumerable and returns false. Everything about it derives from entry
-// state except one length: each channel's tail row is written for `available - consumed` singles,
-// where `consumed` is the input cursor sub_82B43FB8 leaves in this frame's slot at r1+80. That value
-// exists only during the call. It could be predicted -- the resampler's index advance telescopes to
-// ((phase + frames*step) >> 16) while no group of eight overflows the 16-bit fraction field, the
-// guard sub_82B43FB8's own Windows() already uses for its read span -- but a mispredicted length
-// here is a write outside the windows into a live mixer object, so the derivation is left to a
-// change that can be measured rather than asserted. See the note.
+// The resampler keeps a 16.16 position P = 65536*index + fraction. Its eight-wide loop advances P by
+// one `Split(fraction + step_group)` per trip, where `step_group` is (2*step mod 2^32) + 6*step; the
+// four-wide and one-at-a-time loops advance it by `Split(fraction + step)` per sample. Every Split
+// masks the whole part to 16 bits (`rlwinm rN,rX,16,16,31`), so `P += step` per sample -- and
+// therefore
+//
+//     consumed = index0 + ((fraction0 + frames * step) >> 16)
+//
+// -- holds exactly while no single advance can overflow that 16-bit field. The bound is the one
+// port_82B43FB8::Windows() already uses for its table read span: `8*(step >> 16) + 8 <= 0xFFFF`,
+// which also forces step < 2^29 and so makes the 32-bit truncation inside `step_group` a no-op.
+// Both starting values are this function's own: it stores 0 into the cursor slot and
+// `(phase << 16) & 0xFFFF0000` into the phase slot before EVERY channel's call, and the resampler
+// reads the fraction back with an `lhz` of that slot's HIGH half -- so index0 = 0, fraction0 =
+// phase & 0xFFFF, and `consumed` is the same for every channel. The three loops consume exactly
+// `frames` samples between them (8*floor(n/8), then 4, then n mod 8 - 4, tiles n for every n), so
+// `frames` is the count in that closed form.
+//
+// Checked rather than asserted, 2026-09-12: all three loops' index/fraction arithmetic was
+// transcribed from sub_82B43FB8.inc and run over 6,055 cases -- every count 0..39 plus
+// 64/100/255/256/512/8192/65535, against thirteen steps chosen for the field edges (0, 1, 2, 0xFFFF,
+// 0x10000, 0x10001, 0x18000, 0x1FFFF, 0x20000, 0x7FFF, 0x1FFF0000, 0x1FFEFFFF, 0x1FFF0001) and five
+// fractions, plus 3,000 random triples. Zero mismatches inside the guard; a demonstrated mismatch
+// outside it (step 0x20000000, where the masked advance gives 32768 against the closed form's
+// 819200), so the guard is not decoration.
+//
+// DUPLICATED ARITHMETIC, deliberately. The scratch address and `frames` below repeat Native()'s own
+// lines rather than sharing a helper with it, because the change that landed this was not allowed to
+// touch Native(). Anything altered in Native()'s prologue-to-`loc_82B2DC6C` region must be altered
+// here too; a wrong `frames` is a destination span of the wrong length, which is exactly the failure
+// this window set exists to prevent.
+struct Plan {
+  bool known = false;
+  uint32_t arena = 0;       // [[voice+8]+0] -- its +32 is the bump pointer
+  uint32_t scratch = 0;     // the run taken off it, written for 4*available bytes
+  uint32_t src_desc = 0;
+  uint32_t dst_desc = 0;
+  uint32_t tail_base = 0;   // voice + [voice+76], the first channel's tail row
+  uint32_t channels = 0;
+  uint64_t input_frames = 0;
+  uint64_t available = 0;   // [voice+80] + [stream+48]
+  uint32_t frames = 0;      // output frames, the resampler's r3
+  uint64_t consumed = 0;    // the closed form above
+  uint64_t leftover = 0;    // available - consumed, the tail-row length in singles
+};
+
+Plan Predict(uint8_t* base, uint32_t voice, uint32_t stream) {
+  Plan p;
+  const uint32_t system = REX_LOAD_U32(voice + kSystem);  // lwz r8,8(r31)
+  if (system == 0) return p;
+  const uint32_t arena = REX_LOAD_U32(system + 0);        // lwz r7,0(r8)
+  if (arena == 0) return p;
+  p.arena = arena;
+  p.src_desc = REX_LOAD_U32(stream + kPairBack);   // lwz r27,28(r19)
+  p.dst_desc = REX_LOAD_U32(stream + kPairFront);  // lwz r26,32(r19)
+  p.channels = REX_LOAD_U8(voice + kChannels);     // lbz r9,42(r31)
+  if (p.channels != 0 && (p.src_desc == 0 || p.dst_desc == 0)) return p;  // read through null
+
+  // The scratch run off the bump pointer, exactly as Native() computes it.
+  p.input_frames = REX_LOAD_U32(stream + kInputFrames);          // lwz r10,48(r19)
+  const uint64_t carried_in = REX_LOAD_U8(voice + kTailCount);   // lbz r11,80(r31)
+  const uint64_t input_bytes = Scale4(p.input_frames);           // rlwinm r9,r10,2,0,29
+  p.available = carried_in + p.input_frames;                     // add r22,r11,r10
+  const uint64_t slack = input_bytes + kBlockSlack;              // addi r6,r9,151
+  const uint64_t block = uint64_t(uint32_t(slack) & kBlockAlign);  // rlwinm r5,r6,0,0,24
+  const uint32_t arena_top = REX_LOAD_U32(arena + kArenaTop);    // lwz r17,32(r7)
+  p.scratch = uint32_t(uint64_t(arena_top) - block);             // subf r29,r5,r17
+
+  const uint64_t tail_offset = REX_LOAD_U16(voice + kTailOffset);  // lhz r9,76(r31)
+  p.tail_base = uint32_t(tail_offset + uint64_t(voice));           // add r18,r9,r31
+
+  // The output frame count, Native()'s loc_82B2DBE8..loc_82B2DC6C verbatim.
+  const uint64_t bias = REX_LOAD_U8(voice + kTailBias);  // lbz r4,81(r31)
+  const uint64_t usable = p.available - bias;            // subf r3,r4,r22
+  const uint64_t needed = usable + 1;                    // addic. r11,r3,1
+  const uint32_t step = REX_LOAD_U32(voice + kStep);     // lwz r9,68(r31)
+  const uint64_t phase = REX_LOAD_U32(voice + kPhase);   // lwz r8,72(r31)
+  uint32_t frames = 0;
+  if (int32_t(uint32_t(needed)) > 0) {
+    if (step == 0) {
+      frames = uint32_t(kStepFreeFrames);
+    } else {
+      const uint64_t scaled = uint64_t(uint32_t(needed) << 16) & 0xFFFF0000ull;
+      const uint64_t span = scaled - phase;
+      const uint64_t last = span - 1;
+      frames = uint32_t(last) / step;
+    }
+  }
+  const uint32_t cap = REX_LOAD_U16(voice + kFrameCap);  // lhz r11,78(r31)
+  if (frames > cap) frames = cap;                        // so frames <= 0xFFFF always
+  p.frames = frames;
+
+  // The closed form, under its guard.
+  const uint64_t whole = (uint64_t(step) >> 16) & 0xFFFFull;
+  if (8 * whole + 8 > 0xFFFF) return p;  // a group of eight can overflow the 16-bit field
+  const uint64_t fraction = phase & 0xFFFFull;  // the resampler's lhz of the slot's high half
+  p.consumed = (fraction + uint64_t(frames) * uint64_t(step)) >> 16;
+  // subf r30,r10,r22, tested as a signed low word. The resampler cannot consume more than
+  // `available - bias` (that is what `frames` was solved for), so a negative leftover means the
+  // entry state is one this rewrite does not model -- and the original would then hand memcpy a
+  // ~4 GB length. Refuse instead of declaring a window for it.
+  if (int32_t(uint32_t(p.available - p.consumed)) < 0) return p;
+  p.leftover = p.available - p.consumed;
+  p.known = true;
+  return p;
+}
+
+// Every byte the call writes, from ENTRY state only, on both paths.
+//
+// The rate-changed path is predicted exactly by the one fcmpu that decides it -- neither single is
+// written before the test -- and writes two words: the voice's rate cache at +64 and the stream's
+// rate at +52.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   const uint32_t voice = ctx.r3.u32;
   const uint32_t stream = ctx.r4.u32;
   if (voice == 0 || stream == 0) return false;  // the original would store through null
 
-  const double rate = LoadSingle(base, stream + kStreamRate);
-  const double cached = LoadSingle(base, voice + kRateCache);
-  if (rate == cached) return false;  // the resample path: see above
-
   const uint32_t format = REX_LOAD_U32(stream + kFormat);
-  if (format == 0) return false;  // the original would load the rate through null
-
-  spec.write(voice + kRateCache, 4);   // stfs f0,64(r3)
-  spec.write(stream + kStreamRate, 4);  // stfs f0,52(r4)
+  if (format == 0) return false;  // both paths load the rate through it
   spec.read(stream + kFormat, 4);
   spec.read(format + kFormatRate, 4);
+
+  const double rate = LoadSingle(base, stream + kStreamRate);
+  const double cached = LoadSingle(base, voice + kRateCache);
+  if (rate != cached) {
+    spec.write(voice + kRateCache, 4);    // stfs f0,64(r3)
+    spec.write(stream + kStreamRate, 4);  // stfs f0,52(r4)
+    return true;
+  }
+
+  // The resample path.
+  const Plan p = Predict(base, voice, stream);
+  if (!p.known) return false;
+  if (p.channels > kMaxChannels) return false;
+
+  // The bump pointer: decremented at the top of the call, restored at the end through a re-read
+  // system pointer that nothing in the closure writes, so it is the same word both times.
+  spec.write(p.arena + kArenaTop, 4);  // stw r29,32(r7) and stw r17,32(r4)
+
+  // The scratch run: the carried tail at its front (4*carried bytes) then 4*input_frames of the
+  // source channel behind it, per channel, into the same place -- so one span, 4*available bytes.
+  // Both copies are exact-length (sub_82F52FB8 and sub_82EDF460 write exactly [r3, r3 + r5)).
+  const uint64_t scratch_bytes = 4 * p.available;
+  if (uint64_t(p.scratch) + scratch_bytes > 0x100000000ull) return false;
+  spec.write(p.scratch, uint32_t(scratch_bytes));
+  spec.read(p.scratch, uint32_t(scratch_bytes));  // read back as the resampler's table
+
+  const uint64_t src_stride = REX_LOAD_U16(p.src_desc + kChannelStride);
+  const uint64_t dst_stride = REX_LOAD_U16(p.dst_desc + kChannelStride);
+  const uint64_t src_base = REX_LOAD_U32(p.src_desc + kBufferBase);
+  const uint64_t dst_base = REX_LOAD_U32(p.dst_desc + kBufferBase);
+  const uint64_t dst_bytes = 4 * uint64_t(p.frames);   // sub_82B43FB8's [r5, r5 + 4*r3)
+  const uint64_t tail_bytes = 4 * p.leftover;          // [tail_row, tail_row + 4*leftover)
+  const uint64_t src_bytes = 4 * p.input_frames;
+  const uint64_t carried_bytes = 4 * (p.available - p.input_frames);  // 4*[voice+80], read out
+
+  for (uint32_t channel = 0; channel < p.channels && channel < kMaxChannels; channel++) {
+    const uint32_t destination = uint32_t(ChannelAddress(dst_stride, channel, dst_base));
+    const uint32_t source = uint32_t(ChannelAddress(src_stride, channel, src_base));
+    const uint32_t tail_row = uint32_t(uint64_t(p.tail_base) + uint64_t(channel) * kTailRowBytes);
+    if (uint64_t(destination) + dst_bytes > 0x100000000ull) return false;
+    if (uint64_t(tail_row) + tail_bytes > 0x100000000ull) return false;
+    spec.write(destination, uint32_t(dst_bytes));
+    spec.write(tail_row, uint32_t(tail_bytes));
+    spec.read(source, uint32_t(src_bytes));
+    spec.read(tail_row, uint32_t(carried_bytes));  // the carried tail leads the scratch run
+  }
+
+  // The publish, loc_82B2DDC8. The pairs are adjacent, so two spans cover four stores.
+  spec.write(voice + kTailCount, 1);    // stb r30,80(r31) -- the low byte only
+  spec.write(voice + kPhase, 4);        // stw r9,72(r31)
+  spec.write(stream + kPairBack, 8);    // stw r6,28(r19) and stw r7,32(r19)
+  spec.write(stream + kInputFrames, 8);  // stw r25,48(r19) and stfs f0,52(r19)
   return true;
 }
 
 }  // namespace port_82B2DBA8
-SKATE3_PORT(82B2DBA8, skate3::audio::kPortPending, skate3::audio::kReturnR3)
+SKATE3_PORT(82B2DBA8, skate3::audio::kPortVerified, skate3::audio::kReturnR3)

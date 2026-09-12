@@ -1,6 +1,6 @@
 // sub_82B370E8  role: expand three parameter blocks into the per-channel slots for the layout at +42, square-rooting the first   lifted: skate3_recomp.67.cpp:61203 (477 lines)
 // STATUS: verified
-// calls/session: boot 23  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 58  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B370E8.md
 namespace port_82B370E8 {
 

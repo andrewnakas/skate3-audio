@@ -1,6 +1,6 @@
 // sub_82B31480  role: release a voice -- when it still holds per-channel gains, gather them through sub_82B468C0 into frame scratch, unlink and fold them into the owner with sub_82B34BD0, then zero the eight gain words; otherwise the same unlink, inlined, with no fold   lifted: skate3_recomp.67.cpp:47572 (193 lines)
-// STATUS: pending
-// calls/session: boot 5967  play ?  map ?          thread: RwAudioCore Dac
+// STATUS: verified
+// calls/session: boot 10328  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31480.md
 namespace port_82B31480 {
 
@@ -174,4 +174,4 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 }
 
 }  // namespace port_82B31480
-SKATE3_PORT(82B31480, skate3::audio::kPortPending, skate3::audio::kReturnR3)
+SKATE3_PORT(82B31480, skate3::audio::kPortVerified, skate3::audio::kReturnR3)

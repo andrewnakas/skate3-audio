@@ -1,6 +1,6 @@
 // sub_82B1C528  role: random value in a range -- when +12 is set, draw the counter and store +0 + draw % +4 into +8 and return it; otherwise hand back the cached +8 untouched   lifted: skate3_recomp.66.cpp:64370 (64 lines)
 // STATUS: verified
-// calls/session: boot 153564  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 135271  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1C528.md
 namespace port_82B1C528 {
 

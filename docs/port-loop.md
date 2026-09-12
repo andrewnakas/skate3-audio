@@ -110,6 +110,28 @@ That session ran the harness on 7.4M kernel calls plus 60 other hooks and `Audio
 187.5/s against a 187.5/s real-time budget throughout, with the minimum sampled rate 174.8/s
 during load. `SKATE3_PORT_EX`'s sample shift exists but has not been needed.
 
+### The build script lied once, and the summarizer caught it
+
+`cycle_build.sh` piped ninja through `grep ... || true` and then read `PIPESTATUS[0]`, which
+after `|| true` describes `true`. So one failed build printed its compile error and then reported
+success, and the session that followed ran on the **previous** binary. It was caught only because
+the summarizer reports a function whose port is not actually linked as `census N` -- the census
+hook for that address is still in the old binary -- and never as `verified`. No false verification
+reached the queue, but that was the summarizer's design, not the build step's.
+
+Three fixes, each aimed at a different way this could recur:
+
+1. ninja's exit status is now captured directly, not through a pipe.
+2. The binary must be newer than every port source in the build tree. `nm` alone cannot tell a
+   port hook from a stale census hook: both are strong `T` symbols for the same address.
+3. Lint check 8: a port may reference another port's namespace only if that port is in the same
+   aggregator TU and has a lower address. The manifest includes in address order, so a forward
+   reference fails to compile -- which is how the failure started. Reusing a callee's window
+   arithmetic is kept, because it is the one thing that cannot drift.
+
+This is `CLAUDE.md`'s "check the artifact, never the exit status" rule, met from the other side: an
+exit status that says *success* is just as untrustworthy as one that says nothing.
+
 ### Over-refusal is the other way to be wrong
 
 A window builder that returns false too often produces a green that covers less than it looks

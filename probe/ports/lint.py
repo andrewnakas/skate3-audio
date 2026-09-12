@@ -15,6 +15,7 @@ Checks, each earned by an actual failure or an actual near-miss:
   6. no __imp__ call from a port body -- callees go through GuestCall so a promoted callee is
      exercised (the brief's rule, invisible at compile time)
   7. spec.write() inside a loop with no bound in sight, flagged for a human read
+  8. a cross-port reference must be to an EARLIER port in the SAME aggregator TU
 
 Exit 1 if any check fails.
 """
@@ -26,6 +27,18 @@ PORTS = os.path.join(REPO, "recomp", "src", "audio_ports")
 REX_USE = re.compile(r"REX_(?:MM_)?(?:LOAD|STORE)_U\d+\(|REX_RAW_ADDR\(")
 HELPER = re.compile(r"^\s*(?:inline\s+|static\s+)*[\w:<>,\s*&]+?\b(\w+)\s*\(([^)]*)\)\s*\{",
                     re.M)
+
+
+def load_aggregators():
+    try:
+        import json
+        q = json.load(open(os.path.join(HERE, "queue.json")))
+        return {a: r.get("agg") for a, r in q.items()}
+    except Exception:
+        return {}
+
+
+AGG = load_aggregators()
 
 
 def check(path):
@@ -80,6 +93,22 @@ def check(path):
     if "spec.write(" not in win_body:
         if re.search(r"SKATE3_PORT(?:_EX)?\([^)]*kReturnNone", text):
             bad.append("declares no writes AND no result register: the comparison would be vacuous")
+
+    # 8. a reference into another port's namespace compiles only if that port is in the SAME
+    # aggregator TU and earlier in it -- manifests include in address order. Reusing a callee's
+    # window arithmetic is worth keeping (it cannot drift), so the rule is ordering, not a ban.
+    # Comments are stripped first: a note naming another port is not a dependency.
+    code = re.sub(r"//[^\n]*", "", text)
+    for other in sorted(set(re.findall(r"\bport_([0-9A-F]{8})::", code))):
+        if other == addr:
+            continue
+        mine, theirs = AGG.get(addr), AGG.get(other)
+        if mine is None or theirs is None or mine != theirs:
+            bad.append(f"references port_{other}:: from another aggregator ({theirs} vs {mine}): "
+                       f"a separate translation unit, so it can never be declared here")
+        elif int(other, 16) > int(addr, 16):
+            bad.append(f"references port_{other}::, which is included AFTER this file "
+                       f"(address order): copy the value locally")
 
     # 6. no __imp__ from a port body
     if "__imp__" in text:

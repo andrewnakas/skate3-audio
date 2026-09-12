@@ -25,8 +25,24 @@ if pgrep -x skate3 >/dev/null; then
   echo "a skate3 is still live after 5 minutes: not relinking the shared binary" >&2; exit 3
 fi
 tools/sync_recomp.sh push | tail -1
-ninja -C "$B" -j10 skate3 | grep -E "error:|FAILED" || true
-[ "${PIPESTATUS[0]}" -eq 0 ] || { echo "build failed" >&2; exit 1; }
+# Capture ninja's own status. The previous form piped it through grep and `|| true`, which made
+# PIPESTATUS describe `true` -- a failed build printed its error and then reported success, and
+# the session that followed ran on the OLD binary. Caught only because the summarizer reports a
+# census-only function as "census", never "verified".
+NINJA_LOG=$(mktemp)
+if ! ninja -C "$B" -j10 skate3 > "$NINJA_LOG" 2>&1; then
+  grep -E "error:|FAILED" "$NINJA_LOG" | head -20 >&2
+  rm -f "$NINJA_LOG"
+  echo "build failed" >&2; exit 1
+fi
+rm -f "$NINJA_LOG"
+# The artifact must be newer than every port it is supposed to contain. nm alone cannot tell a
+# port hook from a stale census hook for the same address: both are strong T symbols.
+SRC_TREE=${RECOMP_SRC:-/home/nakas/Documents/skate3/skate3recomp-dev/src}
+stale=$(find "$SRC_TREE/audio_ports" -name '*.inc' -newer "$B/skate3" | head -5)
+if [ -n "$stale" ]; then
+  echo "binary is older than these port sources -- the build did not take:" >&2; echo "$stale" >&2; exit 2
+fi
 weak=$(LC_ALL=C comm -23 "$EXPECT" <(nm "$B/skate3" | awk '$2=="T"{print $3}' | LC_ALL=C sort -u))
 [ -z "$weak" ] || { echo "not strong:" >&2; echo "$weak" >&2; exit 2; }
 # A port and its census hook cannot both exist; the census TU must not name an armed port.

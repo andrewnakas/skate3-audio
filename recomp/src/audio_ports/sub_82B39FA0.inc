@@ -1,6 +1,6 @@
 // sub_82B39FA0  role: mix dispatcher over the same descriptor as sub_82B3D4F8 -- when the word at +8 is zero, call the five-gain kernel sub_82B399D0 with three outgoing stack arguments and latch its returned f1 into the gain block's +32; otherwise just memset the +20 buffer to zero   lifted: skate3_recomp.68.cpp:905 (92 lines)
 // STATUS: verified
-// calls/session: boot 136722  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 132426  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B39FA0.md
 namespace port_82B39FA0 {
 

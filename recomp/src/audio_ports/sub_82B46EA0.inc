@@ -1,6 +1,6 @@
 // sub_82B46EA0  role: decode one SIGNED zigzag variable-length integer, 1 to 5 bytes   lifted: skate3_recomp.68.cpp:33299 (150 lines)
 // STATUS: verified
-// calls/session: boot 14364  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 28132  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B46EA0.md
 namespace port_82B46EA0 {
 

@@ -1,6 +1,6 @@
 // sub_82B49438  role: remove this object from its owner's handle array -- find its entry, drop the count, memmove the tail down   lifted: skate3_recomp.68.cpp:38798 (90 lines)
 // STATUS: verified
-// calls/session: boot 2664  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 3286  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B49438.md
 namespace port_82B49438 {
 
