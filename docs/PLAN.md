@@ -130,9 +130,11 @@ all detailed in `docs/shadow-harness.md`:
 In Phase 0a frequency order where available, else call-graph order:
 
 - Command queue producer/consumer (`sub_82B28A00`, `sub_82B28B78/C18/CC0`, `sub_82B48530`) —
-  land the ordering fix from `docs/command-queue.md` natively. **In the 0a session
-  `sub_82B28B78` and `sub_82B28CC0` never ran**, so they need a session that reaches
-  their command types before they can be shadow-verified.
+  land the ordering fix from `docs/command-queue.md` natively. In the 0a session
+  `sub_82B28B78` and `sub_82B28CC0` never ran; **both have since been reached**, with
+  `skate3_demo_path_play_movies=true` — `EVENT_SUBMIT` 1,678 calls per boot, `EVENT_PLAY`
+  exactly one, at the FMV's start. A once-per-boot function caps what any single session
+  can establish; see `docs/shadow-harness.md`.
 - Scheduler tick (`sub_82B48A50`, `sub_82B482F8`, `sub_82B48440`).
 - Buffer-pair init/measure (`sub_82B7F828`, `sub_82B7F998`, `sub_82B7F8A8`) — land the
   fix from `docs/buffer-size-bug.md`.
@@ -146,7 +148,10 @@ practice (0 comparable calls in a session). See `docs/shadow-harness.md`. Becaus
 a hook is now a TU compile plus a relink rather than a full rebuild, run this as a **tight
 one-function-at-a-time loop**, not batched per build cycle.
 
-*Exit criterion, per function:* zero divergence over a session exercising its path.
+*Exit criterion, per function:* zero divergence over a session exercising its path, **with
+the comparable-call count recorded next to it**. Zero divergence over one call and over
+10,000 read identically and mean very different things, and some of these functions fire
+once per boot — so the count, and the inputs it covered, are part of the result.
 *Phase:* every function 0a calls hot is native and promoted; both known bugs landed.
 
 ### Phase 3 — VMX128 kernels, native C++

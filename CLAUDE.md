@@ -46,7 +46,7 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Conversion | **sample-exact** on ambience, speech and music |
 | Rust crate | 33 tests, three containers, validated on real archives |
 | Shadow harness | **proven**: `EVENT_SUBMIT` 1,678 runs, zero divergence (`docs/shadow-harness.md`) |
-| Native functions | one: `EVENT_SUBMIT`, shadow-verified and promoted |
+| Native functions | three written, three verification levels: `EVENT_SUBMIT` promoted; `EVENT_PLAY` compared clean but at **one input point**; `EVENT_STOP` **unverified** (no comparable path) |
 | Guest-mix capture | `audio_dump_path` written for Linux and validated; **not reproducible run to run** |
 
 ### Open
@@ -102,7 +102,10 @@ the number is still a ceiling on audio work. Of the four heaviest VMX128 kernels
 
 ## Workflow for native audio
 
-1. Read the decompiled function (`out/decomp/sub_XXXXXXXX.c`).
+1. Read the function. On Linux read the **lifted** form:
+   `grep -n 'DEFINE_REX_FUNC(sub_XXXXXXXX)' generated/skate3_recomp.*.cpp`. There is no
+   Ghidra corpus and no JDK on that box, so `out/decomp/sub_XXXXXXXX.c` is macOS-only —
+   looking for it there wastes a lookup. The lifted form is also what actually executes.
 2. Write the native version in `recomp/src/skate3_audio_native.cpp`.
 3. Register the hook: add `REX_FUNC(sub_XXXXXXXX)`, run `tools/gen_hooked_funcs.sh`. On Linux
    there is no registration step: an `extern "C" REX_FUNC(sub_XXXXXXXX)` definition wins at

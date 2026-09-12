@@ -88,6 +88,46 @@ on the paths that avoid those calls. That is a property of the function, not a s
 to be engineered around — and a promoted native body still has to perform those calls for
 real, so the promoted path carries risk the shadow run never covered.
 
+## `EVENT_PLAY` — compared clean, once per boot
+
+`sub_82B28B78` publishes a stream's format onto the player. It clears the decoder pointer,
+converts three floats out of the command record into `sample_rate` (+0x154), `channel_count`
+(+0x15F) and `format_index` (+0x160), marks `state` (+0x15E) playing, and writes a zero word
+plus the format byte through the `source` pointer at +0x50.
+
+It then reloads the state byte it has just set to 1, and calls `sub_82B29018` only if that
+byte reads 4 or 0. That callee takes a critical section, makes two indirect calls and calls
+three further functions, so the branch is not comparable — but it is reachable only if the two
+stores through +0x50 overlap the state byte, which the compiler could not rule out and so had
+to emit the reload for. The hook predicts that overlap (and a null source) and counts those
+calls rather than comparing them. Predicting it is the point: asserting from source that the
+branch cannot fire would be exactly the kind of tidy story this project has been wrong about
+before.
+
+**Measured, 2026-09-11, two sessions: 1 comparable call each, zero divergence, zero skipped.**
+The skip counter never logged once, which is the positive form of that claim — the aliasing
+branch did not fire, so the comparable path is the only one the game took.
+
+One call per session is structural, not a harness limit. `EVENT_PLAY` fires once per stream
+start, and a boot plays exactly one frontend movie: with `PLAY_MOVIES=true`, `forcing all
+frontend movies complete` appears **zero** times and `FMV rendering NATIVELY` exactly once.
+So there is one stream to start, and more boots would repeat the same input rather than widen
+it. `EVENT_SUBMIT` reached 1,678 in the same sessions — the third consecutive run at that
+exact figure.
+
+What those calls covered, logged once per session so the coverage claim is falsifiable:
+
+| field | record | stored |
+|---|---|---|
+| `format_index` | `+8`, float `1` | byte `1` |
+| `sample_rate` | `+12`, float `48000` | float32 `48000` |
+| `channel_count` | `+16`, float `6` | byte `6` |
+
+48 kHz six-channel, the same shape the capture tap records. So `EVENT_PLAY` is verified at one
+input point, not over a distribution: other formats, rates and channel counts are unexercised,
+as is every `fctidz` edge the conversion reproduces (NaN, values past 2^63, the `>` versus
+`>=` boundary at exactly 2^63). **Not promoted.**
+
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,
 `msr` and the reservation state are not compared. Another thread writing a watched window
@@ -186,7 +226,7 @@ Two consequences:
 | file | what |
 |---|---|
 | `recomp/src/skate3_audio_shadow.{h,cpp}` | the harness |
-| `recomp/src/skate3_audio_native.cpp` | `EVENT_SUBMIT`, three modes |
+| `recomp/src/skate3_audio_native.cpp` | `EVENT_SUBMIT`, `EVENT_STOP`, `EVENT_PLAY`; three modes each |
 | `recomp/src/skate3_audio_dump.cpp` | the `audio_dump_path` tap |
 | `recomp/src/skate3_audio_probe.cpp` | XMA feed probe, unchanged |
 | `probe/harness/run_session.sh` | one session |

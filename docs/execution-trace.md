@@ -148,9 +148,12 @@ skate run and a bail plus replay reaches almost exactly what boot and a map swit
 reached. What is left unreached is not gameplay-shaped: it is content the sessions never
 touched (other modes, other worlds) plus code in the corpus that is not audio at all.
 
-Still unreached and worth noting: `sub_82B28B78` and `sub_82B28CC0` — two of the three
-command-queue consumers — ran in neither session. `EVENT_SUBMIT` (`sub_82B28CC0`) needs
-movie playback, which these sessions skip; see `docs/shadow-harness.md`.
+Unreached in these sessions, but since measured: `sub_82B28B78` and `sub_82B28CC0` — two of
+the three command-queue consumers — ran in neither traced session, because both need frontend
+movie playback and these sessions skip it. With `skate3_demo_path_play_movies=true` both run:
+`EVENT_SUBMIT` (`sub_82B28CC0`) 1,678 times per boot, and `EVENT_PLAY` (`sub_82B28B78`)
+**exactly once** per boot, at the single FMV's start. The **not seen** rows above are a fact
+about the trace, not about the functions; see `docs/shadow-harness.md`.
 
 ## Next
 
