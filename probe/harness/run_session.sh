@@ -62,6 +62,7 @@ if [ -n "$VECTORS" ]; then
   args+=( "--skate3_audio_vectors_path=$VECTORS" "--skate3_audio_vectors_max=$VECTORS_MAX" )
 fi
 [ "$CENSUS" = true ] && args+=( --skate3_audio_kernel_census=true )
+[ "${KERNEL_WINDOWS:-false}" = true ] && args+=( --skate3_audio_kernel_windows=true )
 [ -n "$MACRO" ] && args+=( "--skate3_demo_path_gameplay_inputs=$MACRO" )
 # GDB_SCRIPT runs the session under gdb, output to $OUT/LABEL.gdb.txt (see crash.gdb).
 if [ -n "${GDB_SCRIPT:-}" ]; then

@@ -682,6 +682,47 @@ status-byte alphabet in `0x80`-`0xEF`. It is dominated by small values -- game `
 is a value (position or delta), not an opcode. Recorded because the MIDI reading is exactly the
 kind of coherent story this file has three times had to retract.
 
+### The decrypted image, dumped — and the magic is genuinely absent
+
+The image was dumped out of a running recomp under gdb and searched directly, which upgrades the
+paragraph below from "cannot be searched" to a measurement. Recipe in
+`probe/harness/dump_image.gdb`: `ptrace_scope` is 1 here so gdb must be the **parent** (which
+`run_session.sh`'s `GDB_SCRIPT=` arranges), break on `sub_82EE7828` (the second guest function of
+a boot, so memory is mapped), read the membase from **`$rsi`** rather than assuming it — every
+lifted function is `void sub_X(PPCContext&, uint8_t* base)`, so `base` is in `rsi` under SysV,
+and it measured `0x100000000` — then `dump binary memory` in 2 MB chunks, because reserved guest
+pages are `PROT_NONE` and gdb fails a command where an in-process `memcpy` would fault the game.
+Absolute paths throughout: `run_session.sh` `cd`s into `$OUT` first.
+
+Validated before trusting any negative: the first chunk contains
+`"!This program cannot be run in DOS mode."`, `EAWebKit/TransportHandlerDirtySDK` and
+`EAText/FontFusion`. The populated range runs to about `0x83200000` (the `0x83200000` chunk is 98%
+zeros).
+
+**`"PFDx"` is absent from the decrypted image.** The filenames are not: the loader knows these
+files by name and validates them by **checksum**, which its own diagnostic states outright —
+
+```
+0x8216C178  "PATHI_verifymusfile - file %s (checksum 0x%X does not match .mpf data (checksum 0x%X)."
+```
+
+That independently confirms section 7's role (it carries the companion `.mus` content hash) from
+the game's side rather than from file structure, and it names a module prefix, `PATHI_`, worth
+harvesting for the rest of the music API.
+
+| string | guest address | `lis` / low half |
+|---|---|---|
+| `dataudio/music/game.mpf` | `0x83043334` | `-31996` / `0x3334` |
+| `dataudio/music/ipod.mpf` | `0x83043350` | `-31996` / `0x3350` |
+| `dataudio/music/world.mpf` | `0x8304336C` | `-31996` / `0x336C` |
+| `dataudio/music/{Game,World,Ipod}_Stream.mus` | `0x8224E610` / `E634` / `E658` | `-32220` / `0xE610`… |
+| `'%.*s%d.mus'` | `0x8216A8C0` | `-32234` / `0xA8C0` |
+| `'%d_dlc_ambience.sns'` | `0x8224A2D0` | `-32220` / `0xA2D0` |
+
+**Next step:** find the lifted code referencing those `.mpf` path addresses. That is the reader,
+and it is the route into sections 0-3 — which byte-pattern inference should not be asked to
+supply, given this document has already had to retract three readings reached that way.
+
 **Why the parser could not be read instead.** The magic is not greppable anywhere: zero hits for
 `"PFDx"` or `"PFD"` in `default.xex`, either `default.xexp`, or `EAWebkit.xex`, and zero for the
 `0x50464478` immediate (or its reversed and split forms) across **47,889** lifted functions --
