@@ -1,6 +1,6 @@
 // sub_82B489D0  role: detach a scheduler instance -- unlink its node now, or park a pending removal when it is the one the tick is running   lifted: skate3_recomp.68.cpp:37283 (71 lines)
 // STATUS: verified
-// calls/session: boot 1601  play ?  map ?          thread: MoviePlayer2 De
+// calls/session: boot 1997  play 2214  map ?          thread: MoviePlayer2 De
 // note: probe/ports/notes/sub_82B489D0.md
 namespace port_82B489D0 {
 

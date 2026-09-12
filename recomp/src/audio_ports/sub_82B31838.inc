@@ -1,6 +1,6 @@
 // sub_82B31838  role: mix one source's channels into this object's bus blocks for the block -- a gain ramp through sub_82B46810 when the gain has moved, flat through sub_82B44B20 per routing-table entry when it has not -- then bump the bus counter and publish the per-channel gains   lifted: skate3_recomp.67.cpp:48102 (421 lines)
 // STATUS: verified
-// calls/session: boot 569786  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 626736  play 933816  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31838.md
 namespace port_82B31838 {
 

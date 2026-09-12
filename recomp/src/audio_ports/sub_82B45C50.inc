@@ -1,6 +1,6 @@
 // sub_82B45C50  role: lay out a source's panner entries around a centre point -- the centre is (cos, sin) of one scaled angle times f2, and each entry is placed at the centre plus (cos, sin) of the centre angle offset by one of three spreads, times f3; sub_82B453D8 clamps each into the unit disc and sub_82F52318 turns the clamped direction back into the angle stored at +12. Which entries are written depends only on the count: 1 -> sub_82B269C0, 2 -> {0,1}, 4 -> {0..3}, 6 -> {0..4}, 8 -> {0..6}, and 3/5/7 write nothing   lifted: skate3_recomp.68.cpp:30396 (711 lines)
 // STATUS: verified
-// calls/session: boot 129630  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 146074  play 184732  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B45C50.md
 namespace port_82B45C50 {
 

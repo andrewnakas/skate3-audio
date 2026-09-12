@@ -1,6 +1,6 @@
 // sub_82B269C0  role: place a panner at an angle and depth, via sine and cosine   lifted: skate3_recomp.67.cpp:21457 (109 lines)
 // STATUS: verified
-// calls/session: boot 192171  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 218583  play 273708  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B269C0.md
 namespace port_82B269C0 {
 

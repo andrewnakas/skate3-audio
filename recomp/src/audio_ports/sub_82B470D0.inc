@@ -1,6 +1,6 @@
 // sub_82B470D0  role: parse a stream header -- dispatch on the version byte, inline the version-0 header, then hand the record payload to one of two record parsers; zero the object if any of them fails   lifted: skate3_recomp.68.cpp:33612 (155 lines)
 // STATUS: verified
-// calls/session: boot 1188  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1254  play 1030  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B470D0.md
 namespace port_82B470D0 {
 

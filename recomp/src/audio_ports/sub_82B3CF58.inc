@@ -1,6 +1,6 @@
 // sub_82B3CF58  role: n-sample scale-and-add with a parallel copy of the source -- z[i] = x[i]*gain + y[i], then w[i] = x[i] reloaded after that store; 16 floats per vector iteration when x is 16-byte aligned, scalar tail for the remainder   lifted: skate3_recomp.68.cpp:8881 (218 lines)
 // STATUS: verified
-// calls/session: boot 162490  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 179218  play 339926  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3CF58.md
 namespace port_82B3CF58 {
 

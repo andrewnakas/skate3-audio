@@ -1,6 +1,6 @@
 // sub_82B427D8  role: linear-ramp writer -- fills a 256-entry block of a float array with a ramp from f1 to f2 spread over r7 samples, flat at f1 for indices below zero and flat at f2 past the end of the ramp; four vectors of four per iteration on the ramp body, a 16-byte-unit fill plus memcpy on the flat ends   lifted: skate3_recomp.68.cpp:22335 (742 lines)
 // STATUS: verified
-// calls/session: boot 8  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 7  play 7  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B427D8.md
 namespace port_82B427D8 {
 

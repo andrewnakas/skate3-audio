@@ -1,6 +1,6 @@
 // sub_82B45788  role: add one source's angular contribution to the speaker-gain array -- reduce the source's angle, take its sine and cosine, pick one of seven sectors by comparing the reduced angle with three bounds and two reflections of them, project (sin, cos) through that sector's four coefficients, and mix-add the two normalised projections into the two gain slots the sector selects   lifted: skate3_recomp.68.cpp:29635 (608 lines)
 // STATUS: verified
-// calls/session: boot 196728  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 219648  play 280497  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B45788.md
 namespace port_82B45788 {
 

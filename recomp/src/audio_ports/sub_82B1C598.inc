@@ -1,6 +1,6 @@
 // sub_82B1C598  role: draw the next entry from a shuffle bag -- pick a random remaining slot, swap it to the cursor, advance and wrap -- and return base + the drawn value   lifted: skate3_recomp.66.cpp:64435 (164 lines)
 // STATUS: verified
-// calls/session: boot 589933  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 680746  play 784687  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1C598.md
 namespace port_82B1C598 {
 

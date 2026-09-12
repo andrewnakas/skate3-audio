@@ -1,6 +1,6 @@
 // sub_82B298E0  role: apply the channel gain matrix with a ramp -- per source row, the per-destination delta (live gain - the caller's saved gain) x a rodata step goes into the frame, then each source channel is mixed into each destination channel starting at the SAVED gain and ramping by that delta; source 0 overwrites (sub_82B3C098), sources 1.. accumulate (sub_82B44D18)   lifted: skate3_recomp.67.cpp:28796 (319 lines)
 // STATUS: verified
-// calls/session: boot 126966  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 142508  play 180524  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B298E0.md
 namespace port_82B298E0 {
 

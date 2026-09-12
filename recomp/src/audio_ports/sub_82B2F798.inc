@@ -1,6 +1,6 @@
 // sub_82B2F798  role: settle two level terms from log10 of a stored single and of the largest of up to 255 candidates, store one at +32 and add the pair's delta into (*(+12))+40   lifted: skate3_recomp.67.cpp:43282 (178 lines)
 // STATUS: verified
-// calls/session: boot 4  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 4  play 4  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2F798.md
 namespace port_82B2F798 {
 

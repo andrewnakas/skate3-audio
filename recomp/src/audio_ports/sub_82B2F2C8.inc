@@ -1,6 +1,6 @@
 // sub_82B2F2C8  role: resample six band values through a blended knot curve, normalise them, then re-arm three ring reservations per queue   lifted: skate3_recomp.67.cpp:42515 (433 lines)
 // STATUS: verified
-// calls/session: boot 8  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 8  play 8  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2F2C8.md
 namespace port_82B2F2C8 {
 

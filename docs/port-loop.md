@@ -86,18 +86,33 @@ could not). Three ran before any subagent wrote a port:
 
 Both perturbations were reverted and the sources restored byte-identical.
 
-## Results so far
+## Results: the sweep is complete
 
-**60 functions ported and shadow-verified, zero divergence outstanding.** Every batch is armed
-together, so each session re-verifies everything landed before it; the counts below are
-comparable calls in one 110 s boot session.
+**All 216 audio-thread functions have a readable native body. 138 are shadow-verified against
+the running original with zero divergence outstanding; the other 78 carry the gate that makes
+them uncheckable.** Every port is armed in the same binary, so each session re-verifies all of
+them at once: these are not accumulated totals but a figure that survives a rebuild.
 
-| | |
+| outcome | count | what it means |
+|---|---|---|
+| verified | 138 | zero register and zero memory divergence against the original, on real game inputs |
+| gate 1 | 69 | reaches an indirect call, a lock, an allocation or a release; replaying it on rewound memory is unsound |
+| gate 2 | 3 | write set not derivable from entry state |
+| gate 3 | 4 | reads `mftb`, so two runs return two values and no comparison can pass |
+| uncalled | 1 | passes the gates; no profile reached it |
+| pre-existing | 2 | already hooked before this work (`EVENT_STOP`, the XMA probe) |
+
+Final verification, three sessions with all 214 port files armed:
+
+| session | result |
 |---|---|
-| verified ports | 60 of 216 |
-| comparable calls, best session | ~7.3M |
-| divergences found | 2, both mine, both fixed |
-| audio real-time rate with all 60 armed | 187.5/s, unchanged |
+| boot profile, 115 s | 214 expected, 0 not green |
+| scripted skate and bail, 150 s | 214 expected, 0 not green; **73.5M counted calls** across all 214 |
+| promoted, `--skate3_audio_native=true`, 150 s | **138 functions ran natively**, audio 187.5/s, no crash, capture consistent with the documented layout |
+
+The play profile is what closed the last gap: `sub_82B305C0` never ran during boot and verified
+over **100,810 calls** once a scripted session skated and bailed, and `sub_82B33870` was reached
+106 times. Both had been recorded as uncalled on boot evidence alone.
 
 **Gate 4 is retired as a blocker.** `sub_824531C8` -- four-lane sine, 43 vector instructions,
 zero stores, result in v1 -- verified over **6,994,118 comparable calls** in a single session

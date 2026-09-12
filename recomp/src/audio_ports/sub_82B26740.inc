@@ -1,6 +1,6 @@
 // sub_82B26740  role: run the per-source shelf filter -- derive a corner frequency from the source's own rate and the mixer's, and either rebuild the five biquad coefficients when that corner or the gain moved and filter every channel of the buffer pair through sub_82B43AF8, or, when the corner is past its limit, clear the per-channel histories once and leave the audio alone   lifted: skate3_recomp.67.cpp:21061 (263 lines)
 // STATUS: verified
-// calls/session: boot 22117  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 24936  play 29673  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B26740.md
 namespace port_82B26740 {
 

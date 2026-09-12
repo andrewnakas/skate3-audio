@@ -1,6 +1,6 @@
 // sub_82B389A0  role: four-lane one-multiply allpass stage over an unaligned tap -- d = c - a*t stored to r8, and acc += g*(a*d + t) into r9; r10 == 0 dcbzl-clears acc first   lifted: skate3_recomp.67.cpp:64836 (280 lines)
 // STATUS: verified
-// calls/session: boot 44550  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 50570  play 59894  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B389A0.md
 namespace port_82B389A0 {
 

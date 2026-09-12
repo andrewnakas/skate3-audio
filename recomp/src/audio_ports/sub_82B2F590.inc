@@ -1,6 +1,6 @@
 // sub_82B2F590  role: recommit a filter/envelope object when its state word says 1 -- rebuild the ramp (sub_82B2FE00), remap it through the table (sub_82B2FEA8) and resample the six bands (sub_82B2F2C8) according to which of the three parameters moved, turn the bands into six weights, then either rearm the voice table (sub_82B2FF88) or rewrite the per-voice records, and publish all four parameters with the state word set to 2   lifted: skate3_recomp.67.cpp:42949 (332 lines)
 // STATUS: verified
-// calls/session: boot 22277  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 25287  play 29949  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2F590.md
 namespace port_82B2F590 {
 

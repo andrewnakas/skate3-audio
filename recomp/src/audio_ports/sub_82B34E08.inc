@@ -1,6 +1,6 @@
 // sub_82B34E08  role: flush the mix accumulator -- swap the row pair, copy or clear each channel row, fold the pending deltas, then zero the accumulator   lifted: skate3_recomp.67.cpp:55999 (176 lines)
 // STATUS: verified
-// calls/session: boot 653812  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 722892  play 845754  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B34E08.md
 namespace port_82B34E08 {
 

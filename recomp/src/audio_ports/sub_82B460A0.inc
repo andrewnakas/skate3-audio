@@ -1,6 +1,6 @@
 // sub_82B460A0  role: fill one 8x8 mix matrix from a source's panner entries -- a stereo destination gets a two-column cosine-ish pan per source computed inline; any other destination pans each source through sub_82B454B8/sub_82B45788/sub_82B45B60 into its own row, then zeroes one whole row and one whole column and writes their crossing cell   lifted: skate3_recomp.68.cpp:31108 (286 lines)
 // STATUS: verified
-// calls/session: boot 129630  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 146074  play 184732  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B460A0.md
 namespace port_82B460A0 {
 

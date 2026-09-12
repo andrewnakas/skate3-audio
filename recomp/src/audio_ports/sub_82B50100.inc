@@ -1,6 +1,6 @@
 // sub_82B50100  role: seek a packetised bit stream to a frame -- divide the descriptor's sample position into 512-sample frames, walk the per-substream seek table's frame counts packet by packet until the target packet is found, skip the frames still ahead of it one length field at a time, then record the packet pointer, the bytes left in the chunk and the bit offset into the caller's cursor record   lifted: skate3_recomp.68.cpp:55550 (214 lines)
 // STATUS: verified
-// calls/session: boot 3211  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 3817  play 4653  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B50100.md
 namespace port_82B50100 {
 

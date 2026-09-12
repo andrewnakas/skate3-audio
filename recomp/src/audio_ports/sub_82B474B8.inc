@@ -1,6 +1,6 @@
 // sub_82B474B8  role: walk the four variable-length seek streams until the record that contains a target position is found, and publish that record into the object   lifted: skate3_recomp.68.cpp:34171 (233 lines)
 // STATUS: verified
-// calls/session: boot 1782  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1881  play 1545  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B474B8.md
 namespace port_82B474B8 {
 

@@ -1,6 +1,6 @@
 // sub_82B23B50  role: per-channel gain ramp over a double-buffered block -- ramp every channel from the applied gain (+56) toward the target (+52) with sub_82B3C098, then swap the descriptor pair at +28/+32 and latch applied = target   lifted: skate3_recomp.67.cpp:14525 (119 lines)
 // STATUS: verified
-// calls/session: boot 259885  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 292165  play 435555  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B23B50.md
 namespace port_82B23B50 {
 

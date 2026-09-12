@@ -1,6 +1,6 @@
 // sub_82B225A0  role: republish one contribution into the owner's running total -- in mode 1 the length at +140 as a float, corrected through sub_82F55068 when the coefficient at +92 is non-zero, otherwise zero; store it at +28, add the change since +32 into u32[+12]+40, and record it at +32   lifted: skate3_recomp.67.cpp:10994 (135 lines)
 // STATUS: verified
-// calls/session: boot 79335  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 88821  play 116945  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B225A0.md
 namespace port_82B225A0 {
 

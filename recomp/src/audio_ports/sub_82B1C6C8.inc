@@ -1,6 +1,6 @@
 // sub_82B1C6C8  role: step a cursor -- accumulate signed per-step weights until the sum passes the clock's remainder mod 100, then publish base+index   lifted: skate3_recomp.66.cpp:64600 (96 lines)
 // STATUS: verified
-// calls/session: boot 1743  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1994  play 2382  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1C6C8.md
 namespace port_82B1C6C8 {
 

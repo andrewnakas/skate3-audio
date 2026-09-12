@@ -1,6 +1,6 @@
 // sub_82B305C0  role: when enabled, bump a counter in the buffer block and mix N source channels of the pair's back descriptor into N consecutive 1 KB destination runs -- a gain ramp (sub_82B44D18) for record modes 1 and 3, a flat scale (sub_82B44B20) otherwise -- keeping each source's last sample   lifted: skate3_recomp.67.cpp:45400 (269 lines)
-// STATUS: uncalled
-// calls/session: boot 0  play ?  map ?          thread: RwAudioCore Dac (census; never called in the traced boot)
+// STATUS: verified
+// calls/session: boot 0  play 101160  map ?          thread: RwAudioCore Dac (census; never called in the traced boot)
 // note: probe/ports/notes/sub_82B305C0.md
 namespace port_82B305C0 {
 
@@ -227,4 +227,4 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 }
 
 }  // namespace port_82B305C0
-SKATE3_PORT(82B305C0, skate3::audio::kPortUncalled, skate3::audio::kReturnR3)
+SKATE3_PORT(82B305C0, skate3::audio::kPortVerified, skate3::audio::kReturnR3)

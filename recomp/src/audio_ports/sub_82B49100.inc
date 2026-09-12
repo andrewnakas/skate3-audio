@@ -1,6 +1,6 @@
 // sub_82B49100  role: retire an object -- unlink it from one of its owner's two lists, reset the three gains and every handle's field, drop it from the owner's handle array, then push it onto the other list   lifted: skate3_recomp.68.cpp:38323 (156 lines)
 // STATUS: verified
-// calls/session: boot 660  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 832  play 857  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B49100.md
 namespace port_82B49100 {
 

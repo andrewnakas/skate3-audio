@@ -4,9 +4,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 8615015,
+   "boot": 9572672,
    "map": null,
-   "play": null
+   "play": 9906721
   },
   "gate": null,
   "gate1": "pass",
@@ -60,9 +60,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 17,
+   "boot": 22,
    "map": null,
-   "play": null
+   "play": 45
   },
   "gate": null,
   "gate1": "pass",
@@ -172,9 +172,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 131,
+   "boot": 143,
    "map": null,
-   "play": null
+   "play": 115
   },
   "gate": null,
   "gate1": "pass",
@@ -228,9 +228,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 44816,
+   "boot": 52325,
    "map": null,
-   "play": null
+   "play": 69016
   },
   "gate": null,
   "gate1": "pass",
@@ -256,9 +256,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 44816,
+   "boot": 52325,
    "map": null,
-   "play": null
+   "play": 69016
   },
   "gate": null,
   "gate1": "pass",
@@ -396,9 +396,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 45142,
+   "boot": 49460,
    "map": null,
-   "play": null
+   "play": 52502
   },
   "gate": null,
   "gate1": "pass",
@@ -424,9 +424,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 133469,
+   "boot": 159493,
    "map": null,
-   "play": null
+   "play": 203825
   },
   "gate": null,
   "gate1": "pass",
@@ -452,9 +452,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 589933,
+   "boot": 680746,
    "map": null,
-   "play": null
+   "play": 784687
   },
   "gate": null,
   "gate1": "pass",
@@ -480,9 +480,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1743,
+   "boot": 1994,
    "map": null,
-   "play": null
+   "play": 2382
   },
   "gate": null,
   "gate1": "pass",
@@ -508,9 +508,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 686453,
+   "boot": 797279,
    "map": null,
-   "play": null
+   "play": 906149
   },
   "gate": null,
   "gate1": "pass",
@@ -536,9 +536,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 68919,
+   "boot": 77185,
    "map": null,
-   "play": null
+   "play": 95865
   },
   "gate": null,
   "gate1": "pass",
@@ -564,9 +564,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 171880,
+   "boot": 195407,
    "map": null,
-   "play": null
+   "play": 232114
   },
   "gate": null,
   "gate1": "pass",
@@ -592,9 +592,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 98392,
+   "boot": 108418,
    "map": null,
-   "play": null
+   "play": 123521
   },
   "gate": null,
   "gate1": "pass",
@@ -620,9 +620,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 30216,
+   "boot": 32520,
    "map": null,
-   "play": null
+   "play": 32076
   },
   "gate": null,
   "gate1": "pass",
@@ -648,9 +648,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1210025,
+   "boot": 1422684,
    "map": null,
-   "play": null
+   "play": 1667332
   },
   "gate": null,
   "gate1": "pass",
@@ -676,9 +676,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 94633,
+   "boot": 108149,
    "map": null,
-   "play": null
+   "play": 122771
   },
   "gate": null,
   "gate1": "pass",
@@ -704,9 +704,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1582645,
+   "boot": 1834281,
    "map": null,
-   "play": null
+   "play": 2063173
   },
   "gate": null,
   "gate1": "pass",
@@ -732,9 +732,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 35845,
+   "boot": 43591,
    "map": null,
-   "play": null
+   "play": 51927
   },
   "gate": null,
   "gate1": "pass",
@@ -760,9 +760,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 11883,
+   "boot": 13818,
    "map": null,
-   "play": null
+   "play": 23549
   },
   "gate": null,
   "gate1": "pass",
@@ -788,9 +788,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 28723,
+   "boot": 33196,
    "map": null,
-   "play": null
+   "play": 62633
   },
   "gate": null,
   "gate1": "pass",
@@ -816,9 +816,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 981798,
+   "boot": 1231306,
    "map": null,
-   "play": null
+   "play": 1503552
   },
   "gate": null,
   "gate1": "pass",
@@ -844,9 +844,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 567356,
+   "boot": 663720,
    "map": null,
-   "play": null
+   "play": 777914
   },
   "gate": null,
   "gate1": "pass",
@@ -872,9 +872,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 116078,
+   "boot": 147848,
    "map": null,
-   "play": null
+   "play": 184076
   },
   "gate": null,
   "gate1": "pass",
@@ -900,9 +900,9 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 575037,
+   "boot": 698485,
    "map": null,
-   "play": null
+   "play": 856261
   },
   "gate": null,
   "gate1": "pass",
@@ -928,9 +928,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 58472,
+   "boot": 68584,
    "map": null,
-   "play": null
+   "play": 110741
   },
   "gate": null,
   "gate1": "pass",
@@ -956,9 +956,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 149539,
+   "boot": 170206,
    "map": null,
-   "play": null
+   "play": 212282
   },
   "gate": null,
   "gate1": "pass",
@@ -984,9 +984,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 96917,
+   "boot": 112486,
    "map": null,
-   "play": null
+   "play": 145703
   },
   "gate": null,
   "gate1": "pass",
@@ -1012,9 +1012,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 10147,
+   "boot": 8952,
    "map": null,
-   "play": null
+   "play": 14092
   },
   "gate": null,
   "gate1": "pass",
@@ -1068,9 +1068,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 38775,
+   "boot": 41789,
    "map": null,
-   "play": null
+   "play": 61408
   },
   "gate": null,
   "gate1": "pass",
@@ -1096,9 +1096,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 109287,
+   "boot": 124236,
    "map": null,
-   "play": null
+   "play": 147230
   },
   "gate": null,
   "gate1": "pass",
@@ -1124,9 +1124,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 461912,
+   "boot": 532250,
    "map": null,
-   "play": null
+   "play": 621829
   },
   "gate": null,
   "gate1": "pass",
@@ -1152,9 +1152,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 67766,
+   "boot": 76831,
    "map": null,
-   "play": null
+   "play": 114948
   },
   "gate": null,
   "gate1": "pass",
@@ -1180,9 +1180,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2279,
+   "boot": 2527,
    "map": null,
-   "play": null
+   "play": 5739
   },
   "gate": null,
   "gate1": "pass",
@@ -1208,9 +1208,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 241315,
+   "boot": 268706,
    "map": null,
-   "play": null
+   "play": 311108
   },
   "gate": null,
   "gate1": "pass",
@@ -1236,9 +1236,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 248,
+   "boot": 247,
    "map": null,
-   "play": null
+   "play": 343
   },
   "gate": null,
   "gate1": "pass",
@@ -1264,9 +1264,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 4,
+   "boot": 5,
    "map": null,
-   "play": null
+   "play": 8
   },
   "gate": null,
   "gate1": "pass",
@@ -1376,9 +1376,9 @@
   "attempts": 1,
   "batch": null,
   "calls": {
-   "boot": 4930,
+   "boot": 6624,
    "map": null,
-   "play": null
+   "play": 8634
   },
   "gate": null,
   "gate1": "pass",
@@ -1518,7 +1518,7 @@
   "calls": {
    "boot": 3,
    "map": null,
-   "play": null
+   "play": 3
   },
   "gate": null,
   "gate1": "pass",
@@ -1684,9 +1684,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 29064,
+   "boot": 31906,
    "map": null,
-   "play": null
+   "play": 36600
   },
   "gate": null,
   "gate1": "pass",
@@ -1712,9 +1712,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 14532,
+   "boot": 15953,
    "map": null,
-   "play": null
+   "play": 18300
   },
   "gate": null,
   "gate1": "pass",
@@ -1796,9 +1796,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 79335,
+   "boot": 88821,
    "map": null,
-   "play": null
+   "play": 116945
   },
   "gate": null,
   "gate1": "pass",
@@ -1824,9 +1824,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 42498,
+   "boot": 49325,
    "map": null,
-   "play": null
+   "play": 76864
   },
   "gate": null,
   "gate1": "pass",
@@ -1852,9 +1852,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 30086,
+   "boot": 32424,
    "map": null,
-   "play": null
+   "play": 32228
   },
   "gate": null,
   "gate1": "pass",
@@ -1880,9 +1880,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1791,
+   "boot": 1910,
    "map": null,
-   "play": null
+   "play": 1495
   },
   "gate": null,
   "gate1": "pass",
@@ -1908,9 +1908,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 46634,
+   "boot": 49886,
    "map": null,
-   "play": null
+   "play": 45734
   },
   "gate": null,
   "gate1": "pass",
@@ -1936,9 +1936,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 259885,
+   "boot": 292165,
    "map": null,
-   "play": null
+   "play": 435555
   },
   "gate": null,
   "gate1": "pass",
@@ -1964,9 +1964,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 113623,
+   "boot": 122997,
    "map": null,
-   "play": null
+   "play": 214853
   },
   "gate": null,
   "gate1": "pass",
@@ -2020,9 +2020,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 157120,
+   "boot": 171012,
    "map": null,
-   "play": null
+   "play": 276388
   },
   "gate": null,
   "gate1": "pass",
@@ -2048,9 +2048,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 22117,
+   "boot": 24936,
    "map": null,
-   "play": null
+   "play": 29673
   },
   "gate": null,
   "gate1": "pass",
@@ -2076,9 +2076,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 192171,
+   "boot": 218583,
    "map": null,
-   "play": null
+   "play": 273708
   },
   "gate": null,
   "gate1": "pass",
@@ -2104,9 +2104,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 27194,
+   "boot": 36190,
    "map": null,
-   "play": null
+   "play": 42524
   },
   "gate": null,
   "gate1": "pass",
@@ -2132,9 +2132,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 168039,
+   "boot": 183427,
    "map": null,
-   "play": null
+   "play": 291143
   },
   "gate": null,
   "gate1": "pass",
@@ -2244,9 +2244,9 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 1687,
+   "boot": 1684,
    "map": null,
-   "play": null
+   "play": 1685
   },
   "gate": null,
   "gate1": "pass",
@@ -2300,9 +2300,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 126966,
+   "boot": 142508,
    "map": null,
-   "play": null
+   "play": 180524
   },
   "gate": null,
   "gate1": "pass",
@@ -2328,9 +2328,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 223156,
+   "boot": 245762,
    "map": null,
-   "play": null
+   "play": 404782
   },
   "gate": null,
   "gate1": "pass",
@@ -2356,9 +2356,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 175061,
+   "boot": 194135,
    "map": null,
-   "play": null
+   "play": 292653
   },
   "gate": null,
   "gate1": "pass",
@@ -2384,9 +2384,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 53989,
+   "boot": 61716,
    "map": null,
-   "play": null
+   "play": 90841
   },
   "gate": null,
   "gate1": "pass",
@@ -2412,9 +2412,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 111438,
+   "boot": 123881,
    "map": null,
-   "play": null
+   "play": 225599
   },
   "gate": null,
   "gate1": "pass",
@@ -2440,9 +2440,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 44922,
+   "boot": 48658,
    "map": null,
-   "play": null
+   "play": 147982
   },
   "gate": null,
   "gate1": "pass",
@@ -2468,9 +2468,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 184142,
+   "boot": 204194,
    "map": null,
-   "play": null
+   "play": 306361
   },
   "gate": null,
   "gate1": "pass",
@@ -2496,9 +2496,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 117328,
+   "boot": 128705,
    "map": null,
-   "play": null
+   "play": 228389
   },
   "gate": null,
   "gate1": "pass",
@@ -2582,7 +2582,7 @@
   "calls": {
    "boot": 8,
    "map": null,
-   "play": null
+   "play": 8
   },
   "gate": null,
   "gate1": "pass",
@@ -2608,9 +2608,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 22277,
+   "boot": 25287,
    "map": null,
-   "play": null
+   "play": 29949
   },
   "gate": null,
   "gate1": "pass",
@@ -2638,7 +2638,7 @@
   "calls": {
    "boot": 4,
    "map": null,
-   "play": null
+   "play": 4
   },
   "gate": null,
   "gate1": "pass",
@@ -2694,7 +2694,7 @@
   "calls": {
    "boot": 8,
    "map": null,
-   "play": null
+   "play": 8
   },
   "gate": null,
   "gate1": "pass",
@@ -2722,7 +2722,7 @@
   "calls": {
    "boot": 8,
    "map": null,
-   "play": null
+   "play": 8
   },
   "gate": null,
   "gate1": "pass",
@@ -2750,7 +2750,7 @@
   "calls": {
    "boot": 0,
    "map": null,
-   "play": null
+   "play": 101160
   },
   "gate": null,
   "gate1": "pass",
@@ -2764,7 +2764,7 @@
   "lines": 269,
   "name": null,
   "note": "",
-  "status": "uncalled",
+  "status": "verified",
   "stores_present": true,
   "thread": null,
   "tier": "B",
@@ -2780,7 +2780,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-2 (four sequential bump allocations sized from a 16.16 ratio this call itself computes and rewrites, callees addressed through two pointer tables this call fills in its own frame, and ~20 KB of the 32 KB budget at six channels -- 98 KB on the zero-ratio fallback; see the note)",
   "gate1": "pass",
   "gate1_at": null,
   "gate1_reason": null,
@@ -2792,7 +2792,7 @@
   "lines": 958,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate2",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -2804,9 +2804,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2501,
+   "boot": 3206,
    "map": null,
-   "play": null
+   "play": 3688
   },
   "gate": null,
   "gate1": "pass",
@@ -2832,9 +2832,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 10088,
+   "boot": 12908,
    "map": null,
-   "play": null
+   "play": 14922
   },
   "gate": null,
   "gate1": "pass",
@@ -2860,9 +2860,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2543,
+   "boot": 3248,
    "map": null,
-   "play": null
+   "play": 3773
   },
   "gate": null,
   "gate1": "pass",
@@ -2888,9 +2888,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 569786,
+   "boot": 626736,
    "map": null,
-   "play": null
+   "play": 933816
   },
   "gate": null,
   "gate1": "pass",
@@ -2916,9 +2916,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 461,
+   "boot": 745,
    "map": null,
-   "play": null
+   "play": 981
   },
   "gate": null,
   "gate1": "pass",
@@ -3028,9 +3028,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2357,
+   "boot": 2935,
    "map": null,
-   "play": null
+   "play": 5735
   },
   "gate": null,
   "gate1": "pass",
@@ -3196,9 +3196,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1546,
+   "boot": 1943,
    "map": null,
-   "play": null
+   "play": 2175
   },
   "gate": null,
   "gate1": "pass",
@@ -3224,9 +3224,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1546,
+   "boot": 1943,
    "map": null,
-   "play": null
+   "play": 2175
   },
   "gate": null,
   "gate1": "pass",
@@ -3392,9 +3392,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 182455,
+   "boot": 202510,
    "map": null,
-   "play": null
+   "play": 304676
   },
   "gate": null,
   "gate1": "pass",
@@ -3448,9 +3448,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 679,
+   "boot": 865,
    "map": null,
-   "play": null
+   "play": 908
   },
   "gate": null,
   "gate1": "pass",
@@ -3476,9 +3476,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 275,
+   "boot": 284,
    "map": null,
-   "play": null
+   "play": 317
   },
   "gate": null,
   "gate1": "pass",
@@ -3532,9 +3532,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 7293,
+   "boot": 9408,
    "map": null,
-   "play": null
+   "play": 10860
   },
   "gate": null,
   "gate1": "pass",
@@ -3588,9 +3588,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 653812,
+   "boot": 722892,
    "map": null,
-   "play": null
+   "play": 845754
   },
   "gate": null,
   "gate1": "pass",
@@ -3616,9 +3616,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 58,
+   "boot": 46,
    "map": null,
-   "play": null
+   "play": 20294
   },
   "gate": null,
   "gate1": "pass",
@@ -3644,9 +3644,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 58,
+   "boot": 46,
    "map": null,
-   "play": null
+   "play": 20294
   },
   "gate": null,
   "gate1": "pass",
@@ -3672,9 +3672,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 29,
+   "boot": 23,
    "map": null,
-   "play": null
+   "play": 10147
   },
   "gate": null,
   "gate1": "pass",
@@ -3700,9 +3700,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 44550,
+   "boot": 50570,
    "map": null,
-   "play": null
+   "play": 59894
   },
   "gate": null,
   "gate1": "pass",
@@ -3728,9 +3728,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 22275,
+   "boot": 25285,
    "map": null,
-   "play": null
+   "play": 29947
   },
   "gate": null,
   "gate1": "pass",
@@ -3756,9 +3756,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3202,
+   "boot": 3994,
    "map": null,
-   "play": null
+   "play": 4428
   },
   "gate": null,
   "gate1": "pass",
@@ -3812,9 +3812,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 267300,
+   "boot": 303420,
    "map": null,
-   "play": null
+   "play": 359364
   },
   "gate": null,
   "gate1": "pass",
@@ -3840,9 +3840,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 133650,
+   "boot": 151710,
    "map": null,
-   "play": null
+   "play": 179682
   },
   "gate": null,
   "gate1": "pass",
@@ -3868,9 +3868,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2580170,
+   "boot": 2843558,
    "map": null,
-   "play": null
+   "play": 4411988
   },
   "gate": null,
   "gate1": "pass",
@@ -3896,9 +3896,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1894762,
+   "boot": 2126778,
    "map": null,
-   "play": null
+   "play": 3023068
   },
   "gate": null,
   "gate1": "pass",
@@ -3952,9 +3952,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3312,
+   "boot": 4266,
    "map": null,
-   "play": null
+   "play": 4560
   },
   "gate": null,
   "gate1": "pass",
@@ -4064,9 +4064,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 111317,
+   "boot": 119335,
    "map": null,
-   "play": null
+   "play": 178780
   },
   "gate": null,
   "gate1": "pass",
@@ -4148,9 +4148,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 162490,
+   "boot": 179218,
    "map": null,
-   "play": null
+   "play": 339926
   },
   "gate": null,
   "gate1": "pass",
@@ -4176,9 +4176,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 83010,
+   "boot": 93954,
    "map": null,
-   "play": null
+   "play": 111902
   },
   "gate": null,
   "gate1": "pass",
@@ -4204,9 +4204,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 122750,
+   "boot": 136586,
    "map": null,
-   "play": null
+   "play": 225914
   },
   "gate": null,
   "gate1": "pass",
@@ -4234,7 +4234,7 @@
   "calls": {
    "boot": 10,
    "map": null,
-   "play": null
+   "play": 11
   },
   "gate": null,
   "gate1": "pass",
@@ -4316,9 +4316,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 836025,
+   "boot": 940743,
    "map": null,
-   "play": null
+   "play": 1306629
   },
   "gate": null,
   "gate1": "pass",
@@ -4344,9 +4344,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 474340,
+   "boot": 533208,
    "map": null,
-   "play": null
+   "play": 759184
   },
   "gate": null,
   "gate1": "pass",
@@ -4372,9 +4372,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 237170,
+   "boot": 266604,
    "map": null,
-   "play": null
+   "play": 379592
   },
   "gate": "gate-2 (sub_82B3DF90's store bases are the segment output pointers sub_82B3DC48 produces during the call)",
   "gate1": "pass",
@@ -4400,9 +4400,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 237170,
+   "boot": 266604,
    "map": null,
-   "play": null
+   "play": 379592
   },
   "gate": null,
   "gate1": "pass",
@@ -4428,9 +4428,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 474340,
+   "boot": 533208,
    "map": null,
-   "play": null
+   "play": 759184
   },
   "gate": null,
   "gate1": "pass",
@@ -4456,9 +4456,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 59038,
+   "boot": 62521,
    "map": null,
-   "play": null
+   "play": 83885
   },
   "gate": null,
   "gate1": "pass",
@@ -4484,9 +4484,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 8,
+   "boot": 7,
    "map": null,
-   "play": null
+   "play": 7
   },
   "gate": null,
   "gate1": "pass",
@@ -4512,9 +4512,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 59136,
+   "boot": 62842,
    "map": null,
-   "play": null
+   "play": 47931
   },
   "gate": null,
   "gate1": "pass",
@@ -4540,9 +4540,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1011720,
+   "boot": 1152252,
    "map": null,
-   "play": null
+   "play": 1592578
   },
   "gate": null,
   "gate1": "pass",
@@ -4568,9 +4568,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1922,
+   "boot": 4400,
    "map": null,
-   "play": null
+   "play": 3226
   },
   "gate": null,
   "gate1": "pass",
@@ -4596,9 +4596,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 8,
+   "boot": 82,
    "map": null,
-   "play": null
+   "play": 514
   },
   "gate": null,
   "gate1": "pass",
@@ -4624,9 +4624,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 368504,
+   "boot": 404358,
    "map": null,
-   "play": null
+   "play": 748902
   },
   "gate": null,
   "gate1": "pass",
@@ -4652,9 +4652,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 453962,
+   "boot": 500817,
    "map": null,
-   "play": null
+   "play": 541975
   },
   "gate": null,
   "gate1": "pass",
@@ -4736,9 +4736,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3408910,
+   "boot": 3738884,
    "map": null,
-   "play": null
+   "play": 6110212
   },
   "gate": null,
   "gate1": "pass",
@@ -4764,9 +4764,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 51609,
+   "boot": 34866,
    "map": null,
-   "play": null
+   "play": 71847
   },
   "gate": null,
   "gate1": "pass",
@@ -4792,9 +4792,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 260785,
+   "boot": 292509,
    "map": null,
-   "play": null
+   "play": 371733
   },
   "gate": null,
   "gate1": "pass",
@@ -4820,9 +4820,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 196728,
+   "boot": 219648,
    "map": null,
-   "play": null
+   "play": 280497
   },
   "gate": null,
   "gate1": "pass",
@@ -4848,9 +4848,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 196728,
+   "boot": 219648,
    "map": null,
-   "play": null
+   "play": 280497
   },
   "gate": null,
   "gate1": "pass",
@@ -4876,9 +4876,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 196728,
+   "boot": 219648,
    "map": null,
-   "play": null
+   "play": 280497
   },
   "gate": null,
   "gate1": "pass",
@@ -4904,9 +4904,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 129630,
+   "boot": 146074,
    "map": null,
-   "play": null
+   "play": 184732
   },
   "gate": null,
   "gate1": "pass",
@@ -4932,9 +4932,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 129630,
+   "boot": 146074,
    "map": null,
-   "play": null
+   "play": 184732
   },
   "gate": null,
   "gate1": "pass",
@@ -4960,9 +4960,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 698603,
+   "boot": 761054,
    "map": null,
-   "play": null
+   "play": 1137330
   },
   "gate": null,
   "gate1": "pass",
@@ -4988,9 +4988,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 22934,
+   "boot": 20586,
    "map": null,
-   "play": null
+   "play": 26356
   },
   "gate": null,
   "gate1": "pass",
@@ -5016,9 +5016,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 34029,
+   "boot": 36882,
    "map": null,
-   "play": null
+   "play": 51510
   },
   "gate": null,
   "gate1": "pass",
@@ -5044,9 +5044,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 43596,
+   "boot": 47859,
    "map": null,
-   "play": null
+   "play": 54900
   },
   "gate": null,
   "gate1": "pass",
@@ -5072,9 +5072,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 30888,
+   "boot": 32604,
    "map": null,
-   "play": null
+   "play": 26780
   },
   "gate": null,
   "gate1": "pass",
@@ -5100,9 +5100,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 14256,
+   "boot": 15048,
    "map": null,
-   "play": null
+   "play": 12360
   },
   "gate": null,
   "gate1": "pass",
@@ -5128,9 +5128,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 11880,
+   "boot": 12540,
    "map": null,
-   "play": null
+   "play": 10300
   },
   "gate": null,
   "gate1": "pass",
@@ -5156,9 +5156,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1188,
+   "boot": 1254,
    "map": null,
-   "play": null
+   "play": 1030
   },
   "gate": null,
   "gate1": "pass",
@@ -5184,9 +5184,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1782,
+   "boot": 1881,
    "map": null,
-   "play": null
+   "play": 1545
   },
   "gate": null,
   "gate1": "pass",
@@ -5212,9 +5212,9 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 2376,
+   "boot": 2508,
    "map": null,
-   "play": null
+   "play": 2060
   },
   "gate": null,
   "gate1": "pass",
@@ -5380,9 +5380,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1601,
+   "boot": 1997,
    "map": null,
-   "play": null
+   "play": 2214
   },
   "gate": null,
   "gate1": "pass",
@@ -5464,9 +5464,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 660,
+   "boot": 832,
    "map": null,
-   "play": null
+   "play": 857
   },
   "gate": null,
   "gate1": "pass",
@@ -5548,9 +5548,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 461,
+   "boot": 745,
    "map": null,
-   "play": null
+   "play": 981
   },
   "gate": null,
   "gate1": "pass",
@@ -5604,9 +5604,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3073,
+   "boot": 3826,
    "map": null,
-   "play": null
+   "play": 4126
   },
   "gate": null,
   "gate1": "pass",
@@ -5632,9 +5632,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 32776,
+   "boot": 32974,
    "map": null,
-   "play": null
+   "play": 22336
   },
   "gate": null,
   "gate1": "pass",
@@ -5660,9 +5660,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1537,
+   "boot": 1930,
    "map": null,
-   "play": null
+   "play": 2166
   },
   "gate": null,
   "gate1": "pass",
@@ -5828,9 +5828,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3211,
+   "boot": 3817,
    "map": null,
-   "play": null
+   "play": 4653
   },
   "gate": null,
   "gate1": "pass",
@@ -5856,9 +5856,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 6172,
+   "boot": 6354,
    "map": null,
-   "play": null
+   "play": 5518
   },
   "gate": null,
   "gate1": "pass",
@@ -5968,9 +5968,9 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 2656907,
+   "boot": 2872661,
    "map": null,
-   "play": null
+   "play": 2942889
   },
   "gate": null,
   "gate1": "pass",
@@ -5996,9 +5996,9 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 76676,
+   "boot": 87372,
    "map": null,
-   "play": null
+   "play": 56807
   },
   "gate": null,
   "gate1": "pass",
@@ -6024,9 +6024,9 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 110512,
+   "boot": 125566,
    "map": null,
-   "play": null
+   "play": 169118
   },
   "gate": null,
   "gate1": "pass",

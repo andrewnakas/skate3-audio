@@ -1,6 +1,6 @@
 // sub_82B468C0  role: gather one bank of float buffers into another -- when both channel counts are a standard layout, look the pair up in a 64-entry route table and hand the whole scatter-mix to sub_82B426D0; otherwise copy-with-unity-gain buffer by buffer through sub_82B3BED8 and zero any destination the sources ran out for   lifted: skate3_recomp.68.cpp:32346 (216 lines)
 // STATUS: verified
-// calls/session: boot 34029  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 36882  play 51510  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B468C0.md
 namespace port_82B468C0 {
 
