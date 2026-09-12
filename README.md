@@ -43,7 +43,8 @@ that has been proved equal to it call for call.**
 | **Native C++ port** | **all 216 audio-thread functions written; 138 shadow-verified, zero divergence** |
 | Exactness harness | shadow verification, per-call, against the running game |
 | Rust container parsing | `skate-audio-formats`, 33 tests, validated on real archives |
-| Rust queue path | `skate-audio-core`, 13 tests, 8,607/8,607 recorded vectors replayed |
+| Rust queue path | `skate-audio-core`, 79 tests over 36 functions, 8,607/8,607 recorded vectors replayed |
+| **Audio in the Rust engine** | **decodes and plays real game streams, byte-exact against an independent reference** |
 
 ### The native port, in one table
 
@@ -87,16 +88,25 @@ In rough order of value:
    the open question this work hands over.
 2. **The Rust audio engine** (`docs/PLAN.md` Phase 4). Every function the Rust port needs now has
    a verified C++ reference, which turns each translation into a transcription risk rather than a
-   semantic one. `skate-audio-core` has the queue path; the scheduler, XMA feed and DSP graph are
-   not written.
+   semantic one. `skate-audio-core` has the queue path and the expression evaluator; the
+   scheduler, XMA feed and DSP graph are not written.
+
+   Playback itself is **done**: `skate-3-rust-engine` reads a retail archive, decodes a stream
+   exactly and plays it. What it cannot do yet is choose *which* stream: the metadata table that
+   maps a sound to a map or an event is not decoded, so a stream is named by hand
+   (`SKATE_AUDIO_PLAY=archive:entry:channels:rate`). That table is the next piece of real work on
+   the engine side.
 3. **`.mpf` sequencing**, sections 0–3. Interactive music needs segments *plus* the map that
    orders them. The `.mus` side is complete; this is the headline format gap
    (`docs/xma-transcode.md`, and the live lead in the guest image).
 4. **Bug 1's ordering fix**, now that two producers are known. `docs/command-queue.md` specifies
    what a fix must achieve; landing it diverges from the original by construction, which the
    harness cannot distinguish from a porting mistake, so it needs its own argument.
-5. **Codec in-crate.** Fold `tools/xma_decode.c`'s persistent-decoder pattern into the Rust
-   crate, replacing the shell pipeline.
+5. **Codec in-crate.** The engine decodes exactly today, but through the `ffmpeg` binary: XMA2 is
+   a hardware codec and `libavcodec` is the only free implementation of it. A pure-Rust decoder
+   would remove the last external dependency in the audio path. `tools/xma_vectors.py` builds
+   per-chunk vectors for checking one, and `docs/xma-transcode.md` records why those vectors pin
+   only a stream's first chunk.
 
 Explicitly **not** planned: ARM64 bit-exactness for the Rust port, a general-purpose XMA
 toolkit, and root-causing the two recomp bugs on QCS8550 hardware nobody here has. See

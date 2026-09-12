@@ -298,8 +298,48 @@ decoding once yields only the first chunk's samples and then fails
 (`num_vec_coeffs 668 is too large`). The chunks really are separately framed.
 
 So the only correct fix is a decoder that **keeps state across chunks** -- one
-`AVCodecContext` per context, fed packets from successive chunks. `ffmpeg` as a subprocess
-cannot do that.
+`AVCodecContext` per context, fed packets from successive chunks.
+
+> ### CORRECTION, 2026-09-12: a subprocess *can* do it, if each chunk is padded to a packet
+>
+> The sentence that stood here said `ffmpeg` as a subprocess cannot keep state across chunks.
+> That was wrong, and the reason is worth more than the correction. The failed attempt above
+> concatenated chunks **back to back** and declared a flat 2048-byte block align. XMA2 is
+> decoded in 2048-byte packets, so that arrangement puts a chunk boundary in the middle of a
+> packet and the decoder desyncs -- exactly the `broken frame` it reported.
+>
+> Pad **each chunk** with zeros up to a common block align that is a whole number of 2048-byte
+> packets, concatenate those, and declare that align. Then every chunk is its own packet group:
+> the decoder resynchronises at each one and still carries MDCT state across them, which is
+> the property the whole section is about. Measured on the same 8 blocks of the 5-channel
+> ambience bed, one `ffmpeg` invocation per context:
+>
+> ```
+> declared                          40576
+> per-chunk restart (ffmpeg CLI)    40128   deficit 448
+> padded concatenation (ffmpeg CLI) 40576   deficit 0    all three contexts
+> ```
+>
+> Three controls, because a matching sample count is necessary and not sufficient:
+>
+> 1. **The padding does not reach the audio.** Block aligns of 4096, 8192 and 16384 produce
+>    byte-identical output, per context (sha256 over the PCM).
+> 2. **The one chunk both paths must agree on, agrees.** Block 0 needs no prior state, and the
+>    padded-concatenation output is byte-identical to decoding that chunk alone.
+> 3. **The container's `SamplesEncoded` is inert.** 0, the true count, four times it and
+>    0xFFFFFF all decode identically, so nothing here depends on feeding the decoder a count
+>    it could clamp the output to.
+>
+> A per-chunk restart, by contrast, disagrees with the stateful decode over the *whole* chunk,
+> not just its first 64 samples -- so per-chunk output is not a usable reference for anything
+> past a stream's first chunk. That is why control 2 is stated about block 0 specifically.
+>
+> What this buys: **exact decoding with no `libavcodec` headers**, which the Linux box does not
+> have (`libavcodec.so.62` is installed, its development package is not, so `tools/xma_decode.c`
+> cannot be built there). `tools/xma_vectors.py` generates per-chunk vectors, and the Rust
+> engine's own decoder (`crates/skate-data/src/audio/ffmpeg.rs`) uses the padded-concatenation
+> path -- it reproduces all three contexts of this bed byte-for-byte, and 400 blocks
+> (42.7 s of 5-channel audio) with zero deficit.
 
 **FIXED by `tools/xma_decode.c`**, which does exactly that: allocates one decoder, submits
 each chunk as its own `AVPacket`, and flushes at the end. Measured over the same 8 blocks:
