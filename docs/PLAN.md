@@ -250,17 +250,19 @@ ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
 holds `system.rs` (the producer's four paths) and `player.rs` (the three consumers, the FIFO and
 the liveness scan), with 11 tests that pin record layouts, the FIFO state machine, the liveness
 outcomes, the `EVENT_STOP` wipe, and the `fctidz` low-byte conversion.
-**Tier 1 is now met for those three functions, 2026-09-11: 1,972 recorded vectors replayed,
-0 disagreements.** Not via a C++ runner — the native bodies are written in terms of
+**Tier 1 is met for four functions, 2026-09-11: all 2,048 recorded vectors replayed,
+0 disagreements, 0 skipped, 0 unreplayable** — the producer, `EVENT_SUBMIT`, `EVENT_PLAY` and
+buffer-pair init (`buffers.rs`, an addition to the module list above).** Not via a C++ runner — the native bodies are written in terms of
 `REX_LOAD_U32`/`REX_STORE_U32`, which exist only inside the 48,555-line
 `generated/skate3_init.h`, and they sit in an anonymous namespace so no other TU can link them.
 Instead the harness records the real comparisons it already performs
 (`skate3_audio_vectors_path`) and the Rust replays them offline, which also satisfies the
 project's preference for real inputs over generated ones.
 Read `docs/shadow-harness.md` for what that green does **not** cover: 391 of 398
-`EVENT_SUBMIT` passes verify one write vacuously, all 1,173 query vectors had an empty FIFO so
-the list-walk branch is untested, and the query path compares only its sentinel. The figure is
-real because a negative control fails correctly — the *first* control did not, and said so.
+`EVENT_SUBMIT` passes verify one write vacuously, and all 1,173 query vectors had an empty FIFO,
+so `packet_is_live`'s list-walk branch is untested by this data. The figure is real because four
+negative controls fail correctly — and because the *first* control did **not** fail, which is
+how the vacuous-pass problem was found at all.
 One divergence is already known and deliberate, and the test suite pins it: the guest's
 `fctidz` and Rust's saturating `as i64` disagree at exactly `2^63` (`0x00` against `0xFF`), so
 the conversion is written branch for branch. A naive port would have been silently wrong there.

@@ -15,7 +15,7 @@
 //! on the command line. Deriving them from the expected bytes would be using the answer to
 //! check the answer.
 
-use skate_audio_core::{Guest, player, system};
+use skate_audio_core::{Guest, buffers, player, system};
 
 struct Vector {
     name: String,
@@ -23,6 +23,8 @@ struct Vector {
     r3: u32,
     r4: u32,
     r5: u32,
+    r6: u32,
+    r7: u32,
     ret_r3: u32,
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
@@ -59,6 +61,8 @@ fn parse(line: &str) -> Option<Vector> {
         r3: hex(f[2]),
         r4: hex(f[3]),
         r5: hex(f[4]),
+        r6: hex(f[5]),
+        r7: hex(f[6]),
         ret_r3: hex(f[7]),
         inputs,
         windows,
@@ -123,6 +127,9 @@ fn main() {
 
         // Dispatch. A name with no Rust port is skipped and counted, never dropped.
         let outcome: std::result::Result<Option<u32>, String> = match v.name.as_str() {
+            "BUFPAIR" => buffers::init_buffer_pair(&mut g, v.r3, v.r4, v.r5, v.r6, v.r7)
+                .map(Some)
+                .map_err(|e| e.to_string()),
             "EVENT_SUBMIT" => player::event_submit(&mut g, v.r3).map(Some).map_err(|e| e.to_string()),
             "EVENT_PLAY" => {
                 let mut restarted = 0u32;

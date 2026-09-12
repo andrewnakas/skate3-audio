@@ -14,6 +14,7 @@
 //! Unsafe is not forbidden crate-wide the way it is in `skate-audio-formats`, because the
 //! DSP modules will scope `unsafe` to intrinsic calls. Nothing in this file needs it.
 
+pub mod buffers;
 pub mod player;
 pub mod system;
 

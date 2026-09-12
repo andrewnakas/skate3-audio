@@ -352,14 +352,15 @@ invented: an address the function reaches that was not recorded leaves the vecto
 **unreplayable**, never zero-filled, because feeding the port fabricated inputs turns a failure
 into a meaningless pass.
 
-**Measured 2026-09-11, 2,048 recorded vectors: 1,972 pass, 0 disagreements, 0 unreplayable.**
+**Measured 2026-09-11: 2,048 of 2,048 recorded vectors pass. 0 disagreements, 0 skipped,
+0 unreplayable, 0 partial.**
 
 | function | result | what that is worth |
 |---|---|---|
-| `ENQUEUE` | 1,573 pass | 1,173 are query vectors comparing **only the 4-byte sentinel** — the `.rdata` constant at `0x82165A10`/`0x8231A844` is read directly by the original and appears in no window, and deriving it from the expected bytes would be using the answer to check the answer. All 1,173 recorded an **empty FIFO**, so `packet_is_live`'s list-walk branch is untested. |
+| `ENQUEUE` | 1,573 pass | Fully compared, including the query path's constant — see the bijection below. All 1,173 query vectors recorded an **empty FIFO**, so `packet_is_live`'s list-walk branch remains untested by this data. |
 | `EVENT_SUBMIT` | 398 pass | **391 of them verify the `packet→next` write vacuously**: on an empty FIFO that byte is already 0 on entry and 0 in the expectation, so the write is a no-op. Only the 7 non-empty-FIFO vectors exercise it. |
 | `EVENT_PLAY` | 1 pass | one input point, as ever |
-| `BUFPAIR` | 76 skipped | `sub_82B7F828` has no Rust port yet; skipped and counted, never dropped |
+| `BUFPAIR` | 76 pass | `sub_82B7F828` ported to `buffers.rs`. Substantive rather than vacuous: the object's entry bytes are real stack garbage (`00000184`, `00FF0000`, `FFFFFFFF`) and the expected bytes decode exactly to the ten words the port writes |
 | `EVENT_STOP` | 0 vectors | it never reaches `ShadowCompare` — a fourth independent confirmation |
 
 ### The green is only meaningful because a control failed
@@ -379,6 +380,46 @@ partitions are the evidence rather than the failures themselves:
 
 Both partitions match the span-shape census taken independently from the recording. Restoring
 both returned the sources byte-identical and the green with them.
+
+Two more controls, added with the later ports:
+
+- **`BUFPAIR`, wrong first length:** `pass=0 fail=76` at `7018E110+11 expected C0, got C1` —
+  byte 11 is the low byte of `first_len` at `+0x08`, 192 perturbed to 193.
+- **Liveness inverted in `packet_is_live`:** `pass=791 fail=782`.
+
+### The query path's constants, and a partition that nearly fooled me
+
+The non-append path writes one of two `.rdata` floats, read directly by the original from
+`0x82165A10`/`0x8231A844`, so neither value appears in any window. Copying them out of the
+expected bytes to compare against those same bytes would be using the answer to check the
+answer. Instead: compute liveness independently in Python from each vector's recorded table,
+and check it partitions the observed constants into exactly two consistent values. It does —
+**live → `00000000` (0.0f), not live → `3F800000` (1.0f)**, 391 against 782, zero exceptions.
+
+That is a *bijection* argument, not a measurement of the image: it cannot say which value the
+image calls "live". What it does license is supplying both to the replay, which then tests that
+Rust's `packet_is_live` agrees with the independent Python scan on all 1,173 — two
+implementations, not one checked against itself. Claim that and nothing more.
+
+Note the values invert what the names suggest: the *live* constant is 0.0 and the *gone*
+constant is 1.0. Alongside the `0x7FF7FFF1` NaN stamped into `params+8`, that reads like a
+completion fraction — 0.0 for a packet still queued, 1.0 for one that is gone — but that is an
+inference from two numbers, not a finding.
+
+**The lesson is in the liveness control's partition.** I first explained its 791/782 split by
+assuming the survivors were the live vectors, and the arithmetic refused to close. Counting the
+1,173 query vectors directly gives **391 / 391 / 391**: table-found with `disc != 2`,
+table-found with `disc == 2`, and not found at all. The inversion reaches only the 782
+*table-found* vectors and flips both classes into failure, while the 391 *not-found* ones fall
+through unchanged and keep passing — so failures are 782 and passes are 400 append + 391
+not-found = 791, exactly as observed. Three buckets of identical size made two different
+explanations numerically indistinguishable. Reasoning from totals could not separate them;
+counting could.
+
+That census also explains the ~3 liveness queries per submitted packet noticed earlier: the
+`wanted` addresses step by `0x10` and the *same* address appears in different buckets
+(`4016AF40` as both found-live and found-dead), so it is one sweep re-probing packets as their
+state changes, not three identical queries.
 
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,

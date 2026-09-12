@@ -59,6 +59,17 @@ and on either outcome stores `0x7FF7FFF1` into `param_3+8` plus a constant into
 invalid" rather than a command at all. The two constants are read from `.rdata`
 (`0x82165A10`, `0x8231A844`).
 
+**Their values, recovered 2026-09-11 from 1,173 real query calls** (`docs/shadow-harness.md`):
+`0x82165A10` — taken when the packet **is** live — holds `00000000`, and `0x8231A844` holds
+`3F800000`, i.e. **0.0 for live and 1.0 for gone**. With the NaN beside it that reads like a
+completion fraction rather than a flag, though that is an inference from two numbers.
+
+The same data shows the path is a **sweep**, not a one-off probe: across those calls the queried
+address steps by `0x10`, and one address appears in several states over time. Of the 1,173,
+exactly 391 were found in the 20-entry table with a discriminator other than 2, 391 were found
+with 2, and 391 were not in the table at all — which is also why there are about three queries
+per submitted packet.
+
 This branch is worth reading properly before anyone wraps `sub_82B28A00` in a lock on the
 assumption that it is purely a queue producer — for three of its four paths it is, but the
 fourth mutates caller-owned state instead.
