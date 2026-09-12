@@ -149,25 +149,33 @@ when its discriminator byte is not 2 — and writes a constant plus the NaN payl
 
 **Measured, 2026-09-11: 6,706 comparable calls, zero register and zero memory divergence,
 zero skipped.** The strongest result in the project so far — and the total on its own would
-overstate it. Per selector, sampled through the session:
+overstate it. A complete per-selector census, from recording every comparison of one session
+rather than sampling:
 
 | selector | what it does | calls |
 |---|---|---|
 | 0 | append a 20-byte `EVENT_PLAY` record | **1** |
-| 1 | append an 8-byte `EVENT_STOP` record | **0** |
-| 2 | append a 12-byte `EVENT_SUBMIT` record | 1,541 |
-| 3+ | query whether a packet is live; writes the caller's params | 4,602 |
+| 1 | append an 8-byte `EVENT_STOP` record | **1** |
+| 2 | append a 12-byte `EVENT_SUBMIT` record | 1,678 |
+| 3+ | query whether a packet is live; writes the caller's params | 5,026 |
 
-So about three queries per submitted packet, and the headline figure is roughly three quarters
-query path, one quarter submit append. **The play append ran once and the stop append never
-ran at all.** Those two paths are written, built and essentially unexercised; a promotion
-would run them for real on inputs nothing has checked.
+Three queries per submitted packet almost exactly, and the headline figure is roughly three
+quarters query path. **The play and stop appends run once each** — written, built, and
+exercised by a single call apiece, so a promotion runs them for real on all but one input that
+nothing has checked.
 
-Open question, recorded rather than resolved: the `EVENT_STOP` *consumer* (`sub_82B28C18`) was
-called once in these same sessions, so a stop record existed — yet selector 1 never fired
-while the shadow was armed. Either something else enqueues stop records (`sub_82B48530` is the
-other queue function, and it is **not** a leaf) or that consumer call did not arrive through
-this queue. Worth settling before anyone treats selector 1 as dead code.
+An earlier version of this table read `stop = 0`, and recorded an open question about who else
+could be enqueueing stop records. **Resolved: nothing else does.** Those figures came from the
+periodic log lines, which print at milestones and ~10 s intervals, and the last sample read was
+at 1,541 submits — before the stop happened. The complete recording caught what sampling
+missed, which is a caution about every "never ran" in this document that rests on a sampled
+counter rather than an exhaustive one.
+
+The leftover off-by-one is the useful part. The appends total **1,680** while the consumer
+vectors in the same session sum to **1,679** (`EVENT_SUBMIT` 1,678 + `EVENT_PLAY` 1 +
+`EVENT_STOP` 0). The missing one is the stop record: **produced once, consumed once, comparable
+zero times.** That discrepancy is the signature of `EVENT_STOP`'s uncomparability, not a
+counting error.
 
 The ordering fix from `docs/command-queue.md` is deliberately **not** in this port. The
 producer publishes the write offset at `+204` before storing the handler and payload, which is
@@ -352,16 +360,31 @@ invented: an address the function reaches that was not recorded leaves the vecto
 **unreplayable**, never zero-filled, because feeding the port fabricated inputs turns a failure
 into a meaningless pass.
 
-**Measured 2026-09-11: 2,048 of 2,048 recorded vectors pass. 0 disagreements, 0 skipped,
-0 unreplayable, 0 partial.**
+**Measured 2026-09-11: every vector of a complete session replays. 8,607 of 8,607 pass —
+0 disagreements, 0 skipped, 0 unreplayable, 0 partial.** (An earlier capped run gave 2,048 of
+2,048; raising the cap to 40,000 recorded the whole session instead of its first ~8 seconds.)
 
 | function | result | what that is worth |
 |---|---|---|
-| `ENQUEUE` | 1,573 pass | Fully compared, including the query path's constant — see the bijection below. All 1,173 query vectors recorded an **empty FIFO**, so `packet_is_live`'s list-walk branch remains untested by this data. |
-| `EVENT_SUBMIT` | 398 pass | **391 of them verify the `packet→next` write vacuously**: on an empty FIFO that byte is already 0 on entry and 0 in the expectation, so the write is a no-op. Only the 7 non-empty-FIFO vectors exercise it. |
+| `ENQUEUE` | 6,706 pass | Fully compared, including the query path's constant — see the bijection below. **0 of 5,026** query vectors recorded a non-empty FIFO, so `packet_is_live`'s list-walk branch is untested — see below, it is now a permanent limit rather than a pending one. |
+| `EVENT_SUBMIT` | 1,678 pass | A large share verify the `packet→next` write **vacuously**: on an empty FIFO that word is already 0 on entry and 0 in the expectation, so the write is a no-op. In the capped run it was 391 of 398. |
 | `EVENT_PLAY` | 1 pass | one input point, as ever |
-| `BUFPAIR` | 76 pass | `sub_82B7F828` ported to `buffers.rs`. Substantive rather than vacuous: the object's entry bytes are real stack garbage (`00000184`, `00FF0000`, `FFFFFFFF`) and the expected bytes decode exactly to the ten words the port writes |
-| `EVENT_STOP` | 0 vectors | it never reaches `ShadowCompare` — a fourth independent confirmation |
+| `BUFPAIR` | 222 pass | `sub_82B7F828` ported to `buffers.rs`. Substantive rather than vacuous: the object's entry bytes are real stack garbage (`00000184`, `00FF0000`, `FFFFFFFF`) and the expected bytes decode exactly to the ten words the port writes |
+| `EVENT_STOP` | 0 vectors | it never reaches `ShadowCompare`, even though the producer demonstrably enqueued one stop record in the same session |
+
+### The list-walk branch is unreachable, not merely untested
+
+`packet_is_live` walks the FIFO before scanning the table, and **no recorded query has ever
+arrived with a non-empty FIFO**: 0 of 1,173 in the capped run, then 0 of 5,026 across a complete
+session — a 4.3x larger sample. The ENQUEUE hook's read set was extended to capture a bounded
+8-node FIFO prefix precisely so such a vector would be replayable rather than `unreplayable`;
+it has never had one to prove itself on. Bounded at 8 deliberately: an unbounded walk is the
+gate-2 problem that makes `sub_82B482F8` unwindowable.
+
+Recorded as a **permanent** limit of what these sessions can drive, not a pending task. The
+stopping rule was fixed before the second sample came in, the same rule that correctly ended the
+`REQUEUE` chase, so that a third cap raise and a fourth macro could not be rationalised after
+the fact.
 
 ### The green is only meaningful because a control failed
 

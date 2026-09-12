@@ -250,8 +250,8 @@ ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
 holds `system.rs` (the producer's four paths) and `player.rs` (the three consumers, the FIFO and
 the liveness scan), with 11 tests that pin record layouts, the FIFO state machine, the liveness
 outcomes, the `EVENT_STOP` wipe, and the `fctidz` low-byte conversion.
-**Tier 1 is met for four functions, 2026-09-11: all 2,048 recorded vectors replayed,
-0 disagreements, 0 skipped, 0 unreplayable** — the producer, `EVENT_SUBMIT`, `EVENT_PLAY` and
+**Tier 1 is met for four functions, 2026-09-11: every comparison of a complete session
+replayed — 8,607 of 8,607, 0 disagreements, 0 skipped, 0 unreplayable** — the producer, `EVENT_SUBMIT`, `EVENT_PLAY` and
 buffer-pair init (`buffers.rs`, an addition to the module list above).** Not via a C++ runner — the native bodies are written in terms of
 `REX_LOAD_U32`/`REX_STORE_U32`, which exist only inside the 48,555-line
 `generated/skate3_init.h`, and they sit in an anonymous namespace so no other TU can link them.
