@@ -185,6 +185,71 @@ overflow path dropping the offending window *and every window after it*. Since a
 the windows is never rewound, an under-covered port would leak native writes into the live
 game rather than merely under-verify. So the lengths get measured before any native body is
 written — the same check that `EVENT_STOP` taught, applied before writing instead of after.
+A measurement-only hook does that: it runs the original and records both lengths, their
+maxima and their null counts against the 64 KB budget, comparing nothing.
+
+**Measured, 2026-09-11: it passes, with about 100x headroom.** First call `(192, 196)`, maxima
+`(400, 256)` over a session, sum 656 against 65,536. Neither pointer was ever null, and the
+function is called tens of times per session — milestones fired at 1 and 16 and never at 256 —
+so unlike `REQUEUE` it does arrive. The suspicion that it would fail gate 2 was wrong, and
+recording it as disqualified would have written off a portable function on an inference.
+
+A native port still needs a **self-guard** rather than trust in those maxima: they describe the
+calls observed, not the function's range, and other content or worlds may pass larger buffers.
+If the two lengths plus the object's 40 bytes would exceed the budget, the hook must run the
+original and count the skip — because the failure mode here is not under-verification but a
+native write landing outside the windows, which is never rewound and so reaches the live game.
+
+The family passes **gate 1 transitively**, which took five levels to establish. Every path
+bottoms out in the two confirmed leaves — `sub_82F52040` (`memset`) and `sub_82F52B30`
+(`memcpy`, 681 lines, `dcbt` prefetch and an unrolled word loop):
+
+```
+sub_82B7F8A8 -> sub_82B7F998 -> sub_82B7FE30 -> sub_82F52B30 (memcpy leaf)
+             |               \- sub_82B7FB40 -> sub_82B7FE30
+             |                                \- sub_82B7FC70 -> sub_82B7F7A0 -> memcpy leaf
+             |                                                 \- sub_82B7FE30
+             \- sub_82B7F828 -> sub_82F52040 (memset leaf)
+```
+
+No indirect calls anywhere in it, so the family's only open gate is the window budget. Worth
+noting what that cost to learn: `sub_82B48440`, in the same PLAN bullet, dies two levels down
+at `sub_82B49280`'s two indirect calls. A one-level screen would have passed both.
+
+## `REQUEUE` — the first function to pass every gate and still teach nothing
+
+`sub_82B48B28` is the scheduler's entry requeue, and it passes all three screening gates,
+which no other candidate in this bullet does. It is a leaf. It is deterministic. And every
+address it writes derives from state readable *before* the call — it moves a node from the
+list headed at `bucket+16` to the one at `bucket+20`, where `bucket = scheduler + (state << 5)`
+and the node's neighbours are read before they are overwritten — so the hook enumerates at
+most six windows totalling about 40 bytes, against a 64 KB budget. No window was ever dropped:
+zero budget warnings across every session.
+
+**Measured, 2026-09-11: zero comparable calls, in two sessions.** The native body is written
+and builds, the override is present in the binary (`nm` confirms `T sub_82B48B28`), and the
+function was never called. The second session drove the pad specifically to reach it — thirteen
+injected inputs, pushes and a trick, after gameplay settled — and `ENQUEUE` logged 6,709 calls
+in that same session, so the harness was live throughout. The scheduler simply never requeued
+anything.
+
+Recorded as unverified, and not pursued further: the rule was fixed before the second result
+came in, so that a third and fourth input variation could not be rationalised afterwards.
+
+Two qualifications worth keeping, because they are what make this honest rather than tidy:
+
+- "Never called" is a claim about **these sessions**, not about the function. Pushing a board
+  for thirty seconds is not the same as exercising the audio scheduler.
+- It cannot be checked against the Phase 0a trace. `sub_82B48B28` is in the 1,693-function
+  corpus, absent from every table in `docs/execution-trace.md` — and that document names only
+  63 distinct functions out of the 789 it reports as executed, while the per-session traced
+  sets were not preserved. So whether the trace reached it is **unknown and not retrievable**,
+  only re-derivable by another traced session.
+
+So `EVENT_STOP` and `REQUEUE` are unverified for opposite reasons, which is a useful pair to
+keep in mind: the first arrives constantly and is never comparable, the second would be
+perfectly comparable and never arrives. Passing the gates buys nothing if the game does not
+call the function.
 
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,

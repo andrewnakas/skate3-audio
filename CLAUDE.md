@@ -46,7 +46,7 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Conversion | **sample-exact** on ambience, speech and music |
 | Rust crate | 33 tests, three containers, validated on real archives |
 | Shadow harness | **proven**: `EVENT_SUBMIT` 1,678 runs, zero divergence (`docs/shadow-harness.md`) |
-| Native functions | four written, four verification levels: the queue producer `sub_82B28A00` clean over **6,706 calls** (but its stop-append path never ran); `EVENT_SUBMIT` promoted; `EVENT_PLAY` clean at **one input point**; `EVENT_STOP` **unverified** (no comparable path) |
+| Native functions | five written, and no two at the same verification level: the queue producer `sub_82B28A00` clean over **6,706 calls** (but its stop-append path never ran); `EVENT_SUBMIT` promoted; `EVENT_PLAY` clean at **one input point**; `EVENT_STOP` **unverified** (no comparable path); `REQUEUE` **unverified** (passes every gate, never called). Screen candidates against the three gates in `docs/PLAN.md` before writing |
 | Guest-mix capture | `audio_dump_path` written for Linux and validated; **not reproducible run to run** |
 
 ### Open

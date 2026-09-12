@@ -155,6 +155,19 @@ movie playback and these sessions skip it. With `skate3_demo_path_play_movies=tr
 **exactly once** per boot, at the single FMV's start. The **not seen** rows above are a fact
 about the trace, not about the functions; see `docs/shadow-harness.md`.
 
+## The 789-function list is not on disk
+
+Only the **count** survives, in this document. `probe/trace/out/corpus.json` is the 1,693
+function *corpus* — keyed by address, no per-function seen flag — not the executed set, and
+the per-session traced sets were not kept. This document names 63 distinct functions out of
+the 789 it reports, so **absence from the tables here is not evidence a function never ran**.
+
+That matters in practice: `sub_82B48B28` is in the corpus, is absent from every table here,
+and ran zero times in a shadow session — and those three facts together still do not say
+whether the Phase 0a trace reached it. Re-deriving the list costs one traced session
+(`probe/trace/trace_hook.py apply`, then a rebuild), so it is reproducible rather than lost,
+but it is not retrievable by reading.
+
 ## Next
 
 More sessions add little breadth, so further tracing is not the lever. If a specific

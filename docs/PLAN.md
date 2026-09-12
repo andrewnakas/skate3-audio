@@ -140,10 +140,30 @@ In Phase 0a frequency order where available, else call-graph order:
   fix from `docs/buffer-size-bug.md`.
 - Scalar plug-in math: filters, panners, submix, gain/dynamics — whatever 0a shows runs.
 
-Per function: **read what it calls**, then read it, write native C++, shadow-verify to zero
-divergence, promote. The callee check comes first because a function that releases,
-frees, signals or submits cannot be replayed against rewound memory, and is verifiable
-only on paths that avoid those calls — `EVENT_STOP` turned out to have no such paths in
+Per function, screen against **three** gates before writing anything — each one cost a
+wasted candidate to learn:
+
+1. **Callees replayable.** A function that releases, frees, signals or submits cannot be
+   replayed against rewound memory, and is verifiable only on paths that avoid those calls.
+   Screen *transitively*: `sub_82B48440` looks clean until `sub_82B49280`, two levels down,
+   turns out to make two indirect calls.
+2. **Written-address set statically enumerable, and within the 64 KB window budget.** The
+   harness only rewinds what its windows cover, so a write outside them lands in the live
+   game. `sub_82B482F8` passes gate 1 and fails here: it walks a list of unknown length and
+   performs doubly-linked surgery across three objects per node, so the addresses are
+   data-dependent and cannot be enumerated before the call. `sub_82B7F828` looked like it would fail here too, by
+   `memset`ting two caller-supplied buffers of caller-supplied length — **measured, it
+   passes**: 192 and 196 bytes on the first call, maxima 400 and 256 across a session, against
+   a 65,536-byte budget. The inference would have disqualified a portable function, so it was
+   downgraded to a suspicion and then measured. A native port still needs a self-guard, since
+   those maxima describe the calls observed and not the function's range.
+3. **Output deterministic.** `sub_82B1F7E8` is seven lines, a leaf, and hot — and it is
+   `mftb`. Two runs return two different values, so the registers always diverge; and since
+   it writes no memory, comparing nothing instead would make the result vacuously green.
+   Neither failure is informative, so it is not a harness target at all.
+
+Then read it, write native C++, shadow-verify to zero divergence, promote. Gate 1 comes
+first because it is cheapest to check — `EVENT_STOP` turned out to have no such paths in
 practice (0 comparable calls in a session). See `docs/shadow-harness.md`. Because
 a hook is now a TU compile plus a relink rather than a full rebuild, run this as a **tight
 one-function-at-a-time loop**, not batched per build cycle.
