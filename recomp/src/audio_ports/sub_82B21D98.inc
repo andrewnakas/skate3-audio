@@ -1,6 +1,6 @@
 // sub_82B21D98  role: the 5.1 mix-and-clamp pass -- build the source and destination plane pointer arrays, run the routing mix, interleave into the output block, ramp it once if asked, then clamp all 1536 words in place   lifted: skate3_recomp.67.cpp:9770 (260 lines)
 // STATUS: verified
-// calls/session: boot 29808  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 30082  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B21D98.md
 namespace port_82B21D98 {
 

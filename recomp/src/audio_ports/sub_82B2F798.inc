@@ -1,5 +1,5 @@
 // sub_82B2F798  role: settle two level terms from log10 of a stored single and of the largest of up to 255 candidates, store one at +32 and add the pair's delta into (*(+12))+40   lifted: skate3_recomp.67.cpp:43282 (178 lines)
-// STATUS: pending
+// STATUS: verified
 // calls/session: boot 4  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2F798.md
 namespace port_82B2F798 {
@@ -172,4 +172,4 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 }
 
 }  // namespace port_82B2F798
-SKATE3_PORT(82B2F798, skate3::audio::kPortPending, skate3::audio::kReturnNone)
+SKATE3_PORT(82B2F798, skate3::audio::kPortVerified, skate3::audio::kReturnNone)

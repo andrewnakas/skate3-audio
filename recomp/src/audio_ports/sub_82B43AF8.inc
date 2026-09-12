@@ -1,6 +1,6 @@
 // sub_82B43AF8  role: a biquad over a run of singles -- y[k] = x[k]*b0 + x[k-1]*b1 + x[k-2]*b2 + bias - y[k-1]*a1 - y[k-2]*a2, eight samples per pass with the four-single history in r3; a count that is not a nonzero multiple of eight is handed to sub_82B43978 unchanged   lifted: skate3_recomp.68.cpp:25296 (278 lines)
 // STATUS: verified
-// calls/session: boot 954580  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1030252  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B43AF8.md
 namespace port_82B43AF8 {
 

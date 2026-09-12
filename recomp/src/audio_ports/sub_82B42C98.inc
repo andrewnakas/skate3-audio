@@ -1,6 +1,6 @@
 // sub_82B42C98  role: square-root-curve ramp writer -- fills a 256-entry block of a float array with start + (end-start)*sqrt(i+1)/sqrt(length), flat at start below index zero and flat at end past the end of the ramp; four vectors of four per pass, each square root from vrsqrtefp128 plus one Newton step and a NaN-mask fixup, a 16-byte-unit fill plus memcpy on the flat ends   lifted: skate3_recomp.68.cpp:23078 (1006 lines)
 // STATUS: verified
-// calls/session: boot 55118  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 57104  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B42C98.md
 namespace port_82B42C98 {
 

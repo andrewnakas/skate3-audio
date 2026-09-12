@@ -1,6 +1,6 @@
 // sub_82B47010  role: one run-length step of the variable-length decoder, returning the current value   lifted: skate3_recomp.68.cpp:33504 (107 lines)
 // STATUS: verified
-// calls/session: boot 10820  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 11500  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B47010.md
 namespace port_82B47010 {
 

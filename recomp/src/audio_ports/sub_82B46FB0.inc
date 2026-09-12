@@ -1,6 +1,6 @@
 // sub_82B46FB0  role: decode one signed code into the accumulator and advance the stream cursor   lifted: skate3_recomp.68.cpp:33450 (53 lines)
 // STATUS: verified
-// calls/session: boot 12984  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 13800  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B46FB0.md
 namespace port_82B46FB0 {
 

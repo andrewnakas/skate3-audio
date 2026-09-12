@@ -1,6 +1,6 @@
 // sub_82B426D0  role: scatter-mix a routing table -- for each route byte scale one source buffer into one destination buffer, accumulating into destinations already written, then zero every destination no route touched   lifted: skate3_recomp.68.cpp:22179 (155 lines)
 // STATUS: verified
-// calls/session: boot 67684  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 65747  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B426D0.md
 namespace port_82B426D0 {
 

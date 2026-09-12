@@ -1,6 +1,6 @@
 // sub_82B3C668  role: add each pending delta, times a 16-entry pool curve, into the head of its row, then clear the delta   lifted: skate3_recomp.68.cpp:7552 (292 lines)
 // STATUS: verified
-// calls/session: boot 3450  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 3072  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3C668.md
 namespace port_82B3C668 {
 

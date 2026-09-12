@@ -1,6 +1,6 @@
 // sub_82F55068  role: log10(f1) -- the CRT wrapper: call the natural log sub_82F54ED8, multiply its result by log10(e), leave it in f1   lifted: skate3_recomp.106.cpp:74776 (30 lines)
 // STATUS: verified
-// calls/session: boot 109484  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 115032  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82F55068.md
 namespace port_82F55068 {
 

@@ -1,6 +1,6 @@
 // sub_82B2DBA8  role: resample one block of a stream -- carry the previous block's tail into a scratch run, append the new input, resample each channel into the destination buffer, keep the new tail, then swap the buffer pair and republish the rate   lifted: skate3_recomp.67.cpp:39040 (356 lines)
 // STATUS: verified
-// calls/session: boot 114884  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 109045  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2DBA8.md
 namespace port_82B2DBA8 {
 

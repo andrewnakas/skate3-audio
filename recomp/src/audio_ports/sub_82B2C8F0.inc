@@ -1,6 +1,6 @@
 // sub_82B2C8F0  role: re-fold the mix rows when the channel count changes -- build the back owner's row pointers and the front owner's row pointers in frame scratch, remap one into the other through sub_82B468C0, then swap the owner pair and record the new count   lifted: skate3_recomp.67.cpp:36226 (143 lines)
 // STATUS: verified
-// calls/session: boot 45234  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 39959  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2C8F0.md
 namespace port_82B2C8F0 {
 

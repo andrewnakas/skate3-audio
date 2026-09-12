@@ -1,6 +1,6 @@
 // sub_82B3DB90  role: copy up to n words out of a wrapping ring, in two runs   lifted: skate3_recomp.68.cpp:10708 (109 lines)
 // STATUS: verified
-// calls/session: boot 869820  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 881838  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3DB90.md
 namespace port_82B3DB90 {
 
