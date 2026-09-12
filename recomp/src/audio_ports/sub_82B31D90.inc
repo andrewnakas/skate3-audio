@@ -1,6 +1,6 @@
 // sub_82B31D90  role: unpack a 64-bit packed stream header into a four-field description   lifted: skate3_recomp.67.cpp:48948 (93 lines)
 // STATUS: verified
-// calls/session: boot 503  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 461  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31D90.md
 namespace port_82B31D90 {
 

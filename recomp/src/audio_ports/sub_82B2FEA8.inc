@@ -1,6 +1,6 @@
 // sub_82B2FEA8  role: map a six-point ramp through a 1652-entry ascending table into six integers   lifted: skate3_recomp.67.cpp:44318 (138 lines)
 // STATUS: verified
-// calls/session: boot 4  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 8  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2FEA8.md
 namespace port_82B2FEA8 {
 

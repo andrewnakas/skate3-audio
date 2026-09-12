@@ -1,6 +1,6 @@
 // sub_82B1D3D0  role: step one oscillator: wrap its phase, sample the waveform (quarter sine table, pulse, ramp, triangle), advance the phase, return the sample as an int   lifted: skate3_recomp.66.cpp:66525 (300 lines)
 // STATUS: verified
-// calls/session: boot 38136  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 38775  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1D3D0.md
 namespace port_82B1D3D0 {
 

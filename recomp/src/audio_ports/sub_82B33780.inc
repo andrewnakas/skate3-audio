@@ -1,6 +1,6 @@
 // sub_82B33780  role: decode one packet header for stream `index` through sub_82B470D0 into frame scratch and scatter the seven fields into the object's 48-byte slot and the array's 80-byte entry; on a non-positive count or a null pointer both records are zeroed and the entry is marked 1 instead   lifted: skate3_recomp.67.cpp:52720 (127 lines)
 // STATUS: verified
-// calls/session: boot 1539  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1546  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B33780.md
 namespace port_82B33780 {
 

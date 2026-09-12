@@ -1,6 +1,6 @@
 // sub_82B2C658  role: run the per-channel peaking-EQ stage over a 256-frame block -- rebuild the RBJ peaking biquad when frequency, gain or Q moved, filter every channel through sub_82B43AF8 and swap the descriptor pair; a gain of exactly 1.0 bypasses (history zeroed on the first bypassed block, no swap)   lifted: skate3_recomp.67.cpp:35803 (386 lines)
 // STATUS: verified
-// calls/session: boot 53866  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 53989  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2C658.md
 namespace port_82B2C658 {
 

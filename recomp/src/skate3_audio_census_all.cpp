@@ -13,15 +13,7 @@
 
 namespace {
 constexpr const char* kNames[] = {
-    "sub_82B298E0",
-    "sub_82B2F590",
-    "sub_82B2F8C0",
     "sub_82B30C50",
-    "sub_82B34278",
-    "sub_82B45788",
-    "sub_82B45C50",
-    "sub_82B460A0",
-    "sub_82B50B80",
 };
 constexpr size_t kCount = sizeof(kNames) / sizeof(kNames[0]);
 skate3::audio::CensusSlot g_slots[kCount ? kCount : 1]{};
@@ -37,12 +29,4 @@ struct RegisterOnLoad {
     __imp__##name(ctx, base);                                       \
   }
 
-SKATE3_CENSUS_ALL(0, sub_82B298E0)
-SKATE3_CENSUS_ALL(1, sub_82B2F590)
-SKATE3_CENSUS_ALL(2, sub_82B2F8C0)
-SKATE3_CENSUS_ALL(3, sub_82B30C50)
-SKATE3_CENSUS_ALL(4, sub_82B34278)
-SKATE3_CENSUS_ALL(5, sub_82B45788)
-SKATE3_CENSUS_ALL(6, sub_82B45C50)
-SKATE3_CENSUS_ALL(7, sub_82B460A0)
-SKATE3_CENSUS_ALL(8, sub_82B50B80)
+SKATE3_CENSUS_ALL(0, sub_82B30C50)

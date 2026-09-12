@@ -1,6 +1,6 @@
 // sub_82B43CC0  role: build the five normalised low-pass biquad coefficients from one angle   lifted: skate3_recomp.68.cpp:25575 (111 lines)
 // STATUS: verified
-// calls/session: boot 2352  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1922  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B43CC0.md
 namespace port_82B43CC0 {
 

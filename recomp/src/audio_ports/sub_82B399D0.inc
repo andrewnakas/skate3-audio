@@ -1,6 +1,6 @@
 // sub_82B399D0  role: one filter stage over `count` singles -- mixed[k] = addend[k] - f2*source[k+1], then a one-pole recursion over mixed in place (pole f1, entry state f5), while the copy bus accumulates f4*(f3*source[k] + source[k+1]); returns the last filtered single in f1   lifted: skate3_recomp.68.cpp:3 (901 lines)
 // STATUS: verified
-// calls/session: boot 278148  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 267300  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B399D0.md
 namespace port_82B399D0 {
 

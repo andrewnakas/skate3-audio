@@ -1,6 +1,6 @@
 // sub_82B376B8  role: the metering tick -- count off the interval at +380, and when it expires re-derive the ring length from the current rate, clear both history rings, then run the meters and re-expand the parameter blocks   lifted: skate3_recomp.67.cpp:62133 (171 lines)
 // STATUS: verified
-// calls/session: boot 407  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 29  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B376B8.md
 namespace port_82B376B8 {
 

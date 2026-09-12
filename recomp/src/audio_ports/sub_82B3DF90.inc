@@ -1,6 +1,6 @@
 // sub_82B3DF90  role: fill the tail of one or two float output buffers with a constant   lifted: skate3_recomp.68.cpp:11292 (242 lines)
 // STATUS: verified
-// calls/session: boot 501102  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 474340  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3DF90.md
 namespace port_82B3DF90 {
 

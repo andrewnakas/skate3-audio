@@ -1,6 +1,6 @@
 // sub_82B3DD90  role: build the ring window and the segment array for one block, fill them, then zero the tails   lifted: skate3_recomp.68.cpp:11003 (155 lines)
 // STATUS: verified
-// calls/session: boot 250551  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 237170  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3DD90.md
 
 // port_82B3DF90's two fill-length functions are pure -- they read no guest memory -- so the window

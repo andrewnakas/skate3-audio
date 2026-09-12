@@ -1,6 +1,6 @@
 // sub_82B373C8  role: per-channel RMS and peak meters over one block, into ring histories   lifted: skate3_recomp.67.cpp:61681 (451 lines)
 // STATUS: verified
-// calls/session: boot 814  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 58  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B373C8.md
 namespace port_82B373C8 {
 

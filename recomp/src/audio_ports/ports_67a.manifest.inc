@@ -35,6 +35,7 @@
 #include "audio_ports/sub_82B28E60.inc"
 #include "audio_ports/sub_82B29278.inc"
 #include "audio_ports/sub_82B29288.inc"
+#include "audio_ports/sub_82B298E0.inc"
 #include "audio_ports/sub_82B29AF0.inc"
 #include "audio_ports/sub_82B29BE0.inc"
 #include "audio_ports/sub_82B2C658.inc"

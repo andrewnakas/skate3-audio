@@ -1,6 +1,6 @@
 // sub_82B31368  role: alias for the voice-release routine at 0x82B31480   lifted: skate3_recomp.67.cpp:47422 (6 lines)
 // STATUS: verified
-// calls/session: boot 2471  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 2501  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31368.md
 namespace port_82B31368 {
 

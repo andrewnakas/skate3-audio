@@ -36,3 +36,4 @@
 #include "audio_ports/sub_82B44D18.inc"
 #include "audio_ports/sub_82B453D8.inc"
 #include "audio_ports/sub_82B454B8.inc"
+#include "audio_ports/sub_82B45788.inc"

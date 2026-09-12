@@ -1,6 +1,6 @@
 // sub_82B46B30  role: interleave six planar float channels into 24-byte frames, with a channel remap   lifted: skate3_recomp.68.cpp:32717 (324 lines)
 // STATUS: verified
-// calls/session: boot 45123  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 43596  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B46B30.md
 namespace port_82B46B30 {
 

@@ -1,6 +1,6 @@
 // sub_82B43FB8  role: linearly interpolating resampler -- count floats out of a table walked by a 16.16 phase   lifted: skate3_recomp.68.cpp:26015 (610 lines)
 // STATUS: verified
-// calls/session: boot 360992  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 368504  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B43FB8.md
 namespace port_82B43FB8 {
 
