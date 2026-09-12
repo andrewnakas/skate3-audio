@@ -88,7 +88,7 @@ fn round_trip_f32_bits(bits: u32) -> u32 {
 /// overlap that byte. It never fired in any observed session. The callee takes a critical
 /// section and makes two indirect calls, so it is not portable; the caller supplies it.
 pub fn event_play(
-    g: &mut Guest<'_>,
+    g: &mut Guest,
     record: u32,
     restart: Option<&mut dyn FnMut(u32)>,
 ) -> Result<u32> {
@@ -131,7 +131,7 @@ pub fn event_play(
 /// `teardown` stands in for `sub_82B3C930`, which releases the voice through four indirect
 /// calls.
 pub fn event_stop(
-    g: &mut Guest<'_>,
+    g: &mut Guest,
     record: u32,
     mut teardown: impl FnMut(u32),
 ) -> Result<u32> {
@@ -180,7 +180,7 @@ pub fn event_stop(
 ///
 /// **Verification: 1,678 comparable calls at zero divergence, and promoted** — it runs
 /// natively in the recomp. The best-checked of the three.
-pub fn event_submit(g: &mut Guest<'_>, record: u32) -> Result<u32> {
+pub fn event_submit(g: &mut Guest, record: u32) -> Result<u32> {
     let player = g.u32(record + RECORD_OBJECT)?;
     let packet = g.u32(record + RECORD_SUBMIT_PACKET)?;
 
@@ -201,7 +201,7 @@ pub fn event_submit(g: &mut Guest<'_>, record: u32) -> Result<u32> {
 /// This is the producer's non-append path (`sub_82B28A00`, selector 3 and up), which supplied
 /// 4,602 of the 6,706 comparable calls that body saw — about three liveness queries per
 /// submitted packet, so it is the best-exercised path in the queue.
-pub fn packet_is_live(g: &Guest<'_>, player: u32, wanted: u32) -> Result<bool> {
+pub fn packet_is_live(g: &Guest, player: u32, wanted: u32) -> Result<bool> {
     let mut node = g.u32(player + PLAYER_PACKET_HEAD)?;
     while node != 0 {
         if node == wanted {
@@ -248,9 +248,7 @@ mod tests {
 
     #[test]
     fn submit_appends_then_links_the_tail() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(PLAYER + crate::system::PLAYER_SYSTEM, SYSTEM).unwrap();
 
         // First submit: empty FIFO, so head and tail both become the packet.
@@ -271,9 +269,7 @@ mod tests {
 
     #[test]
     fn stop_unlinks_everything_and_writes_the_undocumented_bytes() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(RING + crate::system::RECORD_OBJECT, PLAYER).unwrap();
         g.set_u32(PLAYER + PLAYER_PACKET_HEAD, PACKET_A).unwrap();
         g.set_u32(PACKET_A + PACKET_NEXT, PACKET_B).unwrap();
@@ -298,9 +294,7 @@ mod tests {
 
     #[test]
     fn play_unpacks_three_floats_and_publishes_through_source() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(RING + crate::system::RECORD_OBJECT, PLAYER).unwrap();
         g.set_u32(RING + crate::system::RECORD_PLAY_FORMAT, 1.0f32.to_bits()).unwrap();
         g.set_u32(RING + crate::system::RECORD_PLAY_RATE, 48000.0f32.to_bits()).unwrap();
@@ -325,9 +319,7 @@ mod tests {
 
     #[test]
     fn liveness_checks_the_fifo_then_the_table() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
 
         assert!(!packet_is_live(&g, PLAYER, PACKET_A).unwrap(), "neither list holds it");
 

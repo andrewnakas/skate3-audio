@@ -68,7 +68,7 @@ pub struct Constants {
 }
 
 impl Constants {
-    pub fn from_guest(g: &Guest<'_>) -> Result<Self> {
+    pub fn from_guest(g: &Guest) -> Result<Self> {
         Ok(Self {
             voice_live_bits: g.u32(VOICE_LIVE_ADDR)?,
             voice_gone_bits: g.u32(VOICE_GONE_ADDR)?,
@@ -95,7 +95,7 @@ pub enum Enqueued {
 /// and says nothing about the ordering in either direction. The correct ordering is chosen
 /// here because the race is a host-concurrency artefact, not part of the wire format.
 pub fn enqueue(
-    g: &mut Guest<'_>,
+    g: &mut Guest,
     player: u32,
     selector: u32,
     params: u32,
@@ -136,7 +136,7 @@ pub fn enqueue(
 }
 
 /// Reject a ring that has no buffer, rather than writing to `offset` alone.
-pub fn check_ring(g: &Guest<'_>, player: u32) -> Result<()> {
+pub fn check_ring(g: &Guest, player: u32) -> Result<()> {
     let system = g.u32(player + PLAYER_SYSTEM)?;
     if g.u32(system + SYSTEM_CMD_BUFFER)? == 0 {
         return Err(Error::new(system + SYSTEM_CMD_BUFFER, "command ring has no buffer"));
@@ -155,9 +155,7 @@ mod tests {
 
     #[test]
     fn submit_record_layout_and_offset() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(PARAMS + PARAMS_FIRST, PACKET_A).unwrap();
 
         let r = enqueue(&mut g, PLAYER, 2, PARAMS, &consts()).unwrap();
@@ -170,9 +168,7 @@ mod tests {
 
     #[test]
     fn stop_record_is_eight_bytes_and_carries_no_payload() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         let r = enqueue(&mut g, PLAYER, 1, PARAMS, &consts()).unwrap();
         assert_eq!(r, Enqueued::Record { address: RING, size: SIZE_STOP });
         assert_eq!(g.u32(RING + RECORD_HANDLER).unwrap(), HANDLER_STOP);
@@ -182,9 +178,7 @@ mod tests {
 
     #[test]
     fn play_record_carries_three_floats_from_a_stride_eight_params() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(PARAMS + PARAMS_FIRST, 1.0f32.to_bits()).unwrap();
         g.set_u32(PARAMS + PARAMS_SECOND, 48000.0f32.to_bits()).unwrap();
         g.set_u32(PARAMS + PARAMS_THIRD, 6.0f32.to_bits()).unwrap();
@@ -198,9 +192,7 @@ mod tests {
 
     #[test]
     fn records_bump_the_offset_rather_than_wrapping() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(PARAMS + PARAMS_FIRST, PACKET_A).unwrap();
         enqueue(&mut g, PLAYER, 2, PARAMS, &consts()).unwrap();
         let second = enqueue(&mut g, PLAYER, 1, PARAMS, &consts()).unwrap();
@@ -213,9 +205,7 @@ mod tests {
 
     #[test]
     fn selector_three_queries_instead_of_appending() {
-        let mut mem = window();
-        let mut g = Guest::new(&mut mem, BASE);
-        wire(&mut g);
+        let mut g = guest();
         g.set_u32(PARAMS + PARAMS_FIRST, PACKET_A).unwrap();
         // PACKET_A is on the FIFO, so it is live.
         g.set_u32(PLAYER + crate::player::PLAYER_PACKET_HEAD, PACKET_A).unwrap();

@@ -23,6 +23,10 @@ SHADOW=${SHADOW:-true}
 # NATIVE=true runs the verified native functions for real. Shadow wins when both are on.
 NATIVE=${NATIVE:-false}
 MOVIES=${PLAY_MOVIES:-true}
+# AUDIO_VECTORS_PATH records every shadow comparison as a replayable vector for Phase 4:
+# the entry registers, the watched windows, and the bytes the ORIGINAL body produced.
+VECTORS=${AUDIO_VECTORS_PATH:-}
+VECTORS_MAX=${AUDIO_VECTORS_MAX:-4096}
 
 if pgrep -x skate3 >/dev/null; then echo "skate3 is already running" >&2; exit 1; fi
 if [ "$(strings -a "$BIN" | grep -cx audio_dump_path)" -eq 0 ]; then
@@ -50,6 +54,9 @@ args=(
   --audio_dump_path="$RAW"
   --audio_dump_max_frames="$FRAMES"
 )
+if [ -n "$VECTORS" ]; then
+  args+=( "--skate3_audio_vectors_path=$VECTORS" "--skate3_audio_vectors_max=$VECTORS_MAX" )
+fi
 [ -n "$MACRO" ] && args+=( "--skate3_demo_path_gameplay_inputs=$MACRO" )
 # GDB_SCRIPT runs the session under gdb, output to $OUT/LABEL.gdb.txt (see crash.gdb).
 if [ -n "${GDB_SCRIPT:-}" ]; then

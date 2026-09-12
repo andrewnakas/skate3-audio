@@ -250,10 +250,17 @@ ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
 holds `system.rs` (the producer's four paths) and `player.rs` (the three consumers, the FIFO and
 the liveness scan), with 11 tests that pin record layouts, the FIFO state machine, the liveness
 outcomes, the `EVENT_STOP` wipe, and the `fctidz` low-byte conversion.
-Those tests are **self-consistency, not tier 1**. Tier 1 requires identical inputs to the
-verified C++ *and* the Rust, compared byte for byte, which needs a C++ runner over shared
-vectors the way `probe/vmx128/` does it. Until that exists, the honest claim is "ported and
-layout-checked", not "bit-identical to the verified reference".
+**Tier 1 is now met for those three functions, 2026-09-11: 1,972 recorded vectors replayed,
+0 disagreements.** Not via a C++ runner — the native bodies are written in terms of
+`REX_LOAD_U32`/`REX_STORE_U32`, which exist only inside the 48,555-line
+`generated/skate3_init.h`, and they sit in an anonymous namespace so no other TU can link them.
+Instead the harness records the real comparisons it already performs
+(`skate3_audio_vectors_path`) and the Rust replays them offline, which also satisfies the
+project's preference for real inputs over generated ones.
+Read `docs/shadow-harness.md` for what that green does **not** cover: 391 of 398
+`EVENT_SUBMIT` passes verify one write vacuously, all 1,173 query vectors had an empty FIFO so
+the list-walk branch is untested, and the query path compares only its sentinel. The figure is
+real because a negative control fails correctly — the *first* control did not, and said so.
 One divergence is already known and deliberate, and the test suite pins it: the guest's
 `fctidz` and Rust's saturating `as i64` disagree at exactly `2^63` (`0x00` against `0xFF`), so
 the conversion is written branch for branch. A naive port would have been silently wrong there.

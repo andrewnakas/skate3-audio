@@ -326,6 +326,60 @@ With that, every function in PLAN's Phase 2 bullet list is screened:
 Three verified, one promoted, and eight that the harness cannot check or the game does not call.
 That ratio is the honest shape of Phase 2, and it was not visible from the function list.
 
+## Recorded vectors, and the read set the harness never had
+
+Phase 4 tier 1 wants identical inputs fed to the verified C++ **and** to the Rust port, compared
+byte for byte. Rather than generate vectors, the harness now records the real ones:
+`skate3_audio_vectors_path` (with `skate3_audio_vectors_max`) writes one line per comparison —
+the entry registers, the read set, and the write set with both its entry bytes and the bytes the
+**original lifted body** produced. `probe/harness/run_session.sh` takes `AUDIO_VECTORS_PATH`.
+
+Building that exposed a gap in the harness worth stating on its own: **`windows` is a
+specification of what a function *writes*, not what it *reads*.** Windows exist to be
+snapshotted, rewound and compared. But a consumer reads its command record to find the player,
+the producer reads the system pointer and the ring base, and `EVENT_PLAY` reads the source
+pointer — none of which are written, so none appeared in any window. The first replay attempt
+failed on **every single vector** with "no segment covers this address", at the first *read*
+rather than at any comparison. `ShadowCompare` now takes a separate `inputs` span, declared at
+each of the six call sites; it is never snapshotted, rewound or compared.
+
+### The replay, and what its green actually covers
+
+`rust/skate-audio-core/examples/replay_vectors.rs` rebuilds guest memory from each vector — each
+span its own segment, because a real vector puts an object at `0x7018E110` on the stack and its
+buffers at `0x401736D0` on the heap, 768 MB apart, which no flat window can hold. Nothing is
+invented: an address the function reaches that was not recorded leaves the vector
+**unreplayable**, never zero-filled, because feeding the port fabricated inputs turns a failure
+into a meaningless pass.
+
+**Measured 2026-09-11, 2,048 recorded vectors: 1,972 pass, 0 disagreements, 0 unreplayable.**
+
+| function | result | what that is worth |
+|---|---|---|
+| `ENQUEUE` | 1,573 pass | 1,173 are query vectors comparing **only the 4-byte sentinel** — the `.rdata` constant at `0x82165A10`/`0x8231A844` is read directly by the original and appears in no window, and deriving it from the expected bytes would be using the answer to check the answer. All 1,173 recorded an **empty FIFO**, so `packet_is_live`'s list-walk branch is untested. |
+| `EVENT_SUBMIT` | 398 pass | **391 of them verify the `packet→next` write vacuously**: on an empty FIFO that byte is already 0 on entry and 0 in the expectation, so the write is a no-op. Only the 7 non-empty-FIFO vectors exercise it. |
+| `EVENT_PLAY` | 1 pass | one input point, as ever |
+| `BUFPAIR` | 76 skipped | `sub_82B7F828` has no Rust port yet; skipped and counted, never dropped |
+| `EVENT_STOP` | 0 vectors | it never reaches `ShadowCompare` — a fourth independent confirmation |
+
+### The green is only meaningful because a control failed
+
+The first negative control **did not fail**: removing the `packet→next` clear from the Rust
+`event_submit` still reported 398/398, for exactly the reason above — it attacked the one write
+whose recorded before and after are identical. A test that cannot fail proves nothing, and for a
+few minutes this one could not.
+
+Two controls against spans where entry genuinely differs from expected do fail, and their
+partitions are the evidence rather than the failures themselves:
+
+- Wrong FIFO head: `pass=7 fail=391`, at `40C219B8+3 expected 20, got 30`. The 7 survivors are
+  precisely the non-empty-FIFO vectors, which take the `else` branch and never write the head.
+- Wrong handler word: `pass=1173 fail=400`, at `4B3B9D50+3 expected 78, got 7C`. The 1,173
+  survivors are precisely the query vectors, which write no handler.
+
+Both partitions match the span-shape census taken independently from the recording. Restoring
+both returned the sources byte-identical and the green with them.
+
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,
 `msr` and the reservation state are not compared. Another thread writing a watched window

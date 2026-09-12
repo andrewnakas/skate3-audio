@@ -17,11 +17,23 @@
 pub mod player;
 pub mod system;
 
-/// A guest memory window. Addresses are guest addresses; `base` is the address `mem[0]`
-/// corresponds to.
-pub struct Guest<'a> {
-    pub mem: &'a mut [u8],
+/// One contiguous span of guest memory.
+#[derive(Clone, Debug)]
+pub struct Segment {
     pub base: u32,
+    pub bytes: Vec<u8>,
+}
+
+/// Guest memory as a set of spans.
+///
+/// Segmented rather than one flat slice, and that correction came from real data: the first
+/// recorded vector put a buffer-pair object at `0x7018E110` on the guest stack with its buffers
+/// at `0x401736D0` on the heap — about 768 MB apart, which no single slice can span. The flat
+/// model was an assumption, and eleven synthetic tests passed against it happily because they
+/// used one tidy contiguous window.
+#[derive(Clone, Debug, Default)]
+pub struct Guest {
+    segments: Vec<Segment>,
 }
 
 /// Out-of-window access, reported rather than panicking silently.
@@ -47,40 +59,60 @@ impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-impl<'a> Guest<'a> {
-    pub fn new(mem: &'a mut [u8], base: u32) -> Self {
-        Self { mem, base }
+impl Guest {
+    /// A single span, which is what the unit tests want.
+    pub fn single(base: u32, len: usize) -> Self {
+        Self { segments: vec![Segment { base, bytes: vec![0u8; len] }] }
     }
 
-    fn at(&self, ea: u32, len: usize) -> Result<usize> {
-        let off = ea
-            .checked_sub(self.base)
-            .ok_or_else(|| Error::new(ea, "below the window base"))? as usize;
-        if off + len > self.mem.len() {
-            return Err(Error::new(ea, "past the end of the window"));
+    pub fn from_segments(segments: Vec<Segment>) -> Self {
+        Self { segments }
+    }
+
+    /// Add a span, or overwrite an existing one with the same base.
+    pub fn put(&mut self, base: u32, bytes: Vec<u8>) {
+        match self.segments.iter_mut().find(|s| s.base == base) {
+            Some(s) => s.bytes = bytes,
+            None => self.segments.push(Segment { base, bytes }),
         }
-        Ok(off)
+    }
+
+    pub fn segments(&self) -> &[Segment] {
+        &self.segments
+    }
+
+    fn locate(&self, ea: u32, len: usize) -> Result<(usize, usize)> {
+        for (i, s) in self.segments.iter().enumerate() {
+            if ea >= s.base {
+                let off = (ea - s.base) as usize;
+                if off + len <= s.bytes.len() {
+                    return Ok((i, off));
+                }
+            }
+        }
+        Err(Error::new(ea, "no segment covers this address"))
     }
 
     pub fn u32(&self, ea: u32) -> Result<u32> {
-        let o = self.at(ea, 4)?;
-        Ok(u32::from_be_bytes([self.mem[o], self.mem[o + 1], self.mem[o + 2], self.mem[o + 3]]))
+        let (i, o) = self.locate(ea, 4)?;
+        let b = &self.segments[i].bytes;
+        Ok(u32::from_be_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]))
     }
 
     pub fn set_u32(&mut self, ea: u32, value: u32) -> Result<()> {
-        let o = self.at(ea, 4)?;
-        self.mem[o..o + 4].copy_from_slice(&value.to_be_bytes());
+        let (i, o) = self.locate(ea, 4)?;
+        self.segments[i].bytes[o..o + 4].copy_from_slice(&value.to_be_bytes());
         Ok(())
     }
 
     pub fn u8(&self, ea: u32) -> Result<u8> {
-        let o = self.at(ea, 1)?;
-        Ok(self.mem[o])
+        let (i, o) = self.locate(ea, 1)?;
+        Ok(self.segments[i].bytes[o])
     }
 
     pub fn set_u8(&mut self, ea: u32, value: u8) -> Result<()> {
-        let o = self.at(ea, 1)?;
-        self.mem[o] = value;
+        let (i, o) = self.locate(ea, 1)?;
+        self.segments[i].bytes[o] = value;
         Ok(())
     }
 
@@ -90,9 +122,16 @@ impl<'a> Guest<'a> {
     }
 
     pub fn fill(&mut self, ea: u32, value: u8, len: u32) -> Result<()> {
-        let o = self.at(ea, len as usize)?;
-        self.mem[o..o + len as usize].fill(value);
+        let (i, o) = self.locate(ea, len as usize)?;
+        self.segments[i].bytes[o..o + len as usize].fill(value);
         Ok(())
+    }
+
+    /// The bytes of the span starting exactly at `base`, for comparing against a recorded
+    /// expectation.
+    pub fn span(&self, base: u32, len: usize) -> Result<&[u8]> {
+        let (i, o) = self.locate(base, len)?;
+        Ok(&self.segments[i].bytes[o..o + len])
     }
 }
 
@@ -110,12 +149,14 @@ pub(crate) mod testutil {
     pub const PARAMS: u32 = 0x4000_0700;
     pub const SOURCE: u32 = 0x4000_0740;
 
-    pub fn window() -> Vec<u8> {
-        vec![0u8; 0x800]
+    pub fn guest() -> Guest {
+        let mut g = Guest::single(BASE, 0x800);
+        wire(&mut g);
+        g
     }
 
     /// A player wired to a system with an empty ring, and a source object.
-    pub fn wire(g: &mut Guest<'_>) {
+    pub fn wire(g: &mut Guest) {
         g.set_u32(PLAYER + crate::system::PLAYER_SYSTEM, SYSTEM).unwrap();
         g.set_u32(SYSTEM + crate::system::SYSTEM_CMD_BUFFER, RING).unwrap();
         g.set_u32(SYSTEM + crate::system::SYSTEM_CMD_WRITE_OFF, 0).unwrap();
