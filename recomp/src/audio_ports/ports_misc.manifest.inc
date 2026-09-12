@@ -4,3 +4,4 @@
 #include "audio_ports/sub_828E30B8.inc"
 #include "audio_ports/sub_82F4DE80.inc"
 #include "audio_ports/sub_82F52318.inc"
+#include "audio_ports/sub_82F55068.inc"

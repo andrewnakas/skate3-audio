@@ -14,7 +14,16 @@ cd "$HERE"
 python3 probe/ports/lint.py
 python3 probe/ports/queue.py manifests
 grep -ho 'sub_[0-9A-F]\{8\}' recomp/src/audio_ports/*.manifest.inc | LC_ALL=C sort -u > "$EXPECT"
-if pgrep -x skate3 >/dev/null; then echo "a skate3 is live: not relinking the shared binary" >&2; exit 3; fi
+# The build directory is shared: relinking under a live game swaps the binary another session
+# launched. Wait for the field to clear rather than failing the cycle, since a session of ours
+# that is still exiting clears within seconds.
+for _ in $(seq 1 60); do
+  pgrep -x skate3 >/dev/null || break
+  sleep 5
+done
+if pgrep -x skate3 >/dev/null; then
+  echo "a skate3 is still live after 5 minutes: not relinking the shared binary" >&2; exit 3
+fi
 tools/sync_recomp.sh push | tail -1
 ninja -C "$B" -j10 skate3 | grep -E "error:|FAILED" || true
 [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "build failed" >&2; exit 1; }

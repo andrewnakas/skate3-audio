@@ -37,8 +37,21 @@ recorded vector may lack its table bytes on those calls. r6/r7 are deliberately 
 set: input spans are dumped after the lifted body runs, so for a span the function also writes
 that would record the result; their entry bytes are already in the write windows.
 
-Gates: 1 pass (leaf), 2 pass (write set is r3/r5/r6/r7 only), 3 pass, 4 pass (stores).
-STATUS pending. Unsure: nothing about the write set; only whether a real call ever passes a
+Gates: 1 pass (leaf), 2 pass (write set is r3/r5/r6/r7 only), 3 pass, 4 pass (stores). Written as
+STATUS pending; the file now carries `verified` (and a refreshed boot count of 229198) from a
+session run after it was written.
+
+Offline evidence taken before any build, and reproducible without Ghidra, a game build or a play
+session: the real lifted body and `Native()` were compiled together against a stub context and run
+on identical memory, rewound between them, comparing the declared windows and asserting nothing
+was written outside them. 4,000 randomised calls (random tables seeded with NaNs, denormals, 1e30
+and zeros; counts 0..300 including exact multiples of eight and sub-eight tails; 1,000 of them with
+the output buffer deliberately overlapping the table, which is what tests the preserved load/store
+interleaving) plus a 5,044-case sweep of every count 0..96 against thirteen steps chosen for the
+edges (0, 1, 0xFFFF0001, 0x80000001 and 0xFFFFFFFF for the 32-bit truncation of 2*step, 0x1FFF0000
+for the 16-bit whole-part field): 9,044 cases, zero divergence.
+
+Unsure: nothing about the write set; only whether a real call ever passes a
 fraction with bits above 16 set (the `clrldi` paths would then weight sample 0 with a >1 value —
 reproduced literally either way), and whether the r7+2..3 bytes the 32-bit store zeroes belong to
 a neighbouring field the callers care about.

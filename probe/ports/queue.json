@@ -4,7 +4,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 7003414,
+   "boot": 6893187,
    "map": null,
    "play": null
   },
@@ -60,7 +60,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 21,
+   "boot": 18,
    "map": null,
    "play": null
   },
@@ -172,7 +172,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 84,
+   "boot": 122,
    "map": null,
    "play": null
   },
@@ -228,7 +228,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 60772,
+   "boot": 53451,
    "map": null,
    "play": null
   },
@@ -256,7 +256,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 60772,
+   "boot": 53451,
    "map": null,
    "play": null
   },
@@ -396,7 +396,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 51706,
+   "boot": 49530,
    "map": null,
    "play": null
   },
@@ -424,7 +424,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 196476,
+   "boot": 164069,
    "map": null,
    "play": null
   },
@@ -440,7 +440,7 @@
   "lines": 64,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -452,7 +452,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 829106,
+   "boot": 683822,
    "map": null,
    "play": null
   },
@@ -468,7 +468,7 @@
   "lines": 164,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -508,7 +508,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 903619,
+   "boot": 809691,
    "map": null,
    "play": null
   },
@@ -536,7 +536,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 81545,
+   "boot": 76687,
    "map": null,
    "play": null
   },
@@ -564,7 +564,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 217196,
+   "boot": 197796,
    "map": null,
    "play": null
   },
@@ -592,7 +592,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 114486,
+   "boot": 108391,
    "map": null,
    "play": null
   },
@@ -620,7 +620,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 41268,
+   "boot": 32952,
    "map": null,
    "play": null
   },
@@ -636,7 +636,7 @@
   "lines": 274,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -648,7 +648,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1638974,
+   "boot": 1448053,
    "map": null,
    "play": null
   },
@@ -676,7 +676,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 125614,
+   "boot": 111797,
    "map": null,
    "play": null
   },
@@ -704,7 +704,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 2087415,
+   "boot": 1868296,
    "map": null,
    "play": null
   },
@@ -732,7 +732,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 51130,
+   "boot": 44145,
    "map": null,
    "play": null
   },
@@ -760,7 +760,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 15226,
+   "boot": 13211,
    "map": null,
    "play": null
   },
@@ -788,7 +788,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 37074,
+   "boot": 31698,
    "map": null,
    "play": null
   },
@@ -816,7 +816,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1507637,
+   "boot": 1262669,
    "map": null,
    "play": null
   },
@@ -844,7 +844,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 758006,
+   "boot": 673634,
    "map": null,
    "play": null
   },
@@ -872,7 +872,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 182651,
+   "boot": 151419,
    "map": null,
    "play": null
   },
@@ -900,7 +900,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 828559,
+   "boot": 711288,
    "map": null,
    "play": null
   },
@@ -928,7 +928,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 73559,
+   "boot": 64322,
    "map": null,
    "play": null
   },
@@ -956,7 +956,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 185483,
+   "boot": 169071,
    "map": null,
    "play": null
   },
@@ -984,7 +984,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 124811,
+   "boot": 111572,
    "map": null,
    "play": null
   },
@@ -1012,7 +1012,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 10145,
+   "boot": 10164,
    "map": null,
    "play": null
   },
@@ -1068,7 +1068,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 52680,
+   "boot": 42215,
    "map": null,
    "play": null
   },
@@ -1084,7 +1084,7 @@
   "lines": 300,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -1096,7 +1096,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 136259,
+   "boot": 124849,
    "map": null,
    "play": null
   },
@@ -1124,7 +1124,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 606013,
+   "boot": 542641,
    "map": null,
    "play": null
   },
@@ -1152,7 +1152,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 90196,
+   "boot": 78766,
    "map": null,
    "play": null
   },
@@ -1180,7 +1180,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3106,
+   "boot": 2567,
    "map": null,
    "play": null
   },
@@ -1208,7 +1208,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 278187,
+   "boot": 263774,
    "map": null,
    "play": null
   },
@@ -1376,7 +1376,7 @@
   "attempts": 1,
   "batch": null,
   "calls": {
-   "boot": 3499,
+   "boot": 6100,
    "map": null,
    "play": null
   },
@@ -1492,7 +1492,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-3 mftb",
   "gate1": "fail",
   "gate1_at": "sub_82B1F7E8",
   "gate1_reason": "timebase",
@@ -1503,8 +1503,8 @@
   "line": 4044,
   "lines": 7,
   "name": null,
-  "note": "",
-  "status": "pending",
+  "note": "11.1M calls, never comparable; body written",
+  "status": "gate3",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "F",
@@ -1532,7 +1532,7 @@
   "lines": 143,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -1548,7 +1548,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-3 mftb via sub_82B1F7E8",
   "gate1": "fail",
   "gate1_at": "sub_82B1F7E8",
   "gate1_reason": "timebase",
@@ -1560,7 +1560,7 @@
   "lines": 112,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate3",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "F",
@@ -1604,7 +1604,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-3 mftb via sub_82B1F7E8",
   "gate1": "fail",
   "gate1_at": "sub_82B1F7E8",
   "gate1_reason": "timebase",
@@ -1616,7 +1616,7 @@
   "lines": 124,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate3",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "F",
@@ -1824,7 +1824,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 51538,
+   "boot": 47184,
    "map": null,
    "play": null
   },
@@ -1880,7 +1880,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1904,
+   "boot": 1906,
    "map": null,
    "play": null
   },
@@ -1936,7 +1936,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 341223,
+   "boot": 287681,
    "map": null,
    "play": null
   },
@@ -1952,7 +1952,7 @@
   "lines": 119,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -1964,7 +1964,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 145457,
+   "boot": 122546,
    "map": null,
    "play": null
   },
@@ -2076,7 +2076,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 75191,
+   "boot": 68513,
    "map": null,
    "play": null
   },
@@ -2092,7 +2092,7 @@
   "lines": 109,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -2104,7 +2104,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 19980,
+   "boot": 16084,
    "map": null,
    "play": null
   },
@@ -2132,7 +2132,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 220226,
+   "boot": 183959,
    "map": null,
    "play": null
   },
@@ -2148,7 +2148,7 @@
   "lines": 214,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -2244,7 +2244,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 1686,
+   "boot": 1685,
    "map": null,
    "play": null
   },
@@ -2328,7 +2328,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 153104,
+   "boot": 125476,
    "map": null,
    "play": null
   },
@@ -2344,7 +2344,7 @@
   "lines": 143,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -2412,7 +2412,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 135809,
+   "boot": 121194,
    "map": null,
    "play": null
   },
@@ -2468,7 +2468,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 230082,
+   "boot": 200814,
    "map": null,
    "play": null
   },
@@ -2596,7 +2596,7 @@
   "lines": 433,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -2736,7 +2736,7 @@
   "lines": 138,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -2888,7 +2888,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 755028,
+   "boot": 625373,
    "map": null,
    "play": null
   },
@@ -2904,7 +2904,7 @@
   "lines": 421,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -3028,7 +3028,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3142,
+   "boot": 2669,
    "map": null,
    "play": null
   },
@@ -3392,7 +3392,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 228396,
+   "boot": 199129,
    "map": null,
    "play": null
   },
@@ -3448,7 +3448,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1282,
+   "boot": 917,
    "map": null,
    "play": null
   },
@@ -3476,7 +3476,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 259,
+   "boot": 255,
    "map": null,
    "play": null
   },
@@ -3532,7 +3532,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3378,
+   "boot": 2751,
    "map": null,
    "play": null
   },
@@ -3588,7 +3588,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 860783,
+   "boot": 713665,
    "map": null,
    "play": null
   },
@@ -3604,7 +3604,7 @@
   "lines": 176,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -3616,7 +3616,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 23,
+   "boot": 29,
    "map": null,
    "play": null
   },
@@ -3632,7 +3632,7 @@
   "lines": 477,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -3644,7 +3644,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 23,
+   "boot": 29,
    "map": null,
    "play": null
   },
@@ -3660,7 +3660,7 @@
   "lines": 451,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -3700,7 +3700,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 30395,
+   "boot": 24765,
    "map": null,
    "play": null
   },
@@ -3716,7 +3716,7 @@
   "lines": 280,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -3756,7 +3756,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2206,
+   "boot": 1807,
    "map": null,
    "play": null
   },
@@ -3868,7 +3868,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1128424,
+   "boot": 1676035,
    "map": null,
    "play": null
   },
@@ -3884,7 +3884,7 @@
   "lines": 280,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -3896,7 +3896,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 950911,
+   "boot": 1237988,
    "map": null,
    "play": null
   },
@@ -3912,7 +3912,7 @@
   "lines": 356,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -3928,7 +3928,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-3 mftb via sub_82B1F7E8",
   "gate1": "fail",
   "gate1_at": "sub_82B1F7E8",
   "gate1_reason": "timebase",
@@ -3940,7 +3940,7 @@
   "lines": 231,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate3",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "F",
@@ -3952,7 +3952,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2012,
+   "boot": 3932,
    "map": null,
    "play": null
   },
@@ -3968,7 +3968,7 @@
   "lines": 292,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -4064,7 +4064,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 141388,
+   "boot": 119825,
    "map": null,
    "play": null
   },
@@ -4148,7 +4148,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 117761,
+   "boot": 180538,
    "map": null,
    "play": null
   },
@@ -4164,7 +4164,7 @@
   "lines": 218,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -4176,7 +4176,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 56932,
+   "boot": 46218,
    "map": null,
    "play": null
   },
@@ -4192,7 +4192,7 @@
   "lines": 662,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -4232,7 +4232,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 9,
+   "boot": 10,
    "map": null,
    "play": null
   },
@@ -4316,7 +4316,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 387458,
+   "boot": 619684,
    "map": null,
    "play": null
   },
@@ -4332,7 +4332,7 @@
   "lines": 109,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4344,7 +4344,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 330526,
+   "boot": 263624,
    "map": null,
    "play": null
   },
@@ -4360,7 +4360,7 @@
   "lines": 184,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4400,7 +4400,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 330526,
+   "boot": 263624,
    "map": null,
    "play": null
   },
@@ -4416,7 +4416,7 @@
   "lines": 132,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4428,7 +4428,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 278860,
+   "boot": 263624,
    "map": null,
    "play": null
   },
@@ -4624,7 +4624,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 229198,
+   "boot": 201031,
    "map": null,
    "play": null
   },
@@ -4652,7 +4652,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 578783,
+   "boot": 492179,
    "map": null,
    "play": null
   },
@@ -4668,7 +4668,7 @@
   "lines": 122,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4736,7 +4736,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2195765,
+   "boot": 3629658,
    "map": null,
    "play": null
   },
@@ -4752,7 +4752,7 @@
   "lines": 321,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -4764,7 +4764,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 19417,
+   "boot": 25196,
    "map": null,
    "play": null
   },
@@ -4780,7 +4780,7 @@
   "lines": 402,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "C",
@@ -4792,7 +4792,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 73574,
+   "boot": 138287,
    "map": null,
    "play": null
   },
@@ -4820,7 +4820,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 73574,
+   "boot": 69774,
    "map": null,
    "play": null
   },
@@ -4876,7 +4876,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 73574,
+   "boot": 69774,
    "map": null,
    "play": null
   },
@@ -4960,7 +4960,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 740387,
+   "boot": 723721,
    "map": null,
    "play": null
   },
@@ -5044,7 +5044,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 18684,
+   "boot": 15749,
    "map": null,
    "play": null
   },
@@ -5060,7 +5060,7 @@
   "lines": 324,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -5072,7 +5072,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 5832,
+   "boot": 9904,
    "map": null,
    "play": null
   },
@@ -5088,7 +5088,7 @@
   "lines": 150,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "A",
@@ -5212,7 +5212,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 633,
+   "boot": 619,
    "map": null,
    "play": null
   },
@@ -5548,7 +5548,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 798,
+   "boot": 607,
    "map": null,
    "play": null
   },
@@ -5632,7 +5632,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 15445,
+   "boot": 16713,
    "map": null,
    "play": null
   },
@@ -5660,7 +5660,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2161,
+   "boot": 1767,
    "map": null,
    "play": null
   },
@@ -5856,7 +5856,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2961,
+   "boot": 3188,
    "map": null,
    "play": null
   },
@@ -5968,7 +5968,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 3034556,
+   "boot": 2625524,
    "map": null,
    "play": null
   },
@@ -5996,7 +5996,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 72946,
+   "boot": 72521,
    "map": null,
    "play": null
   },
@@ -6024,7 +6024,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 75560,
+   "boot": 61483,
    "map": null,
    "play": null
   },
@@ -6040,7 +6040,7 @@
   "lines": 30,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",

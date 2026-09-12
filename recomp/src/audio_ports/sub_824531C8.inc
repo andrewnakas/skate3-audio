@@ -1,6 +1,6 @@
 // sub_824531C8  role: four-lane sine by range reduction and an 11-term odd polynomial   lifted: skate3_recomp.7.cpp:59504 (113 lines)
 // STATUS: verified
-// calls/session: boot 7003414  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 6893187  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_824531C8.md
 namespace port_824531C8 {
 
