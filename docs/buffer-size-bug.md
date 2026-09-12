@@ -1,5 +1,13 @@
 # Bug 3: the negative buffer size — root cause
 
+> **That mitigation does not exist on the Linux tree (checked 2026-09-11).**
+> `skate3_audio_fixes.cpp` is not in `skate3recomp-dev`, is not in its build, and exists
+> nowhere on that machine; `nm` shows a single `T sub_82B7F828`, from
+> `skate3_audio_native.cpp`. So the "strict improvement on the current mitigation" framing
+> below is wrong there: until the guard described at the end of this file, there was **no**
+> mitigation and the `memset` with `0xFFFFFFF4` was unguarded. Same class of stale premise as
+> `out/decomp/` in `CLAUDE.md` — written on the macOS tree, false on Linux.
+
 `skate3_audio_fixes.cpp` hooks `sub_82B7F828` and clamps a negative size, noting that
 "whoever *computes* `-12` is still unknown". Reading the decompiled code identifies the
 defect.
@@ -70,8 +78,28 @@ if (avail < (uint64_t)sizeA + (uint64_t)sizeB) return E_OUTOFMEMORY;
 ```
 
 Widening the sum to 64 bits also removes the overflow path in (2). This is a strict
-improvement on the current mitigation, which clamps the size at the memset and so silently
-produces a zero-length buffer that the caller still believes is valid.
+improvement on clamping the size at the memset, which silently produces a zero-length buffer
+that the caller still believes is valid.
+
+### Why the Linux tree guards the memset anyway
+
+The fix above belongs in `sub_82B7F8A8`, and the shadow harness **cannot bracket that
+function** — its `memset` length is `r29 + r27`, both read out of stack scratch that
+`sub_82B7F998` fills *during* the call, so no window can be sized before the work happens
+(`docs/shadow-harness.md`). Detecting the bug after the fact is also impossible: the two peaks
+live in that function's own stack frame, which is gone by the time it returns.
+
+What *is* reachable is the point of damage. A negative length arriving at `sub_82B7F828` is the
+bug firing, and that function is shadow-verified over 222 calls. So
+`skate3_audio_buffer_size_guard` (default on) clamps a negative length to zero **before the
+hook dispatches**, which is what keeps it free: the original and the native body then see the
+same inputs and still agree, so the existing verification stays valid, and the length recorded
+in the object becomes 0 instead of a claim about a buffer that was never zeroed.
+
+Stated plainly: this is the weaker of the two fixes, for the reason given above — the caller
+still believes it received a buffer. It is what can be landed in a function the harness can
+check, and it is strictly better than an unguarded 4 GB walk. The upstream validation remains
+the correct fix and remains unverifiable here.
 
 ## Still open
 

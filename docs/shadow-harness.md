@@ -205,6 +205,11 @@ This is the function whose gate-2 disqualification I had already written into PL
 inference. It is portable, it is now the second best-exercised function in Phase 2, and the
 only reason it was not written off is that the claim was downgraded to a suspicion and measured.
 
+Re-verified with bug 3's guard in place: **226 comparable calls, zero divergence, zero guard
+firings.** That is the evidence the guard is free — it sits before the hook dispatches, so the
+original and the native body see identical inputs and the comparison stays meaningful, while the
+clamp path itself is unexercised in the same way `ENQUEUE`'s stop-append is.
+
 The port still carries a **self-guard** rather than trust in those maxima: they describe the
 calls observed, not the function's range, and other content or worlds may pass larger buffers.
 If the two lengths plus the object's 40 bytes would exceed the budget, the hook must run the

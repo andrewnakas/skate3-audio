@@ -58,9 +58,18 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
   segments walk against the SNR table (`docs/rust-port.md`). Note the `.mus` field at
   `0x28` is **not** the hash `.mpf` links by — that was checked and found absent.
 - **The low-bit flag** in the chunk length field. Constant per stream, meaning unknown.
-- **Two recomp bugs** root-caused with fixes written up but not landed — neither reproduces
-  on macOS, so they need device testing. See `docs/command-queue.md` and
-  `docs/buffer-size-bug.md`.
+- **Recomp bugs.** **Bug 3** (negative buffer size) has a **guard landed on Linux**:
+  `skate3_audio_buffer_size_guard`, default on, clamps a negative length to zero at the point of
+  damage in `sub_82B7F828` — verified free over 226 comparable calls with zero firings. It is
+  deliberately the weaker of the two fixes: the upstream validation belongs in `sub_82B7F8A8`,
+  which the harness **cannot bracket** (its window length is computed by a callee mid-call), and
+  post-hoc detection is impossible because the descriptors die with that callee's stack frame.
+  Note the mitigation `docs/buffer-size-bug.md` describes in the present tense does **not exist
+  on the Linux tree** — `skate3_audio_fixes.cpp` is absent there, so this guard is the only
+  protection. **Bug 1** (the command-queue ordering race) is **not landed**:
+  `docs/command-queue.md` specifies what a fix must achieve, not an implementation, and landing
+  it diverges from the original by construction, which the harness cannot distinguish from a
+  porting mistake. See `docs/command-queue.md` and `docs/buffer-size-bug.md`.
 - **Bug 2** (`0x8210A310` corruption): source string identified, but pinning the writer
   needs QCS8550 hardware.
 - ~~**VMX128 exactness is unquantified.**~~ **Measured, 2026-09-11: GO.** It was the

@@ -138,7 +138,21 @@ In Phase 0a frequency order where available, else call-graph order:
 - Scheduler tick (`sub_82B48A50`, `sub_82B482F8`, `sub_82B48440`).
 - Buffer-pair init/measure (`sub_82B7F828`, `sub_82B7F998`, `sub_82B7F8A8`) — land the
   fix from `docs/buffer-size-bug.md`.
-- Scalar plug-in math: filters, panners, submix, gain/dynamics — whatever 0a shows runs.
+- Scalar plug-in math: filters, panners, submix, gain/dynamics — ~~whatever 0a shows runs~~.
+  **This bullet needs re-scoping, not grinding (2026-09-11).** Two measurements broke it.
+  `probe/trace/out/corpus.json` carries `tu` and `vec` per function and nothing else, so
+  `vec == 0` selects scalar candidates statically — **1,644 of the 1,693** — but there is no
+  seen flag, and the 789-function executed set is not on disk (see `docs/execution-trace.md`).
+  So candidates can be *selected* without a session and cannot be *prioritised* at all: "what
+  0a shows runs" is not available to read.
+  Against an unprioritised 1,644, the observed rate does not support a sweep. Screening about a
+  dozen candidates produced 3 verified and 1 promoted against 8 disqualified — 3 on gate 1, 3 on
+  gate 2, 1 on gate 3, and one that passes every gate and is never called. Each verified
+  function cost a read, a build and a session. Extrapolating that is hundreds of hours for a
+  deliverable whose stated motive is readable code and a Rust reference, not correctness.
+  The two ways forward, neither of them this bullet as written: re-derive the executed set with
+  one traced session and intersect it with the gates, or treat the queue path's verified
+  reference as Phase 2's actual deliverable and move to Phase 4. Decide deliberately.
 
 Per function, screen against **three** gates before writing anything — each one cost a
 wasted candidate to learn:
@@ -174,7 +188,12 @@ one-function-at-a-time loop**, not batched per build cycle.
 the comparable-call count recorded next to it**. Zero divergence over one call and over
 10,000 read identically and mean very different things, and some of these functions fire
 once per boot — so the count, and the inputs it covered, are part of the result.
-*Phase:* every function 0a calls hot is native and promoted; both known bugs landed.
+*Phase:* ~~every function 0a calls hot is native and promoted~~ — **unevaluable as written**:
+"hot" refers to the 0a executed set, which survives only as a count, so this criterion cannot be
+checked against anything. Replace it when the bullet above is re-scoped. Both known bugs landed
+is still a real criterion: bug 3 has a guard at the point of damage (`docs/buffer-size-bug.md`),
+and bug 1's ordering fix is specified only as an objective, not an implementation
+(`docs/command-queue.md`).
 
 ### Phase 3 — VMX128 kernels, native C++
 

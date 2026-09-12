@@ -155,6 +155,23 @@ movie playback and these sessions skip it. With `skate3_demo_path_play_movies=tr
 **exactly once** per boot, at the single FMV's start. The **not seen** rows above are a fact
 about the trace, not about the functions; see `docs/shadow-harness.md`.
 
+## Corpus sizing, from `corpus.json`
+
+The corpus file carries two fields per function, `tu` and `vec`, which is enough to size both
+remaining phases statically — and not enough to prioritise either.
+
+| | count | note |
+|---|---|---|
+| scalar (`vec == 0`) | **1,644** | Phase 2's selectable surface |
+| vector (`vec > 0`) | **49** | Phase 3's surface |
+
+The 49 vector functions hold 9,356 vector instructions, but `sub_82F56C88` alone holds **4,502
+of them — 48.1%**, which is the "nearly half" noted below; it is in the shared-runtime band,
+first reached on the render thread, and is not audio DSP. Excluding it, **Phase 3 is 48
+functions and about 4,854 vector instructions**, topped by `sub_82B3A048` (645),
+`sub_82B22898` (583, the only one of the four heaviest that ran), `sub_82B02C30` and
+`sub_82B09288` (476 each).
+
 ## The 789-function list is not on disk
 
 Only the **count** survives, in this document. `probe/trace/out/corpus.json` is the 1,693

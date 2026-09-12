@@ -65,8 +65,27 @@ fourth mutates caller-owned state instead.
 
 ## Status
 
-`sub_82B28B78`, `0x82B28C18` and `0x82B28CC0` are the next functions to read: they are the
-consumers whose record layouts define the queue's wire format.
+~~`sub_82B28B78`, `0x82B28C18` and `0x82B28CC0` are the next functions to read~~ — **done,
+2026-09-11.** All three consumers are read and ported natively, and the record layouts this
+document predicts from the producer were confirmed independently from each consumer's own body:
+20 bytes with `player` at `+4` then three floats for `EVENT_PLAY`, 8 bytes for `EVENT_STOP`,
+12 bytes with the packet at `+8` for `EVENT_SUBMIT`. The producer's `lis`/`addi` handler
+derivation is now `static_assert`ed against those three addresses in
+`skate3_audio_native.cpp`, so a misread fails the build.
+
+Verification status, from `docs/shadow-harness.md`: the producer `sub_82B28A00` is clean over
+6,706 comparable calls, `EVENT_SUBMIT` is promoted, `EVENT_PLAY` is clean at a single input
+point, and `EVENT_STOP` has **no comparable path** — it arrives with a live decoder, whose
+release the harness cannot rewind.
+
+**The ordering fix in this document is deliberately not landed.** Publishing the write offset
+before the handler is the race, and reproducing it exactly is what makes the producer
+comparable at all — a fix would diverge from the original by construction, and the harness
+cannot tell an intended behaviour change from a porting mistake. It lands as its own change
+against the now-verified body. Note also that this document specifies what a fix must *achieve*
+(publish the size atomically with or before the handler) but not an implementation; the record
+length still has to be recoverable by the consumer before it trusts the handler, and nothing
+here says how.
 
 ## The wire format, decompiled
 
