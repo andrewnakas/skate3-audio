@@ -641,6 +641,56 @@ Reading the first few records and generalising is the same mistake that produced
 bit-offset reading and the two-bias reading of the length field. The check that catches it
 is always the same: look at the whole distribution, not the head of it.
 
+### Measured 2026-09-12: structure of sections 0-8, from all three files
+
+Three `.mpf` files exist on disk (`game`, `ipod`, `world`), and the header verifies from raw
+bytes rather than from this document's prose: `50 46 44 78` = `"PFDx"`, version `05 03`, an
+**undocumented constant `0xB003` at +0x06** identical in all three, the four count bytes at
+`+0x0C`, the `u32` at `+0x10` (525,498 / 198,724 / 136,945), and `offset[10]` at `+0x14`. The
+documented invariants hold in every file: `offset[0] == 0x48`, offsets ascend, and the last
+equals the file size exactly.
+
+**Section 4 is 20-byte records** — 160/20 = 8, 60/20 = 3, 40/20 = 2, exact. Each record is a
+small NUL-separated string pool, and the contents are the interactive-music parameter namespace:
+`numchasers`, `numracers`, `resumenode`, `chaser`/`racer`, alongside section names
+`chasesection`, `racesection`, `raceoverlay`, `ipodsection`, `djsection`, `replay`. (An earlier
+pass read these as broken strings; they are multiple fields in one record. `world` also carries
+binary `c5 b0` at +0x0A, so the record is not purely text.)
+
+**`counts[3]` at +0x0F is section 2's element count** — 15, 3, 5 against `0x0F`, `0x03`, `0x05`.
+The other three count bytes are not yet pinned.
+
+**Sections 0 and 2 are one continuous ascending `u16` index.** s0's last value sits just below
+s2's first in every file (game 7408 -> 7421, ipod 11559 -> 11566, world 37957 -> 37965), with s5
+and s6 holding single `u32`s just past s2's end. s0 is zero-*padded*, not strictly monotonic --
+world's apparent disorder was one trailing `0`.
+
+**The index addresses section 1 in `u16` units, and section 1 is variable-length records.** At
+`idx*2` the slices are clean, and their length histogram is 10 and 12 bytes dominant (485/684 in
+game, 2023 in ipod, 5667 in world), 8 a minority, plus rare outliers -- one **478-byte** record
+in world, 70 and 58 in game. That is why no fixed stride scored well in a periodicity test.
+Consecutive records carry counters incrementing by exactly 1.
+
+Section 1 is **not** fully covered by the index: game's last index reaches `0x3B46`, leaving
+11,986 bytes beyond it (18,764 in ipod, 63,548 in world) of the same kind of data -- the `84 01
+... 00 40` signature recurs there identically.
+
+**A reading that does NOT hold: MIDI.** The recurring `84 01`, `02 90`, `00 40`, `7f` values
+invite it, but a census of the leading byte across all ~1,225/2,119/5,878 records shows no
+status-byte alphabet in `0x80`-`0xEF`. It is dominated by small values -- game `0`(745),
+`1`(173), `2`(108), `4`(82); world spreading `0`-`12` with hundreds each -- so the leading `u16`
+is a value (position or delta), not an opcode. Recorded because the MIDI reading is exactly the
+kind of coherent story this file has three times had to retract.
+
+**Why the parser could not be read instead.** The magic is not greppable anywhere: zero hits for
+`"PFDx"` or `"PFD"` in `default.xex`, either `default.xexp`, or `EAWebkit.xex`, and zero for the
+`0x50464478` immediate (or its reversed and split forms) across **47,889** lifted functions --
+and `generated/` does lift the whole executable, not just the audio corpus, so that absence is
+evidence rather than a coverage gap. The reason is that `default.xex` is a **XEX2** image whose
+`.rdata` is compressed, so no string search from outside can succeed. Finding the parser needs
+the decrypted image, which the recomp necessarily holds in memory at `virtual_membase +
+0x82000000`.
+
 ### Not attempted
 
 Sequencing semantics -- how sections 0 through 3 drive transitions between segments -- is
