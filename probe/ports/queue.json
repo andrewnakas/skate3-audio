@@ -4,7 +4,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 6786556,
+   "boot": 6741254,
    "map": null,
    "play": null
   },
@@ -36,7 +36,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_828E29C0's own bctrl, once per list node, through the function pointer at node+8)",
   "gate1": "fail",
   "gate1_at": "sub_828E29C0",
   "gate1_reason": "indirect",
@@ -48,7 +48,7 @@
   "lines": 102,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -60,7 +60,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 21,
+   "boot": 19,
    "map": null,
    "play": null
   },
@@ -92,7 +92,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl: the free entry of the vtable at u32[u32[0x83083CCC]+0], `bctrl` at 0x828E2E88)",
   "gate1": "fail",
   "gate1_at": "sub_828E2E08",
   "gate1_reason": "indirect",
@@ -104,7 +104,7 @@
   "lines": 89,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -120,7 +120,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl: the free entry of the vtable at u32[u32[0x83083CCC]+0], `bctrl` at 0x828E2F20)",
   "gate1": "fail",
   "gate1_at": "sub_828E2EA0",
   "gate1_reason": "indirect",
@@ -132,7 +132,7 @@
   "lines": 89,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -148,7 +148,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_828E2F38's own bctrl, once per list node, through the function pointer at node+8)",
   "gate1": "fail",
   "gate1_at": "sub_828E2F38",
   "gate1_reason": "indirect",
@@ -160,7 +160,7 @@
   "lines": 109,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -172,7 +172,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 171,
+   "boot": 158,
    "map": null,
    "play": null
   },
@@ -204,7 +204,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (every path that does anything ends in an indirect tail branch through the object's vtable: sub_82B1BE30 indirect call, six `bctr` sites, vtable+12 and vtable+16)",
   "gate1": "fail",
   "gate1_at": "sub_82B1BE30",
   "gate1_reason": "indirect",
@@ -216,7 +216,7 @@
   "lines": 179,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -228,7 +228,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 53246,
+   "boot": 51864,
    "map": null,
    "play": null
   },
@@ -256,7 +256,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 53246,
+   "boot": 51864,
    "map": null,
    "play": null
   },
@@ -316,7 +316,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_82B1BF98 at depth 1 has two bctrls, and its closure leaves the audio corpus into 82EDFEC0/82EE6260/82EE7880/82EEEA98)",
   "gate1": "fail",
   "gate1_at": "sub_82B1BF98",
   "gate1_reason": "indirect",
@@ -328,7 +328,7 @@
   "lines": 108,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -344,7 +344,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_828E29C0 at depth 1 -- its bctrl calls every registered listener)",
   "gate1": "fail",
   "gate1_at": "sub_828E29C0",
   "gate1_reason": "indirect",
@@ -356,7 +356,7 @@
   "lines": 99,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -372,7 +372,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (the notify callee broadcasts to a linked list of handlers through ctr: sub_828E2F38 indirect call, `bctrl` at 0x828E2FCC)",
   "gate1": "fail",
   "gate1_at": "sub_828E2F38",
   "gate1_reason": "indirect",
@@ -384,7 +384,7 @@
   "lines": 60,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -396,7 +396,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 47270,
+   "boot": 46262,
    "map": null,
    "play": null
   },
@@ -424,7 +424,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 165612,
+   "boot": 160711,
    "map": null,
    "play": null
   },
@@ -452,7 +452,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 672383,
+   "boot": 650324,
    "map": null,
    "play": null
   },
@@ -508,7 +508,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 797576,
+   "boot": 768093,
    "map": null,
    "play": null
   },
@@ -536,7 +536,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 72350,
+   "boot": 71148,
    "map": null,
    "play": null
   },
@@ -564,7 +564,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 192771,
+   "boot": 187328,
    "map": null,
    "play": null
   },
@@ -592,7 +592,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 103213,
+   "boot": 100948,
    "map": null,
    "play": null
   },
@@ -620,7 +620,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 31356,
+   "boot": 30708,
    "map": null,
    "play": null
   },
@@ -648,7 +648,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1436047,
+   "boot": 1380386,
    "map": null,
    "play": null
   },
@@ -676,7 +676,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 111004,
+   "boot": 107850,
    "map": null,
    "play": null
   },
@@ -704,7 +704,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1842304,
+   "boot": 1775253,
    "map": null,
    "play": null
   },
@@ -732,7 +732,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 44241,
+   "boot": 42211,
    "map": null,
    "play": null
   },
@@ -760,7 +760,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 12436,
+   "boot": 12025,
    "map": null,
    "play": null
   },
@@ -788,7 +788,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 29659,
+   "boot": 28613,
    "map": null,
    "play": null
   },
@@ -816,7 +816,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 1289261,
+   "boot": 1221067,
    "map": null,
    "play": null
   },
@@ -844,7 +844,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 665646,
+   "boot": 640088,
    "map": null,
    "play": null
   },
@@ -872,7 +872,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 155374,
+   "boot": 146804,
    "map": null,
    "play": null
   },
@@ -900,7 +900,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 714864,
+   "boot": 682957,
    "map": null,
    "play": null
   },
@@ -928,7 +928,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 60287,
+   "boot": 57959,
    "map": null,
    "play": null
   },
@@ -956,7 +956,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 162710,
+   "boot": 158396,
    "map": null,
    "play": null
   },
@@ -984,7 +984,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 108085,
+   "boot": 104308,
    "map": null,
    "play": null
   },
@@ -1012,7 +1012,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 9779,
+   "boot": 11202,
    "map": null,
    "play": null
   },
@@ -1068,7 +1068,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 40279,
+   "boot": 40217,
    "map": null,
    "play": null
   },
@@ -1096,7 +1096,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 121155,
+   "boot": 117454,
    "map": null,
    "play": null
   },
@@ -1124,7 +1124,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 534057,
+   "boot": 516771,
    "map": null,
    "play": null
   },
@@ -1152,7 +1152,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 77085,
+   "boot": 75984,
    "map": null,
    "play": null
   },
@@ -1180,7 +1180,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2388,
+   "boot": 2344,
    "map": null,
    "play": null
   },
@@ -1208,7 +1208,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 254663,
+   "boot": 249816,
    "map": null,
    "play": null
   },
@@ -1236,7 +1236,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 230,
+   "boot": 215,
    "map": null,
    "play": null
   },
@@ -1324,7 +1324,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is the allocator's free entry, and sub_828AAF88 lazily builds the heap: sub_82B1E3F8 indirect call, `bctrl` at 0x82B1E43C)",
   "gate1": "fail",
   "gate1_at": "sub_82B1E3F8",
   "gate1_reason": "indirect",
@@ -1336,7 +1336,7 @@
   "lines": 57,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1352,7 +1352,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (two of its own bctrls, both unconditional: vtable slot +28 of the object at 0x82B1E4C0, then the free entry of u32[u32[0x8307762C]+36]'s vtable at 0x82B1E4DC)",
   "gate1": "fail",
   "gate1_at": "sub_82B1E458",
   "gate1_reason": "indirect",
@@ -1364,7 +1364,7 @@
   "lines": 89,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1376,7 +1376,7 @@
   "attempts": 1,
   "batch": null,
   "calls": {
-   "boot": 5286,
+   "boot": 4454,
    "map": null,
    "play": null
   },
@@ -1408,7 +1408,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl: the release entry of whatever vtable sits at u32[object+8], `bctrl` at 0x82B1F474)",
   "gate1": "fail",
   "gate1_at": "sub_82B1F440",
   "gate1_reason": "indirect",
@@ -1420,7 +1420,7 @@
   "lines": 75,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1436,7 +1436,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own `bctrl` at 0x82B1F58C, the singleton vtable's slot-0 entry -- a device open -- and sub_82B1BE30 reaches six more: census depth 0)",
   "gate1": "fail",
   "gate1_at": "sub_82B1F4C8",
   "gate1_reason": "indirect",
@@ -1448,7 +1448,7 @@
   "lines": 170,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1464,7 +1464,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own `bctrl` at 0x82B1F66C, the device vtable's slot-20 entry, and sub_82B1BE30 reaches six more: census depth 0)",
   "gate1": "fail",
   "gate1_at": "sub_82B1F5F8",
   "gate1_reason": "indirect",
@@ -1476,7 +1476,7 @@
   "lines": 154,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1576,7 +1576,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl: slot +48 of the vtable at u32[u32[object+76]+0], `bctrl` at 0x82B21944)",
   "gate1": "fail",
   "gate1_at": "sub_82B218E8",
   "gate1_reason": "indirect",
@@ -1588,7 +1588,7 @@
   "lines": 84,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1660,7 +1660,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (RtlEnterCriticalSection plus two indirect calls: sub_82B21AC0)",
   "gate1": "fail",
   "gate1_at": "sub_82B21AC0",
   "gate1_reason": "indirect",
@@ -1672,7 +1672,7 @@
   "lines": 25,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1744,7 +1744,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82B3D668 goes to the core allocator through two bctrls one level down -- the vtable's +4 allocate at 0x82B3D6F8 and its +12 free at 0x82B3D838; the call here is `bl 0x82b3d668` at 0x82B222C4)",
   "gate1": "fail",
   "gate1_at": "sub_82B3D668",
   "gate1_reason": "indirect",
@@ -1756,7 +1756,7 @@
   "lines": 115,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -1824,7 +1824,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 44571,
+   "boot": 42402,
    "map": null,
    "play": null
   },
@@ -1880,7 +1880,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1858,
+   "boot": 1809,
    "map": null,
    "play": null
   },
@@ -1908,7 +1908,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 48129,
+   "boot": 47145,
    "map": null,
    "play": null
   },
@@ -1936,7 +1936,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 272664,
+   "boot": 266778,
    "map": null,
    "play": null
   },
@@ -1964,7 +1964,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 113908,
+   "boot": 111906,
    "map": null,
    "play": null
   },
@@ -1996,7 +1996,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is the allocator's free entry, and sub_828AAF88 lazily builds the heap: sub_82B23C78 indirect call, `bctrl` at 0x82B23CBC)",
   "gate1": "fail",
   "gate1_at": "sub_82B23C78",
   "gate1_reason": "indirect",
@@ -2008,7 +2008,7 @@
   "lines": 57,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -2020,7 +2020,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 165984,
+   "boot": 162567,
    "map": null,
    "play": null
   },
@@ -2076,7 +2076,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 130420,
+   "boot": 127154,
    "map": null,
    "play": null
   },
@@ -2104,7 +2104,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 14046,
+   "boot": 12317,
    "map": null,
    "play": null
   },
@@ -2132,7 +2132,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 177645,
+   "boot": 173961,
    "map": null,
    "play": null
   },
@@ -2164,7 +2164,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (two reasons: its own bctrl, the free entry of u32[u32[object+8]+36]'s vtable at 0x82B289E4, and sub_82B3C930, whose four indirect calls release and unregister the voice)",
   "gate1": "fail",
   "gate1_at": "sub_82B28970",
   "gate1_reason": "indirect",
@@ -2176,7 +2176,7 @@
   "lines": 84,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -2244,7 +2244,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 1684,
+   "boot": 1686,
    "map": null,
    "play": null
   },
@@ -2328,7 +2328,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 237122,
+   "boot": 232190,
    "map": null,
    "play": null
   },
@@ -2356,7 +2356,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 184082,
+   "boot": 179570,
    "map": null,
    "play": null
   },
@@ -2412,7 +2412,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 113238,
+   "boot": 111544,
    "map": null,
    "play": null
   },
@@ -2468,7 +2468,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 186080,
+   "boot": 183082,
    "map": null,
    "play": null
   },
@@ -2512,7 +2512,7 @@
   "lines": 356,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "written",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -2528,7 +2528,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82B2F150 reaches an indirect call one level down: sub_82B3D668 `bctrl`, census depth 2)",
   "gate1": "fail",
   "gate1_at": "sub_82B3D668",
   "gate1_reason": "indirect",
@@ -2540,7 +2540,7 @@
   "lines": 169,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -2556,7 +2556,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82B3D668 allocates: it loads a global at r20+30252, takes that object's +36 allocator, and calls its vtable slot +4 with a 128-byte size through `bctrl` at 0x82B3D6F8 -- one level down, and an allocation can never be replayed on rewound memory)",
   "gate1": "fail",
   "gate1_at": "sub_82B3D668",
   "gate1_reason": "indirect",
@@ -2568,7 +2568,7 @@
   "lines": 222,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -2888,7 +2888,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 597185,
+   "boot": 582386,
    "map": null,
    "play": null
   },
@@ -2976,7 +2976,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82B33F98 frees through the core allocator's vtable one level down: its bctrl at 0x82B340A4, `u32[u32[u32[owner+36] + 0] + 12]`; reached from `bl 0x82b33f98` at 0x82B32374)",
   "gate1": "fail",
   "gate1_at": "sub_82B33F98",
   "gate1_reason": "indirect",
@@ -2988,7 +2988,7 @@
   "lines": 125,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3004,7 +3004,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82EC1378 takes the heap critical section one level down: RtlEnterCriticalSection / RtlLeaveCriticalSection, reached from `bl 0x82ec1378` at 0x82B32504)",
   "gate1": "fail",
   "gate1_at": "sub_82EC1378",
   "gate1_reason": "import:RtlEnterCriticalSection,RtlLeaveCriticalSection",
@@ -3016,7 +3016,7 @@
   "lines": 119,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3028,7 +3028,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2448,
+   "boot": 2365,
    "map": null,
    "play": null
   },
@@ -3060,7 +3060,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is the allocator's free entry and sub_82B32328 reaches another: sub_82B32870 indirect call, `bctrl` at 0x82B328D0)",
   "gate1": "fail",
   "gate1_at": "sub_82B32870",
   "gate1_reason": "indirect",
@@ -3072,7 +3072,7 @@
   "lines": 71,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3116,7 +3116,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_82B33F98, reached through sub_82B32328, ends in a bctrl)",
   "gate1": "fail",
   "gate1_at": "sub_82B33F98",
   "gate1_reason": "indirect",
@@ -3128,7 +3128,7 @@
   "lines": 27,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3144,7 +3144,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (two independent failures on the refill path: sub_82B33C08 takes the critical section -- RtlEnterCriticalSection/RtlLeaveCriticalSection through sub_82EC1290 -- and sub_82B33418 reaches sub_82B3C870's indirect call; census depth 2 either way)",
   "gate1": "fail",
   "gate1_at": "sub_82B3C870",
   "gate1_reason": "indirect",
@@ -3156,7 +3156,7 @@
   "lines": 179,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3368,7 +3368,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is the allocator's free entry -- `bctrl` at 0x82B340A4 through u32[u32[u32[self+8]+36]+12] -- and all three direct callees are gate-1 too: sub_82B3C930 (four indirect calls), sub_82B32480 and sub_82B47D58 (RtlEnterCriticalSection))",
   "gate1": "fail",
   "gate1_at": "sub_82B33F98",
   "gate1_reason": "indirect",
@@ -3380,7 +3380,7 @@
   "lines": 210,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3392,7 +3392,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 184396,
+   "boot": 181396,
    "map": null,
    "play": null
   },
@@ -3448,7 +3448,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 691,
+   "boot": 609,
    "map": null,
    "play": null
   },
@@ -3476,7 +3476,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 252,
+   "boot": 253,
    "map": null,
    "play": null
   },
@@ -3508,7 +3508,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (the tail-callee frees through the owner's allocator vtable slot +12: sub_82B34D60 indirect call, `bctr` at 0x82B34E00)",
   "gate1": "fail",
   "gate1_at": "sub_82B34D60",
   "gate1_reason": "indirect",
@@ -3520,7 +3520,7 @@
   "lines": 55,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3532,7 +3532,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2475,
+   "boot": 2183,
    "map": null,
    "play": null
   },
@@ -3564,7 +3564,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_82B34D60's own tail bctr through the manager at r4+36, vtable slot +12)",
   "gate1": "fail",
   "gate1_at": "sub_82B34D60",
   "gate1_reason": "indirect",
@@ -3576,7 +3576,7 @@
   "lines": 92,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -3588,7 +3588,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 685859,
+   "boot": 676550,
    "map": null,
    "play": null
   },
@@ -3616,7 +3616,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 25,
+   "boot": 23,
    "map": null,
    "play": null
   },
@@ -3644,7 +3644,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 25,
+   "boot": 23,
    "map": null,
    "play": null
   },
@@ -3700,7 +3700,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 23765,
+   "boot": 23221,
    "map": null,
    "play": null
   },
@@ -3756,7 +3756,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1634,
+   "boot": 1474,
    "map": null,
    "play": null
   },
@@ -3812,7 +3812,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 142590,
+   "boot": 139326,
    "map": null,
    "play": null
   },
@@ -3856,7 +3856,7 @@
   "lines": 92,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "written",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -3868,7 +3868,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 2301671,
+   "boot": 2252155,
    "map": null,
    "play": null
   },
@@ -3896,7 +3896,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1582862,
+   "boot": 1539132,
    "map": null,
    "play": null
   },
@@ -3952,7 +3952,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3268,
+   "boot": 2928,
    "map": null,
    "play": null
   },
@@ -3984,7 +3984,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is the allocator's free entry, and sub_828AAF88 lazily builds the heap: sub_82B3C810 indirect call, `bctrl` at 0x82B3C854)",
   "gate1": "fail",
   "gate1_at": "sub_82B3C810",
   "gate1_reason": "indirect",
@@ -3996,7 +3996,7 @@
   "lines": 57,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -4012,7 +4012,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (its own bctrl is a virtual notify, so the callee is whatever the table holds: sub_82B3C870 indirect call, `bctrl` at 0x82B3C8E4)",
   "gate1": "fail",
   "gate1_at": "sub_82B3C870",
   "gate1_reason": "indirect",
@@ -4024,7 +4024,7 @@
   "lines": 109,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -4040,7 +4040,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (four indirect calls: sub_82B3C930's own bctrl x4 -- the decoder's +12 stop hook, self vtable +4, and the core manager's release slot +12 twice)",
   "gate1": "fail",
   "gate1_at": "sub_82B3C930",
   "gate1_reason": "indirect",
@@ -4052,7 +4052,7 @@
   "lines": 96,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -4064,7 +4064,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 111497,
+   "boot": 109749,
    "map": null,
    "play": null
   },
@@ -4148,7 +4148,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 181568,
+   "boot": 174540,
    "map": null,
    "play": null
   },
@@ -4176,7 +4176,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 89672,
+   "boot": 87136,
    "map": null,
    "play": null
   },
@@ -4204,7 +4204,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 135619,
+   "boot": 130838,
    "map": null,
    "play": null
   },
@@ -4316,7 +4316,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 603948,
+   "boot": 586770,
    "map": null,
    "play": null
   },
@@ -4344,7 +4344,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 257139,
+   "boot": 249817,
    "map": null,
    "play": null
   },
@@ -4376,7 +4376,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-2 (sub_82B3DF90's store bases are the segment output pointers sub_82B3DC48 produces during the call)",
   "gate1": "pass",
   "gate1_at": null,
   "gate1_reason": null,
@@ -4388,7 +4388,7 @@
   "lines": 155,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate2",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4400,7 +4400,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 257139,
+   "boot": 249817,
    "map": null,
    "play": null
   },
@@ -4428,7 +4428,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 257139,
+   "boot": 249817,
    "map": null,
    "play": null
   },
@@ -4484,7 +4484,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 8,
+   "boot": 7,
    "map": null,
    "play": null
   },
@@ -4540,7 +4540,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 815982,
+   "boot": 758462,
    "map": null,
    "play": null
   },
@@ -4568,7 +4568,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 997,
+   "boot": 1448,
    "map": null,
    "play": null
   },
@@ -4584,7 +4584,7 @@
   "lines": 111,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "verified",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "B",
@@ -4624,7 +4624,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 190661,
+   "boot": 185502,
    "map": null,
    "play": null
   },
@@ -4652,7 +4652,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 470760,
+   "boot": 468818,
    "map": null,
    "play": null
   },
@@ -4736,7 +4736,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3545593,
+   "boot": 3426254,
    "map": null,
    "play": null
   },
@@ -4764,7 +4764,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 44298,
+   "boot": 36876,
    "map": null,
    "play": null
   },
@@ -4792,7 +4792,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 202308,
+   "boot": 195081,
    "map": null,
    "play": null
   },
@@ -4820,7 +4820,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 137098,
+   "boot": 131504,
    "map": null,
    "play": null
   },
@@ -4876,7 +4876,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 137098,
+   "boot": 131504,
    "map": null,
    "play": null
   },
@@ -4960,7 +4960,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 719171,
+   "boot": 705544,
    "map": null,
    "play": null
   },
@@ -5044,7 +5044,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 15177,
+   "boot": 15049,
    "map": null,
    "play": null
   },
@@ -5072,7 +5072,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 9888,
+   "boot": 9536,
    "map": null,
    "play": null
   },
@@ -5212,7 +5212,7 @@
   "attempts": 0,
   "batch": 0,
   "calls": {
-   "boot": 618,
+   "boot": 596,
    "map": null,
    "play": null
   },
@@ -5272,7 +5272,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (RtlEnterCriticalSection: sub_82EC1180 takes a lock, and it is the release itself)",
   "gate1": "fail",
   "gate1_at": "sub_82EC1180",
   "gate1_reason": "import:RtlEnterCriticalSection,RtlLeaveCriticalSection",
@@ -5284,7 +5284,7 @@
   "lines": 48,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5328,7 +5328,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (sub_82B49280 reaches the core allocator through two bctrls one level down -- the vtable's +4 allocate at 0x82B492EC and its +12 free at 0x82B49328; the call here is `bl 0x82b49280` at 0x82B4851C)",
   "gate1": "fail",
   "gate1_at": "sub_82B49280",
   "gate1_reason": "indirect",
@@ -5340,7 +5340,7 @@
   "lines": 142,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5412,7 +5412,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (the node's own process fn: sub_82B48A50 indirect call, `bctrl` at 0x82B48AC0 -- and gate 3 on top of it, `mftb` through sub_82B1F7E8 twice per node)",
   "gate1": "fail",
   "gate1_at": "sub_82B48A50",
   "gate1_reason": "indirect",
@@ -5424,7 +5424,7 @@
   "lines": 128,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5440,7 +5440,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (three of its own bctrl: the per-child acquire/release pair at 0x82B48F6C and 0x82B48F84, and the allocator free at 0x82B490F0 -- sub_82B48F28 indirect call)",
   "gate1": "fail",
   "gate1_at": "sub_82B48F28",
   "gate1_reason": "indirect",
@@ -5452,7 +5452,7 @@
   "lines": 258,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5496,7 +5496,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_82B49280 has two bctrl calls through the allocator vtable at +36)",
   "gate1": "fail",
   "gate1_at": "sub_82B49280",
   "gate1_reason": "indirect",
@@ -5508,7 +5508,7 @@
   "lines": 27,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5524,7 +5524,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (indirect call: sub_82B48F28 has three bctrl calls through each child's vtable)",
   "gate1": "fail",
   "gate1_at": "sub_82B48F28",
   "gate1_reason": "indirect",
@@ -5536,7 +5536,7 @@
   "lines": 29,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5548,7 +5548,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 502,
+   "boot": 376,
    "map": null,
    "play": null
   },
@@ -5632,7 +5632,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 15989,
+   "boot": 15545,
    "map": null,
    "play": null
   },
@@ -5660,7 +5660,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 1579,
+   "boot": 1429,
    "map": null,
    "play": null
   },
@@ -5720,7 +5720,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (RtlEnterCriticalSection / RtlLeaveCriticalSection: it takes the lock itself, census depth 0)",
   "gate1": "fail",
   "gate1_at": "sub_82B4FAF8",
   "gate1_reason": "import:RtlEnterCriticalSection,RtlLeaveCriticalSection",
@@ -5732,7 +5732,7 @@
   "lines": 147,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5748,7 +5748,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (XMA import, depth 0: XMADisableContext, XMAInitializeContext, XMASetOutputBufferValid, XMASetInputBuffer0, XMASetInputBuffer1, XMAEnableContext -- each one reprograms the decoder hardware, so none of it can be replayed on rewound memory)",
   "gate1": "fail",
   "gate1_at": "sub_82B4FC00",
   "gate1_reason": "import:XMADisableContext,XMAEnableContext,XMAInitializeContext,XMASetInputBuffer0,XMASetInputBuffer1,XMASetOutputBufferValid",
@@ -5760,7 +5760,7 @@
   "lines": 180,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": true,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5856,7 +5856,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 3237,
+   "boot": 3128,
    "map": null,
    "play": null
   },
@@ -5916,7 +5916,7 @@
    "map": null,
    "play": null
   },
-  "gate": null,
+  "gate": "gate-1 (XMA import: sub_82B4FE40 calls XMASetInputBuffer0Valid/XMASetInputBuffer1Valid, XMAEnableContext/XMADisableContext, XMASetInputBufferReadOffset)",
   "gate1": "fail",
   "gate1_at": "sub_82B4FE40",
   "gate1_reason": "import:XMADisableContext,XMAEnableContext,XMAIsInputBuffer0Valid,XMAIsInputBuffer1Valid,XMASetInputBuffer0Valid,XMASetInputBuffer1Valid,XMASetInputBufferReadOffset",
@@ -5928,7 +5928,7 @@
   "lines": 6,
   "name": null,
   "note": "",
-  "status": "pending",
+  "status": "gate1",
   "stores_present": false,
   "thread": "RwAudioCore_Dac/1359407",
   "tier": "D",
@@ -5968,7 +5968,7 @@
   "attempts": 0,
   "batch": 1,
   "calls": {
-   "boot": 2544840,
+   "boot": 2043862,
    "map": null,
    "play": null
   },
@@ -5996,7 +5996,7 @@
   "attempts": 0,
   "batch": 2,
   "calls": {
-   "boot": 77661,
+   "boot": 77360,
    "map": null,
    "play": null
   },
@@ -6024,7 +6024,7 @@
   "attempts": 0,
   "batch": null,
   "calls": {
-   "boot": 58986,
+   "boot": 57625,
    "map": null,
    "play": null
   },

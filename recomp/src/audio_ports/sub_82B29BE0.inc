@@ -1,6 +1,6 @@
 // sub_82B29BE0  role: republish a source's spatial mix -- when any of the ten cached placement parameters moved, recompute the panner entries and the 8x8 gain matrix, then run the channel mix (hard, or ramped out of the previous matrix), and swap the buffer pair   lifted: skate3_recomp.67.cpp:29260 (388 lines)
 // STATUS: verified
-// calls/session: boot 184082  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 179570  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B29BE0.md
 namespace port_82B29BE0 {
 

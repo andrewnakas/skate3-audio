@@ -215,6 +215,46 @@ struct RegisterOnLoad {
             fh.write(f"SKATE3_CENSUS_ALL({i}, sub_{addr})\n")
 
 
+def cmd_sync_status(a):
+    """Read each port file's STATUS header into the queue.
+
+    promote.py sets a status from a session's verdict, but a gate-labelled port never produces
+    a verdict -- the macro does not arm the shadow branch for it. Without this the queue reports
+    a finished gate-1 body as "pending", which understates the work and, worse, keeps offering
+    it to `next`.
+    """
+    q = load()
+    counts = collections.Counter()
+    for addr, rec in q.items():
+        path = inc_path(addr)
+        if not os.path.exists(path):
+            continue
+        header = ""
+        for line in open(path):
+            if line.startswith("// STATUS:"):
+                header = line[len("// STATUS:"):].strip()
+                break
+        if not header:
+            continue
+        word = header.split()[0].lower().rstrip(":,")
+        mapped = {"verified": "verified", "promoted": "promoted", "divergent": "divergent",
+                  "uncalled": "uncalled", "gate-1": "gate1", "gate-2": "gate2",
+                  "gate-3": "gate3", "gate-4": "gate4", "pending": "written"}.get(word)
+        if mapped is None:
+            print(f"  {addr}: unrecognised STATUS {header!r}")
+            continue
+        # A session's verdict outranks a file header: promote.py writes both, and a stale
+        # "pending" header on a verified port must not undo the measurement.
+        if rec["status"] in ("verified", "promoted") and mapped == "written":
+            continue
+        if rec["status"] != mapped:
+            rec["status"] = mapped
+            rec["gate"] = header if mapped.startswith("gate") else rec["gate"]
+        counts[mapped] += 1
+    save(q)
+    print("sync-status:", dict(sorted(counts.items())))
+
+
 def cmd_report(a):
     q = load()
     by = collections.Counter((r["tier"], r["status"]) for r in q.values())
@@ -241,6 +281,7 @@ def main():
     p = sub.add_parser("next"); p.add_argument("--tier"); p.add_argument("-n", type=int, default=8); p.set_defaults(fn=cmd_next)
     p = sub.add_parser("set"); p.add_argument("addr"); p.add_argument("assign", nargs="+"); p.set_defaults(fn=cmd_set)
     p = sub.add_parser("manifests"); p.set_defaults(fn=cmd_manifests)
+    p = sub.add_parser("sync-status"); p.set_defaults(fn=cmd_sync_status)
     p = sub.add_parser("report"); p.add_argument("--md"); p.set_defaults(fn=cmd_report)
     a = ap.parse_args()
     a.fn(a)

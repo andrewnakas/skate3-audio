@@ -31,9 +31,9 @@ constexpr uint32_t kEntryStride = 28;  // addi r8,r8,28
 
 constexpr uint32_t kFrameBytes = 112;  // stwu r1,-112(r1)
 
-// The two kernel imports the `bl`s reach. probe/ports/lint.py check 6 forbids the `__imp__`
-// spelling in a port body -- the rule exists so a guest callee goes through GuestCall and is
-// exercised by its own hook, which a kernel import has no way to be -- so they are reached
+// The two kernel imports the `bl`s reach. probe/ports/lint.py check 6 forbids naming an import
+// thunk directly from a port body -- that rule exists so a guest callee goes through GuestCall and
+// is exercised by its own hook, which a kernel import has no way to be -- so both are reached
 // through their guest addresses in the dispatch table, which is the same code the `bl` enters.
 // The one difference from the original is that this writes ctr, which the `bl` does not; ctr is
 // volatile and outside the compared set, and this body never runs anyway (gate-1).

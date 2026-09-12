@@ -1,6 +1,6 @@
 // sub_82B1D840  role: copy count words into a destination block and mark it filled   lifted: skate3_recomp.66.cpp:67201 (40 lines)
 // STATUS: verified
-// calls/session: boot 230  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 215  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1D840.md
 namespace port_82B1D840 {
 

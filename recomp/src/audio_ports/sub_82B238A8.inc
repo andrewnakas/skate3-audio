@@ -1,6 +1,6 @@
 // sub_82B238A8  role: advance a voice's gain ramp, then scale all its channels by the ramp   lifted: skate3_recomp.67.cpp:14104 (420 lines)
 // STATUS: verified
-// calls/session: boot 48129  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 47145  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B238A8.md
 namespace port_82B238A8 {
 
@@ -281,8 +281,9 @@ bool BlockClearsControlFields(uint32_t span, uint32_t len, uint32_t state, uint3
          !Overlaps(span, len, channels + kChanStride, 2);
 }
 
-// The write set, from entry state only, and it is the SAME set on every path -- which is why
-// this no longer refuses the ramping calls.
+// The write set, from entry state only. It is the SAME set on every path -- state object,
+// envelope block, one block per channel -- which is why a ramp that is already running is now
+// compared instead of skipped.
 //
 // The generator path was excluded until 2026-09-12 on the grounds that sub_82B427D8,
 // sub_82B42C98 and sub_82B43340 "store through bases they derive internally". They do, but the
@@ -293,12 +294,22 @@ bool BlockClearsControlFields(uint32_t span, uint32_t len, uint32_t state, uint3
 // helpers cannot widen that: sub_824531C8 has no stores at all, sub_82F4DED0 writes only below
 // its own r1, and sub_82F52FB8 (the 16-byte replicate) stores only through its own r3.
 //
-// The bound is the block. All three open with `r26 = cursor + 255` (`r25` in sub_82B43340) and
-// `r27 = min(cursor + 255, samples - 1)`, then write, in order: the pre-ramp fill for a negative
-// cursor, the ramp itself clamped at r27, and the post-ramp fill clamped at cursor + 255. Every
-// vector run takes `trunc(n/4)` quads with a scalar remainder, so no quad ever steps past its
-// clamp. Sample i lands at envelope + 4*(i - cursor), so the whole set is
-// [envelope, envelope + 1024) -- the same 256 floats the steady-gain fill writes.
+// The bound is the block, but ONLY for a cursor in range. All three open with
+// `r26 = cursor + 255` (`r25` in sub_82B43340) and `r27 = min(cursor + 255, samples - 1)`, then
+// write, in order: the pre-ramp fill for a negative cursor, the ramp itself clamped at r27, and
+// the post-ramp fill clamped at cursor + 255. Every vector run takes `trunc(n/4)` quads with a
+// scalar remainder, so no quad steps past its clamp, and sample i lands at
+// envelope + 4*(i - cursor) -- so the set is [envelope, envelope + 1024), the same 256 floats
+// the steady-gain fill writes. Two entry states break that, and both are checked below:
+//
+//   * cursor < -256. The pre-ramp fill is `-cursor` samples long and is NOT clamped to the
+//     block (`r29 = -trunc(cursor/4)` units of 16 bytes, straight off the argument), so a
+//     cursor of -10^6 fills 4 MB.
+//   * cursor > samples - 1. Then `span = r27 - index + 1` is negative, the vector loops are
+//     unentered but the index still moves by `4 * trunc(span/4)`, so the post-ramp fill starts
+//     BELOW where the ramp would have and runs to cursor + 255 -- longer than the block, without
+//     bound as the gap grows. (sub_82B427D8's own port documents the same quirk from the other
+//     side, where it has to count those bytes.)
 //
 // One difference from the steady path: the generators write those floats with stvx128, whose
 // effective address is masked down to 16 bytes, so a misaligned envelope would be written from
@@ -306,11 +317,40 @@ bool BlockClearsControlFields(uint32_t span, uint32_t len, uint32_t state, uint3
 // alignment prologue only makes sense on a 16-byte-aligned buffer) but it costs one span and
 // makes the declaration true either way.
 //
-// What the enumeration still refuses: more than kMaxChannels channels, and any call where a span
-// would cover one of the three control fields the call reloads after storing.
+// What the enumeration still refuses: a pending or armed ramp (see the guard, and the note), a
+// running ramp whose cursor is out of range, more than kMaxChannels channels, and any call where
+// a span would cover one of the three control fields the call reloads after storing.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   const uint32_t state = ctx.r3.u32;
   const uint32_t desc = ctx.r4.u32;
+
+  // Two ways to reach a generator, and they are windowable to different degrees. A pending start
+  // always arms (state = 1) and the placement step then decides, so:
+  const uint32_t pending = REX_LOAD_U8(state + kStartPending);
+  const uint32_t ramp_state = REX_LOAD_U8(state + kRampState);
+
+  // (1) A pending start, or a ramp already armed: the placement step computes the cursor in-call
+  // as `-fctiwz(rate * (rampTime - timeBase))`, and its only guard is `< 256`. That guard admits
+  // exactly one dangerous value: 0x80000000, which fctiwz yields for a NaN or for anything at or
+  // below INT_MIN, and which `neg` leaves unchanged and the `> 0` clamp does not catch. The
+  // generators would then fill from `-cursor = 2^31` samples, i.e. the whole address space.
+  // Deciding that here means evaluating the guest's own float arithmetic in a hook, and host
+  // float work in a hook is the SIGFPE trap in CLAUDE.md -- these products are precisely the ones
+  // that can raise. So this case is refused: the LENGTH is computed by the call. It costs the
+  // arming call of each ramp, not the ramp; the note has the measurement and the integer-only
+  // alternative if that residue turns out to matter.
+  if (pending == 1 || ramp_state == 1) return false;
+
+  // (2) Dispatched straight from the entry state (`ramp_state` neither 0 nor 1, nothing
+  // pending): the latch and the placement are both skipped, so the generator sees exactly these
+  // two words and the two bounds above are decidable with no float work at all.
+  if (ramp_state != 0) {
+    const int32_t samples = int32_t(REX_LOAD_U32(state + kRampSamples));
+    const int32_t cursor = int32_t(REX_LOAD_U32(state + kRampCursor));
+    if (cursor < -int32_t(kBlockFloats)) return false;          // unclamped pre-ramp fill
+    if (int64_t(cursor) > int64_t(samples) - 1) return false;    // the negative-span fill
+    if (int64_t(cursor) + 255 > INT_MAX) return false;            // addi r26,r6,255 must not wrap
+  }
 
   const uint32_t mixer = REX_LOAD_U32(desc + kDescMixer);
   const uint32_t envelope = REX_LOAD_U32(mixer + 4);

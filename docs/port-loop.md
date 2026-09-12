@@ -110,6 +110,33 @@ That session ran the harness on 7.4M kernel calls plus 60 other hooks and `Audio
 187.5/s against a 187.5/s real-time budget throughout, with the minimum sampled rate 174.8/s
 during load. `SKATE3_PORT_EX`'s sample shift exists but has not been needed.
 
+### Over-refusal is the other way to be wrong
+
+A window builder that returns false too often produces a green that covers less than it looks
+like. Three ports verified clean while skipping most of their calls, and re-reading them showed
+two of the three were merely conservative:
+
+| port | before | after |
+|---|---|---|
+| `sub_82B238A8` | 34% of calls compared | ~90%, 44,883 runs |
+| `sub_82B3D4F8` | 66% | ~99%, 128,820 runs |
+
+`sub_82B3D4F8`'s skipped branch was the one that calls `sub_82B3D0A8`, so the harness had never
+compared either of the two kernels that dispatcher chooses between. Windowing it also got
+`sub_82B3D0A8` its first real verification, at 42,831 calls. In both cases the eighteen store
+addresses looked like loop cursors plus deltas built during the call, and the deltas cancel:
+every store resolves to one of two arrays named in the descriptor at entry.
+
+The refusals that survived are the instructive half. `sub_82B238A8` still declines a *pending*
+ramp, because the generator's fill length is computed in-call from a float conversion that
+admits `0x80000000`, which would mean a 2-billion-sample fill; deciding that in the window
+builder needs host floating-point inside a hook, which is the documented SIGFPE trap. That is a
+length that does not exist before the call -- gate 2 proper, not caution.
+
+**So `skipped` is a first-class result, not a footnote.** The summarizer treats a skip fraction
+over 10% as not-green for exactly this reason, and the three ports above were found by reading
+that column rather than the divergence count.
+
 ### The two divergences, and what they teach
 
 Both were mine, both in functions I hand-wrote, and both would have shipped silently without the

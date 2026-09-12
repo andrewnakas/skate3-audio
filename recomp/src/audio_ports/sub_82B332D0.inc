@@ -1,4 +1,4 @@
-// sub_82B332D0  role: refill one slot of the 80-byte array at +96 -- first drop out when the 48-byte parallel record's state byte at +46 reads 1 and the slot's handle at +44 has gone stale in the 328-byte handle table (clearing the record's +20 and returning 0), otherwise pull the next chunk from sub_82B33C08, add its size into the slot's running total at +24, claim a 16-byte ring slot through sub_82B32550, record the claimed index at the slot's +74 and the chunk's third out-word at ring_slot+100, and hand the chunk to sub_82B33418   lifted: skate3_recomp.67.cpp:52060 (179 lines)
+// sub_82B332D0  role: refill one slot of the 80-byte array at +96 -- first drop out when the 48-byte parallel record's state byte at +46 reads 1 and the slot's handle at +44 has gone stale in the 328-byte handle table (clearing the record's +20 and returning 0), otherwise pull the next chunk from sub_82B33C08, add its size to the slot's outstanding-byte count at +24, claim a 16-byte ring slot through sub_82B32550, record the claimed index at the slot's +74 and the chunk's third out-word at ring_slot+100, and hand the chunk to sub_82B33418   lifted: skate3_recomp.67.cpp:52060 (179 lines)
 // STATUS: gate-1 (two independent failures on the refill path: sub_82B33C08 takes the critical section -- RtlEnterCriticalSection/RtlLeaveCriticalSection through sub_82EC1290 -- and sub_82B33418 reaches sub_82B3C870's indirect call; census depth 2 either way)
 // calls/session: boot 1071  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B332D0.md
@@ -15,7 +15,9 @@ constexpr uint32_t kRingStride = 16;      // sub_82B32550's ring: 16 bytes per e
 constexpr uint32_t kRingPayload = 100;    // u32 written into the claimed ring entry
 
 // A slot (r29), stride 80.
-constexpr uint32_t kSlotTotal = 24;    // u32 running total; the chunk size is added to it
+constexpr uint32_t kSlotOutstanding = 24; // u32 bytes owed: the chunk size is ADDED here, and
+                                          //     sub_82B32480 SUBTRACTS the buffer's byte count
+                                          //     from the same field when the entry retires
 constexpr uint32_t kSlotContext = 40;   // u32 -> the object that owns the handle table
 constexpr uint32_t kSlotHandle = 44;    // s32 handle; its low byte indexes the table
 constexpr uint32_t kSlotRingIndex = 74; // u8 the claimed ring index (kSourceByte in sub_82B33870)
@@ -157,9 +159,9 @@ REX_FUNC(Native) {
     // The running total is updated BEFORE the claim is tested, so a refused claim still advances
     // it. Reproduced, not fixed: `add r8,r11,r10` is a 64-bit add of two zero-extended words and
     // the store narrows it, so a wrap past 2^32 is lost exactly as on the machine.
-    const uint64_t total = REX_LOAD_U32(slot + kSlotTotal);          // lwz r10,24(r29)
+    const uint64_t total = REX_LOAD_U32(slot + kSlotOutstanding);          // lwz r10,24(r29)
     const uint64_t added = REX_LOAD_U32(frame + kOutSize);           // lwz r11,88(r1)
-    REX_STORE_U32(slot + kSlotTotal, uint32_t(added + total));       // stw r8,24(r29)
+    REX_STORE_U32(slot + kSlotOutstanding, uint32_t(added + total));       // stw r8,24(r29)
 
     if (claim_ok == 0) {
       produced = false;  // beq cr6,0x82b3337c

@@ -1,6 +1,6 @@
 // sub_82B3DEA8  role: write one block of words back into the stream's wrapping ring, in two runs   lifted: skate3_recomp.68.cpp:11159 (132 lines)
 // STATUS: verified
-// calls/session: boot 257139  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 249817  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3DEA8.md
 namespace port_82B3DEA8 {
 

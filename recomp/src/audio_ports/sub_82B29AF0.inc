@@ -1,6 +1,6 @@
 // sub_82B29AF0  role: apply the channel gain matrix -- mix 256 floats of each source channel into each destination channel at gain[source][dest]; source 0 overwrites (sub_82B3BED8), sources 1.. accumulate (sub_82B44B20)   lifted: skate3_recomp.67.cpp:29116 (143 lines)
 // STATUS: verified
-// calls/session: boot 237122  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 232190  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B29AF0.md
 namespace port_82B29AF0 {
 
