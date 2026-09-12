@@ -155,6 +155,48 @@ movie playback and these sessions skip it. With `skate3_demo_path_play_movies=tr
 **exactly once** per boot, at the single FMV's start. The **not seen** rows above are a fact
 about the trace, not about the functions; see `docs/shadow-harness.md`.
 
+## Re-derived 2026-09-11, and preserved this time
+
+One boot-armed session (`TRACE_ARM=boot`, `TRACE_MODE=first`, dump 120 s after gameplay, pad
+macro of pushes plus a trick and the replay editor) executed **758 of 1,693 (44.8%)**. The set
+is tracked at **`docs/audio-executed-set.txt`** with its provenance, because the first
+measurement was lost to `.gitignore`'s `out/` rule — a rule that exists for retail-derived game
+data, not for measurements a session cannot reproduce without the game.
+
+**758 does not correct the 789 below.** This session has no map switch, and the earlier union's
+extra functions were audio-thread streaming paths that a map switch exercises. It is a narrower
+session, not a better measurement.
+
+The useful result is the thread attribution, which was never available before:
+
+| thread of first call | functions | scalar | vector |
+|---|---|---|---|
+| Main XThread | 325 | 324 | 1 |
+| **`RwAudioCore Dac`** | **216** | **200** | 16 |
+| load_thread | 107 | 105 | 2 |
+| render_thread | 68 | 61 | 7 |
+| MoviePlayer2 | 15 | 15 | 0 |
+| everything else | 27 | 21 | 6 |
+
+This is what the corpus being call-graph bounded from audio seeds actually costs: 325 of the
+functions that ran are main-thread and 68 are render-thread. **The audio surface is 216, not
+758, and the scalar part of it is 200** — an eight-fold reduction on the corpus's 1,644 scalar
+entries, and the only pool Phase 2 should ever have been screening against.
+
+Two things the trace confirms independently of the shadow harness:
+
+- The movie dependency is real and symmetric. `sub_82B28A00` (producer) ran on `MoviePlayer2`
+  and `sub_82B28C18` (`EVENT_STOP`) on `RwAudioCore Dac`, while `sub_82B28CC0`
+  (`EVENT_SUBMIT`) and `sub_82B28B78` (`EVENT_PLAY`) were **not seen** — `run_trace.sh` does
+  not set `skate3_demo_path_play_movies`. That matches the shadow sessions exactly: the
+  producer and `EVENT_STOP` arrive without movies, the two consumers need them.
+- Phase 3's ordering needs refreshing, and the heavy kernels are unexercised. Only **1,962 of
+  9,356** vector instructions ran. `sub_82F56C88` (4,502, not audio DSP), `sub_82B3A048` (645),
+  `sub_82B02C30` and `sub_82B09288` (476 each) were all unseen. The heaviest that ran is
+  `sub_82B22898` (583), then `sub_82B50380` (217), `sub_82B42C98` (99), `sub_82B399D0` (98).
+  Of the 30 vector functions executed, **16** are first-called on the audio thread: that is
+  Phase 3's real ordering input.
+
 ## Corpus sizing, from `corpus.json`
 
 The corpus file carries two fields per function, `tu` and `vec`, which is enough to size both

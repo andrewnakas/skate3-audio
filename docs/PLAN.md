@@ -150,9 +150,21 @@ In Phase 0a frequency order where available, else call-graph order:
   gate 2, 1 on gate 3, and one that passes every gate and is never called. Each verified
   function cost a read, a build and a session. Extrapolating that is hundreds of hours for a
   deliverable whose stated motive is readable code and a Rust reference, not correctness.
-  The two ways forward, neither of them this bullet as written: re-derive the executed set with
-  one traced session and intersect it with the gates, or treat the queue path's verified
-  reference as Phase 2's actual deliverable and move to Phase 4. Decide deliberately.
+  **Decided 2026-09-11, by measuring first.** The executed set was re-derived in one traced
+  session (`docs/audio-executed-set.txt`, tracked) and the pool is far smaller than 1,644:
+  filtering by *ran* and by *first called on `RwAudioCore Dac`* gives **216 audio-thread
+  functions, 200 of them scalar**. That is the pool Phase 2 should have been screening against
+  all along — 325 of the functions that ran are main-thread and 68 render-thread, artefacts of
+  the corpus being call-graph bounded from audio seeds.
+  **Do not sweep the 200.** At the observed yield — 12 screened for 3 verified and 1 promoted,
+  against 8 disqualified, each verified function costing a read, a build and a session — 200 is
+  tens of hours, for a deliverable whose stated motive is readable code and a Rust reference,
+  not correctness. The recomp's audio is already exact.
+  So Phase 2's deliverable is the **verified queue-path reference plus the proven harness**:
+  producer (6,706 calls), `EVENT_SUBMIT` (promoted), buffer-pair init (226), `EVENT_PLAY` (one
+  input point), and the three gates that say which functions are checkable at all. Phase 4 is
+  next on the critical path; return here selectively when Phase 4 needs a specific function,
+  screening it against the gates and the 200.
 
 Per function, screen against **three** gates before writing anything — each one cost a
 wasted candidate to learn:
@@ -188,9 +200,13 @@ one-function-at-a-time loop**, not batched per build cycle.
 the comparable-call count recorded next to it**. Zero divergence over one call and over
 10,000 read identically and mean very different things, and some of these functions fire
 once per boot — so the count, and the inputs it covered, are part of the result.
-*Phase:* ~~every function 0a calls hot is native and promoted~~ — **unevaluable as written**:
-"hot" refers to the 0a executed set, which survives only as a count, so this criterion cannot be
-checked against anything. Replace it when the bullet above is re-scoped. Both known bugs landed
+*Phase:* ~~every function 0a calls hot is native and promoted~~ — replaced 2026-09-11. The old
+criterion referred to the 0a executed set, which at the time survived only as a count; it is now
+tracked (`docs/audio-executed-set.txt`), and the criterion it implied — port all 200 audio-thread
+scalar functions — is explicitly **not** the goal, per the bullet above. The phase is met when
+the queue path has a verified native reference Phase 4 can translate (it does), the harness is
+proven (it is), and the gates are written down so the next candidate is screened rather than
+guessed at (they are). Both known bugs landed
 is still a real criterion: bug 3 has a guard at the point of damage (`docs/buffer-size-bug.md`),
 and bug 1's ordering fix is specified only as an objective, not an implementation
 (`docs/command-queue.md`).

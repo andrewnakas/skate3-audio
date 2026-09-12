@@ -109,6 +109,14 @@ reached all 789 alone, so breadth saturates;
 the number is still a ceiling on audio work. Of the four heaviest VMX128 kernels only
 `sub_82B22898` ran. `docs/execution-trace.md` has the lists.
 
+**Re-derived and tracked 2026-09-11: `docs/audio-executed-set.txt`.** One session reached 758
+(narrower — no map switch), and the attribution is the part that matters: **216 of those are
+first-called on `RwAudioCore Dac`, 200 of them scalar.** The other 542 are main-thread (325),
+load_thread (107), render_thread (68) and so on — the corpus is call-graph bounded from audio
+seeds, so most of what "ran" is not audio. Screen Phase 2 candidates against the 200, not the
+corpus. Of 30 vector functions executed, 16 are audio-thread: that is Phase 3's ordering input,
+and the four heaviest kernels did not run at all.
+
 ## Workflow for native audio
 
 1. Read the function. On Linux read the **lifted** form:
