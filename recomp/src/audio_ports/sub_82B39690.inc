@@ -1,6 +1,6 @@
 // sub_82B39690  role: unlink a node from its list and push it onto the free list   lifted: skate3_recomp.67.cpp:66886 (82 lines)
 // STATUS: verified
-// calls/session: boot 1807  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1634  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B39690.md
 namespace port_82B39690 {
 

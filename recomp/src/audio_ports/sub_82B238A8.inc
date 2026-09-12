@@ -1,6 +1,6 @@
 // sub_82B238A8  role: advance a voice's gain ramp, then scale all its channels by the ramp   lifted: skate3_recomp.67.cpp:14104 (420 lines)
-// STATUS: pending
-// calls/session: boot 62273  play ?  map ?          thread: RwAudioCore Dac
+// STATUS: verified
+// calls/session: boot 48129  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B238A8.md
 namespace port_82B238A8 {
 
@@ -275,28 +275,42 @@ bool Overlaps(uint32_t a, uint32_t alen, uint32_t b, uint32_t blen) {
 // The enumeration below reads three control fields that the call reloads after storing, so a
 // declared span covering one of them would let the addresses change mid-call and make the list
 // wrong. Checked per span rather than assumed.
-bool BlockClearsControlFields(uint32_t span, uint32_t state, uint32_t channels) {
-  return !Overlaps(span, kBlockBytes, state + kChannelCount, 1) &&
-         !Overlaps(span, kBlockBytes, channels + kChanBase, 4) &&
-         !Overlaps(span, kBlockBytes, channels + kChanStride, 2);
+bool BlockClearsControlFields(uint32_t span, uint32_t len, uint32_t state, uint32_t channels) {
+  return !Overlaps(span, len, state + kChannelCount, 1) &&
+         !Overlaps(span, len, channels + kChanBase, 4) &&
+         !Overlaps(span, len, channels + kChanStride, 2);
 }
 
-// The write set, from entry state only.
+// The write set, from entry state only, and it is the SAME set on every path -- which is why
+// this no longer refuses the ramping calls.
 //
-// Two paths are excluded. The generator path (a running ramp) calls sub_82B427D8, sub_82B42C98
-// or sub_82B43340, each of which stores through bases it derives internally -- sub_82B42C98
-// alone has six distinct derived store bases -- so their write sets are not knowable here.
-// And the enumeration below reads three control fields that the call itself reloads after
-// storing, so a span covering one of them would invalidate it; that is checked, not assumed.
+// The generator path was excluded until 2026-09-12 on the grounds that sub_82B427D8,
+// sub_82B42C98 and sub_82B43340 "store through bases they derive internally". They do, but the
+// bases derive from nothing except the three arguments this call passes them. Checked on the
+// lifted bodies of all three with a flow-sensitive pass over every store: every store address
+// outside the callee's own frame carries only entry r3 (the envelope), entry r6 (the cursor) and
+// entry r7 (the sample count) -- never a loaded pointer, never a second object. Their three
+// helpers cannot widen that: sub_824531C8 has no stores at all, sub_82F4DED0 writes only below
+// its own r1, and sub_82F52FB8 (the 16-byte replicate) stores only through its own r3.
+//
+// The bound is the block. All three open with `r26 = cursor + 255` (`r25` in sub_82B43340) and
+// `r27 = min(cursor + 255, samples - 1)`, then write, in order: the pre-ramp fill for a negative
+// cursor, the ramp itself clamped at r27, and the post-ramp fill clamped at cursor + 255. Every
+// vector run takes `trunc(n/4)` quads with a scalar remainder, so no quad ever steps past its
+// clamp. Sample i lands at envelope + 4*(i - cursor), so the whole set is
+// [envelope, envelope + 1024) -- the same 256 floats the steady-gain fill writes.
+//
+// One difference from the steady path: the generators write those floats with stvx128, whose
+// effective address is masked down to 16 bytes, so a misaligned envelope would be written from
+// its 16-byte floor. Hence the floor below. It is almost certainly moot (the ramp's own
+// alignment prologue only makes sense on a 16-byte-aligned buffer) but it costs one span and
+// makes the declaration true either way.
+//
+// What the enumeration still refuses: more than kMaxChannels channels, and any call where a span
+// would cover one of the three control fields the call reloads after storing.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   const uint32_t state = ctx.r3.u32;
   const uint32_t desc = ctx.r4.u32;
-
-  // kRampState is 0 at the generator dispatch exactly when it is 0 now and no start is
-  // pending: a pending start arms it, and an armed ramp can end this call running. Every other
-  // entry value reaches a generator, so compare only the steady-gain calls.
-  if (REX_LOAD_U8(state + kStartPending) == 1) return false;
-  if (REX_LOAD_U8(state + kRampState) != 0) return false;
 
   const uint32_t mixer = REX_LOAD_U32(desc + kDescMixer);
   const uint32_t envelope = REX_LOAD_U32(mixer + 4);
@@ -309,9 +323,13 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   // Everything the function stores in the state object, across all paths: 0x30 through 0x72.
   spec.write(state + kLastWord, kCurve + 1 - kLastWord);
 
-  // The fill writes all 256 envelope samples.
-  if (!BlockClearsControlFields(envelope, state, channels)) return false;
-  spec.write(envelope, kBlockBytes);
+  // All 256 envelope samples, whether a generator writes them or the steady-gain fill does.
+  // The floor covers the generators' masked stvx128; the length keeps the top at
+  // envelope + 1024, which is where the steady path's last stfs ends.
+  const uint32_t envelope_span = envelope & ~0xFu;
+  const uint32_t envelope_bytes = kBlockBytes + (envelope & 0xFu);
+  if (!BlockClearsControlFields(envelope_span, envelope_bytes, state, channels)) return false;
+  spec.write(envelope_span, envelope_bytes);
 
   // Per channel, the four stvx128 of a pass are 16 bytes apart and every pass steps 64, so the
   // sixteen passes cover exactly 1024 bytes from the channel's 16-byte-aligned start -- the
@@ -319,7 +337,7 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   for (uint32_t j = 0; j < count; j++) {
     const uint32_t index = uint32_t(int32_t(stride) * int32_t(j));
     const uint32_t span = (first + ((index << 2) & 0xFFFFFFFCu)) & ~0xFu;
-    if (!BlockClearsControlFields(span, state, channels)) return false;
+    if (!BlockClearsControlFields(span, kBlockBytes, state, channels)) return false;
     spec.write(span, kBlockBytes);
   }
 
@@ -334,8 +352,13 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   spec.read(state + kLastWord, kCurve + 1 - kLastWord);
   spec.read(kGainSentinel, 4);
   spec.read(kRampTimeSentinel, 8);
+  // The generators' own reads -- the envelope they re-read through sub_82F52FB8's replicate (a
+  // write window, so its entry bytes are recorded anyway) and a handful of rodata singles
+  // (0x82165A10 and neighbours) -- are deliberately not declared. `inputs` exists so a recorded
+  // vector can be replayed outside the game, and a ramping call cannot be: replaying it means
+  // executing the guest generator. See the note.
   return true;
 }
 
 }  // namespace port_82B238A8
-SKATE3_PORT(82B238A8, skate3::audio::kPortPending, skate3::audio::kReturnR3)
+SKATE3_PORT(82B238A8, skate3::audio::kPortVerified, skate3::audio::kReturnR3)

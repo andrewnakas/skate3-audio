@@ -1,6 +1,6 @@
 // sub_82B3C098  role: gain-ramp copy -- dst[k] = src[k] * gain over 256 singles, the gain ramping from f1 by f2 per sample for the first 64 then held, each 128-byte block dcbzl'd before it is written   lifted: skate3_recomp.68.cpp:6626 (356 lines)
 // STATUS: verified
-// calls/session: boot 1237988  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 1582862  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3C098.md
 namespace port_82B3C098 {
 

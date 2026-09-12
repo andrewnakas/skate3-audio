@@ -4,7 +4,11 @@ Leaf crossfade mixer, 662 lifted lines, 56 vector instructions, **56,932 calls p
 on `RwAudioCore Dac` (tier C). No callees, no imports, no indirect calls, no timebase, no locks --
 gate 1 passes trivially.
 
-**STATUS: pending.** Written, linted, never compared.
+**STATUS: verified.** Sessions `s22` and `s23` (`probe/harness/out/s22.log`, `s23.log`,
+2026-09-12 03:48 and after): `runs=46166` and `runs=43854`, each
+`diverged: registers=0 memory=0 skipped=0 overflow=0`. `skipped=0` means `Windows()` answered on
+every call; `overflow=0` means the window stayed in budget. Read "Limits of the green" below
+before quoting that: only one of the three paths ran.
 
 ## What it does
 
@@ -77,22 +81,41 @@ low four address bits. So if `E` or `F` is misaligned the vector path reads and 
 falls out through `cmpw r27,r3 ; bge` writing nothing. It returns false only on the two
 address-space-wrap guards, which cannot fire for a real buffer.
 
-## Uncertainties
+## What the game actually passes
 
-- **Unverified.** Nothing has been compared. The scalar-path element-address algebra was derived
-  by reducing every lifted base-difference pair (`r23 = E-B`, `r28 = A-E`, ...) against the four
-  cursors `r11 = &B[j+1]`, `r5 = &D[j+2]`, `r4 = &C[j+3]`, `r31 = &E[j]`; all 24 effective
-  addresses reduce to a block base plus 0/4/8/12 in 32-bit wrapping arithmetic. That reduction is
-  the thing most likely to be wrong, and a memory diff at a 4-byte granularity is what it would
-  look like.
+From the census's first-four entry dumps in `s22`, one call site (`lr = 0x82B3D564`):
+
+    r3 = 0x80 (128 elements)   r6 = A = 0x4B389B80 / 0x4B399B80   r7 = B = 0x4B3FF4D8
+    r8 = C = 0x4B3FF4EC        r9 = D = 0x707BF8F0                r10 = E = 0x4B3FF900
+    f1 = 0.0                   r1 = 0x707BF820
+
+**B and C are 16-byte misaligned** (`0x...4D8`, `0x...4EC`), so the entry test fails and **the
+vector path never runs**. `D` is not even a heap buffer: at `r1 + 0xD0` it is a stack temporary in
+the caller's frame. With `count = 128`, a multiple of four, the four-wide scalar loop runs 32 times
+and the one-at-a-time remainder never runs either.
+
+So the 90,020 clean comparisons cover exactly one of the three paths -- but it is the one where all
+three of the odd `f2` associations live, which is the part most likely to be got wrong.
+
+## Limits of the green
+
+- **The vector path is unexercised**, including its non-fused `F` computation and the masked
+  addressing of the unchecked `A`, `D`, `E` and `F` pointers. If a caller ever aligns B and C, that
+  path runs for the first time with no evidence behind it.
+- **The one-float remainder loop is unexercised** (every observed count is a multiple of four).
 - The gain broadcasts are `simde_mm_set1_ps(float(fN))` rather than four `stfs` to the red zone
   followed by `lvx128`. Those agree only if the guest `r1` is 16-byte aligned, because `lvx128`
-  masks the low four address bits. `sub_82B44B20`'s note records `r1 = 0x707BFB20` observed on the
-  audio thread, so this is very likely safe, but it has not been observed at *this* call site.
-- Which path the game actually takes is unknown: the census's first-four entry dumps were not read
-  for this function. If `count` is always a multiple of 16 with B and C aligned, the two scalar
-  paths -- where all three of the odd associations live -- never run, and a clean session says
-  nothing about them.
+  masks the low four address bits. Measured on the real entries: `r1 = 0x707BF820`, low four bits
+  clear -- observed, not just argued from the ABI. (This only matters on the vector path, which
+  does not run here.)
+- The scalar-path element-address algebra was derived by reducing every lifted base-difference pair
+  (`r23 = E-B`, `r28 = A-E`, ...) against the four cursors `r11 = &B[j+1]`, `r5 = &D[j+2]`,
+  `r4 = &C[j+3]`, `r31 = &E[j]`; all 24 effective addresses reduce to a block base plus 0/4/8/12 in
+  32-bit wrapping arithmetic. That reduction was the thing most likely to be wrong, and the 90k
+  clean memory comparisons are what check it.
+
+## Uncertainties
+
 - If a caller ever placed `E` or `F` inside this callee's own red zone, the `__savegprlr_14` spill
   and the gain scratch would land inside the declared window and the native body (which spills
   nothing) would differ. Not plausible; recorded because it would present as a memory diff with no

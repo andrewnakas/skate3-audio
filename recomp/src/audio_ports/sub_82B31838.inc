@@ -1,6 +1,6 @@
 // sub_82B31838  role: mix one source's channels into this object's bus blocks for the block -- a gain ramp through sub_82B46810 when the gain has moved, flat through sub_82B44B20 per routing-table entry when it has not -- then bump the bus counter and publish the per-channel gains   lifted: skate3_recomp.67.cpp:48102 (421 lines)
 // STATUS: verified
-// calls/session: boot 625373  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 597185  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31838.md
 namespace port_82B31838 {
 
@@ -240,7 +240,14 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 
   const uint32_t bus_array = REX_LOAD_U32(object + kBusArray);
   if (bus_array == 0) return false;  // the counter store would go through null
-  spec.write(bus_array + REX_LOAD_U16(object + kCounterOffset), 4);  // stwx r10,r11,r9
+  const uint32_t counter = bus_array + REX_LOAD_U16(object + kCounterOffset);
+  // A block array or a counter that runs off the top of the address space: no describable window.
+  if (static_cast<uint64_t>(counter) + 4 > 0xFFFFFFFFull) return false;
+  if (static_cast<uint64_t>(bus_array) + static_cast<uint64_t>(kBusBytes) * buses >
+      0xFFFFFFFFull) {
+    return false;
+  }
+  spec.write(counter, 4);  // stwx r10,r11,r9
 
   const uint32_t channels = REX_LOAD_U8(object + kChannelCount);
   // The two arrays live at frame+80 and frame+112 inside a 208-byte frame, so the frame holds

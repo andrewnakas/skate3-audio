@@ -235,3 +235,38 @@ nothing on the hot path.
 Note the guest is doing a non-atomic read-modify-write on `+0xCC`, so concurrent producers
 can still lose appends to each other. Making `+0xCC` an atomic fetch-add, plus the release
 ordering above, addresses both without a lock.
+
+## Correction, 2026-09-12: there is a SECOND producer, and a fourth handler
+
+Everything above reads `sub_82B28A00` as *the* producer. It is not. While porting the
+audio-thread set (`docs/port-loop.md`), `sub_82B1E458` turned up doing the same thing:
+
+```
+  lwz   r11, 0x8307762C          ; the System, the same global the Dac stats path uses
+  lwz   r10, 0x30(r11)           ; the ring buffer
+  lwz   r9,  0xCC(r11)           ; the write offset
+  addi  r8,  r9, 8               ; advance by 8
+  stw   r8,  0xCC(r11)           ; PUBLISH FIRST
+  stw   handler, 0(r10+r9)       ; then the handler  (0x82B49238)
+  stw   object,  4(r10+r9)       ; then the payload
+```
+
+That is bug 1 exactly: the offset is published before the record is stored, so a consumer
+that reads the new offset can dispatch on a handler word that is not there yet. The port
+reproduces it bug for bug, as every port here does.
+
+**Two consequences for the fix this document specifies.**
+
+1. **A fix confined to `sub_82B28A00` does not close the race.** Whatever discipline is
+   chosen — publish the size with the handler, or make the offset the last write — it has to
+   land in both producers, and the search for others should be treated as unfinished rather
+   than complete. Both producers were found by reading bodies, not by grepping, and only one
+   of them is reachable by a `bl` in the lifted code.
+2. **The handler table above is missing an entry.** `0x82B49238` is a fourth handler, with an
+   8-byte record, and it is not in the size table. Its own port (written in the same sweep)
+   reads its argument's `+4` and returns 8, which confirms the `{handler, object}` layout and
+   the length from the consumer side — the same cross-check that validated the other three.
+
+So the table should read: 20 bytes `sub_82B28B78`, 8 bytes `0x82B28C18`, 12 bytes `0x82B28CC0`,
+8 bytes `0x82B49238`. The consumer-side confirmation matters because the length is implied by
+the handler, which is the property that makes a torn read unrecoverable.

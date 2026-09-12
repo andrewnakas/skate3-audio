@@ -1,6 +1,6 @@
 // sub_82B3D4F8  role: mix dispatcher -- unpack a six-pointer buffer descriptor and call the one-gain kernel sub_82B3CF58 when the descriptor's word at +8 is zero, otherwise the two-gain kernel sub_82B3D0A8 with the sixth pointer passed on the stack   lifted: skate3_recomp.68.cpp:9763 (76 lines)
-// STATUS: pending
-// calls/session: boot 174693  play ?  map ?          thread: RwAudioCore Dac
+// STATUS: verified
+// calls/session: boot 135619  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3D4F8.md
 namespace port_82B3D4F8 {
 
@@ -17,8 +17,12 @@ constexpr uint32_t kGain1 = 20;  // lfs f2,20(r6) -- the two-gain path only
 constexpr uint32_t kDescAddend = 0;    // -> sub_82B3CF58's y (read only)
 constexpr uint32_t kDescSource = 4;    // -> sub_82B3CF58's x (read only; its alignment picks
                                        //    the kernel's vector or scalar path)
-constexpr uint32_t kDescSelect = 8;    // lwz r8,8(r7) -- zero picks the one-gain kernel
-constexpr uint32_t kDescExtra = 12;    // the two-gain path only
+constexpr uint32_t kDescSelect = 8;    // lwz r8,8(r7) -- zero picks the one-gain kernel. On the
+                                       //    other path it is a POINTER: sub_82B3D0A8 alignment-
+                                       //    tests it and reads it as the second source array, so
+                                       //    "no second source" is what zero here means.
+constexpr uint32_t kDescExtra = 12;    // the two-gain path only: sub_82B3D0A8's per-sample
+                                       //    crossfade coefficient array (read only)
 constexpr uint32_t kDescMixed = 16;    // -> sub_82B3CF58's z (written: x*gain + y)
 constexpr uint32_t kDescCopy = 20;     // -> sub_82B3CF58's w (written: x re-read after z)
 constexpr uint32_t kDescBytes = 24;
@@ -92,41 +96,61 @@ REX_FUNC(Native) {
   ctx.lr = ctx.r12.u64;                                          // mtlr r12
 }
 
-// Every byte the call writes, from ENTRY state only. The selector at +8 picks the path and is
-// readable before the call, so the refusal below is predicted, not discovered.
+// Every byte the call writes, from ENTRY state only -- on BOTH paths, because the two kernels
+// write the same two buffers.
+//
+// The two-gain path was refused until 2026-09-12 on the grounds that sub_82B3D0A8's write set is
+// not derivable from here. It is. Its six arrays arrive entirely in registers this function
+// loads out of the descriptor before the call (plus the 84(r1) slot it stores itself), and every
+// store address in its 662 lifted lines resolves, in 32-bit wrapping arithmetic, to one of just
+// two of them: `desc[16]` and `desc[20]`. Checked twice over -- a flow-sensitive pass over every
+// store in the lifted body, and the store table in probe/ports/notes/sub_82B3D0A8.md, which was
+// derived independently and agrees. The "cursors and inter-buffer deltas built inside its loops"
+// are real but they cancel: each `stvx128 vX,rA,rB` pairs a cursor into one array with the
+// precomputed difference to another, e.g. `stvx128 v39,r27,r11` is (desc[20] - desc[4]) +
+// (desc[4] + 32 + 64k) = desc[20] + 32 + 64k.
+//
+// Its geometry is also the one-gain kernel's: 64 bytes per 16-sample block into each output from
+// the 16-byte floor of its base (the stvx128 masking), then four bytes per sample for the
+// remainder at the exact base. Only the vector gate differs -- sub_82B3CF58 needs its source
+// 16-byte aligned, sub_82B3D0A8 needs `desc[4]` AND `desc[8]` aligned -- and a failed gate only
+// moves samples from the vector spans into the scalar ones. So one enumeration covers both, with
+// the gate below the only branch.
+//
+// What this does NOT lean on is sub_82B3D0A8's own port being green: its note says it has never
+// been compared. It leans on the lifted body.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   const uint32_t desc = ctx.r7.u32;
   spec.read(desc, kDescBytes);
   spec.read(ctx.r3.u32 + kGain0, 8);
 
-  // The two-gain path reaches sub_82B3D0A8: 662 lines, eight stvx128 and nine stfsx into six
-  // buffers whose cursors and inter-buffer deltas are built inside its loops (18 gate-2
-  // suspects in the census). Its write set is not enumerable from here, and over-declaring a
-  // guessed superset is not acceptable: a byte it writes outside the windows would be replayed
-  // twice against the live game. Refuse until sub_82B3D0A8's own port lands a Windows() to
-  // mirror, the way the one-gain path below mirrors sub_82B3CF58's.
-  if (REX_LOAD_U32(desc + kDescSelect) != 0) return false;
-
-  // The one-gain path: sub_82B3CF58 writes z and w, four bytes per sample each. Its vector body
-  // runs only when the source is 16-byte aligned, and its stvx128 address masking rounds each
-  // written run DOWN, so the vector spans start at the 16-byte floor of the base. This is the
-  // same enumeration its own port declares, with the arguments unpacked from the descriptor.
   const int32_t count = ctx.r4.s32;  // the callee's r3
-  if (count <= 0) return true;       // the kernel's `bge` leaves before any store outside its frame
+  if (count <= 0) return true;       // both kernels' `bge` leaves before any store outside a frame
   if (count > kMaxEnumerableSamples) return false;
 
   const uint32_t addend = REX_LOAD_U32(desc + kDescAddend);
   const uint32_t source = REX_LOAD_U32(desc + kDescSource);
+  const uint32_t select = REX_LOAD_U32(desc + kDescSelect);
+  const uint32_t extra = REX_LOAD_U32(desc + kDescExtra);
   const uint32_t mixed = REX_LOAD_U32(desc + kDescMixed);
   const uint32_t copy = REX_LOAD_U32(desc + kDescCopy);
+  const bool two_gain = select != 0;
 
-  const uint32_t blocks = ((source & 0xFu) == 0) ? static_cast<uint32_t>(count / 16) : 0;
+  // clrlwi r11,r6,28 in sub_82B3CF58; clrlwi r11,r7,28 then clrlwi r11,r8,28 in sub_82B3D0A8 --
+  // and on that path `select` is itself the third input array, which is why it is the operand of
+  // an alignment test rather than a mode word.
+  const bool vector = ((source & 0xFu) == 0) && (!two_gain || (select & 0xFu) == 0);
+  const uint32_t blocks = vector ? static_cast<uint32_t>(count / 16) : 0;
   if (blocks != 0) {
     const uint32_t bytes = blocks * 64;
     spec.write(mixed & ~0xFu, bytes);
     spec.write(copy & ~0xFu, bytes);
     spec.read(source & ~0xFu, bytes);
     spec.read(addend & ~0xFu, bytes);
+    if (two_gain) {
+      spec.read(select & ~0xFu, bytes);  // the second source
+      spec.read(extra & ~0xFu, bytes);   // the per-sample crossfade coefficient
+    }
   }
   const uint32_t done = blocks * 16;
   if (done < static_cast<uint32_t>(count)) {
@@ -136,9 +160,13 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
     spec.write(copy + offset, bytes);
     spec.read(source + offset, bytes);
     spec.read(addend + offset, bytes);
+    if (two_gain) {
+      spec.read(select + offset, bytes);
+      spec.read(extra + offset, bytes);
+    }
   }
   return true;
 }
 
 }  // namespace port_82B3D4F8
-SKATE3_PORT(82B3D4F8, skate3::audio::kPortPending, skate3::audio::kReturnNone)
+SKATE3_PORT(82B3D4F8, skate3::audio::kPortVerified, skate3::audio::kReturnNone)
