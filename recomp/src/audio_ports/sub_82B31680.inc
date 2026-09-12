@@ -1,6 +1,6 @@
 // sub_82B31680  role: re-point a mix link -- detach the target's node from whatever list it is on, then push it on the source's list and copy the source's format fields into it   lifted: skate3_recomp.67.cpp:47854 (89 lines)
 // STATUS: verified
-// calls/session: boot 2726  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 2849  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B31680.md
 namespace port_82B31680 {
 

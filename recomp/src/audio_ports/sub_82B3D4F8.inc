@@ -1,6 +1,6 @@
 // sub_82B3D4F8  role: mix dispatcher -- unpack a six-pointer buffer descriptor and call the one-gain kernel sub_82B3CF58 when the descriptor's word at +8 is zero, otherwise the two-gain kernel sub_82B3D0A8 with the sixth pointer passed on the stack   lifted: skate3_recomp.68.cpp:9763 (76 lines)
 // STATUS: verified
-// calls/session: boot 126712  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 129452  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3D4F8.md
 namespace port_82B3D4F8 {
 

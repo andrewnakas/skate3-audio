@@ -1,6 +1,6 @@
 // sub_82B1CD28  role: u32 delay ring: re-derive the write offset when the source's delay changes, push the source word, return the word at the read slot, advance both   lifted: skate3_recomp.66.cpp:65542 (132 lines)
 // STATUS: verified
-// calls/session: boot 103915  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 100858  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1CD28.md
 namespace port_82B1CD28 {
 

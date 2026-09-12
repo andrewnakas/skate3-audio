@@ -1,6 +1,6 @@
 // sub_82B21F58  role: frame wrapper around the 5.1 mix-and-clamp pass, returning 1   lifted: skate3_recomp.67.cpp:10031 (25 lines)
 // STATUS: verified
-// calls/session: boot 14938  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 14836  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B21F58.md
 namespace port_82B21F58 {
 

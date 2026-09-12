@@ -1,6 +1,6 @@
 // sub_82B44D18  role: gain-ramp mix-add -- dst[k] += src[k] * gain over 256 singles, the gain ramping from f1 by f2 per sample for the first 64 then held; the accumulating sibling of sub_82B3C098   lifted: skate3_recomp.68.cpp:27998 (402 lines)
 // STATUS: verified
-// calls/session: boot 42978  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 48432  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B44D18.md
 namespace port_82B44D18 {
 

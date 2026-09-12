@@ -11,6 +11,7 @@
 #include "audio_ports/sub_82B217F0.inc"
 #include "audio_ports/sub_82B218E8.inc"
 #include "audio_ports/sub_82B219E8.inc"
+#include "audio_ports/sub_82B21AC0.inc"
 #include "audio_ports/sub_82B21D70.inc"
 #include "audio_ports/sub_82B21F58.inc"
 #include "audio_ports/sub_82B22228.inc"

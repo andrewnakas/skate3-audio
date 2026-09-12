@@ -1,20 +1,25 @@
 // sub_82B21AC0  role: the audio worker thread's pump -- hold the queue's critical section, wait on the handle at self+96, drain the command queue with sub_82B48530, fill the current one of two 6144-byte PCM buffers with sub_82B219E8 (zeroing it when that reports no audio), then hand every filled buffer to the device through two of its vtable entries while the device reports two or fewer queued. Around all of it, reconcile the global state mirror at 0x830845C8 with the request at 0x830845CC, moving the lock with the transition, and accumulate the block's elapsed time into 0x830BDEC0   lifted: skate3_recomp.67.cpp:9365 (378 lines)
-// STATUS: gate-1 (it takes the lock itself and calls through the device vtable: RtlEnterCriticalSection / RtlLeaveCriticalSection at census depth 0, four call sites, plus sub_82B21AC0 indirect call, `bctrl` at 0x82B21C14 and 0x82B21C60)
+// STATUS: gate-1 (it takes the lock itself and calls through the device vtable: RtlEnterCriticalSection / RtlLeaveCriticalSection at census depth 0, four call sites, plus sub_82B21AC0 indirect call, `bctrl` at 0x82B21C14 and 0x82B21C60 -- and it would be gate-3 as well, since sub_82B1F7E8 reads mftb)
 // calls/session: boot 1  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B21AC0.md
 namespace port_82B21AC0 {
 
-// Four globals, all `lis`-derived. Computed as ((imm & 0xFFFF) << 16) + displacement:
+// Four globals, all `lis`-derived, computed as ((imm & 0xFFFF) << 16) + displacement:
 //   lis r26/r28,-31992 -> 0x83080000   lis r25,-31994 -> 0x83060000
-//   lis r11,-31988    -> 0x830C0000 ; addi r29,r11,-8516 -> 0x830BDEBC
-// Note: probe/ports/notes/sub_82B21D70.md records this function's global as 0x82044588. That is
-// wrong twice over -- 0x82040000 is not what `lis -31992` loads, and 0x82040000 + 17864 is not
-// 0x82044588 either. The value below is the arithmetic, not a reading.
-constexpr uint32_t kStateMirror = 0x83080000u + 17864u;   // 0x830845C8: the state this loop acts on
-constexpr uint32_t kStateRequest = 0x83080000u + 17868u;  // 0x830845CC: what is wanted, set elsewhere
-constexpr uint32_t kRunning = 0x83060000u + 28767u;       // 0x8306705F: u8; zero ends the pump
-constexpr uint32_t kStatsTotal = 0x830C0000u - 8516u + 4u;  // 0x830BDEC0: accumulated block time
-constexpr uint32_t kStatsStart = 0x830C0000u - 8516u + 8u;  // 0x830BDEC4: this block's start time
+//   lis r11,-31988     -> 0x830C0000 ; addi r29,r11,-8516 -> 0x830BDEBC
+// probe/ports/notes/sub_82B21D70.md records this function's global as 0x82044588. That is wrong
+// twice over: 0x82040000 is not what `lis -31992` loads, and 0x82040000 + 17864 would not be
+// 0x82044588 anyway. sub_82B218E8.inc and sub_82B219E8.inc agree with the values below.
+//
+// sub_82B218E8 names 0x830845CC kRunState and publishes 1 or 2 into it to start this pump; 0 means
+// stopped. 0x830845C8 is this loop's own copy of it -- what it last acted on.
+constexpr uint32_t kRunStateMirror = 0x83080000u + 17864u;  // 0x830845C8
+constexpr uint32_t kRunState = 0x83080000u + 17868u;        // 0x830845CC
+// u8; zero ends the pump. Eight bytes past sub_82B218E8's kArmedByte (0x83067057), not the same.
+constexpr uint32_t kRunning = 0x83060000u + 28767u;         // 0x8306705F
+// sub_82B219E8 names 0x830BDEBC kProfile; this call uses two of its words as a stopwatch.
+constexpr uint32_t kProfileTotal = 0x830C0000u - 8516u + 4u;  // 0x830BDEC0: accumulated block time
+constexpr uint32_t kProfileStart = 0x830C0000u - 8516u + 8u;  // 0x830BDEC4: this block's start time
 
 // The two kernel imports the `bl`s reach. probe/ports/lint.py check 6 forbids naming an import
 // thunk directly from a port body -- that rule exists so a guest callee goes through GuestCall and
@@ -86,9 +91,9 @@ REX_FUNC(Native) {
   // lwz r11,17868(r26) ; lwz r3,92(r27) ; stw r11,17864(r28) ; bl 0x82f9cb44 -- the mirror starts
   // at whatever is currently requested, and the lock is taken before anything else. The lock
   // pointer is loaded before the store, and reloaded at every later use.
-  const uint64_t requested = REX_LOAD_U32(kStateRequest);
+  const uint64_t requested = REX_LOAD_U32(kRunState);
   const uint32_t lock = REX_LOAD_U32(queue + kQueueLock);
-  REX_STORE_U32(kStateMirror, static_cast<uint32_t>(requested));
+  REX_STORE_U32(kRunStateMirror, static_cast<uint32_t>(requested));
   CallImport(ctx, base, kRtlEnterCriticalSection, lock, 0x82B21AEC);
 
   // lbz r11,28767(r25) ; cmplwi cr6,r11,0 ; beq -> loc_82B21D50
@@ -107,7 +112,7 @@ REX_FUNC(Native) {
           if (REX_LOAD_U8(kRunning) == 0) break;
 
           // lwz r11,17864(r28) ; cmpwi cr6,r11,0 ; bne -> loc_82B21B6C
-          if (Word(REX_LOAD_U32(kStateMirror)) == 0) {
+          if (Word(REX_LOAD_U32(kRunStateMirror)) == 0) {
             // Stopped: drain the command queue and nothing else.
             skate3::audio::GuestCall(ctx, base, sub_82B48530, queue);
             if (REX_LOAD_U8(kRunning) == 0) {  // -> loc_82B21D50
@@ -115,10 +120,10 @@ REX_FUNC(Native) {
               break;
             }
             // b 0x82b21cac
-          } else if (Word(REX_LOAD_U32(kStateMirror)) == 1) {  // loc_82B21B6C -- mirror RELOADED
+          } else if (Word(REX_LOAD_U32(kRunStateMirror)) == 1) {  // loc_82B21B6C -- mirror RELOADED
             // bl 0x82b1f7e8 ; stw r11,8(r29) -- the block's start time
             skate3::audio::GuestCall(ctx, base, sub_82B1F7E8);
-            REX_STORE_U32(kStatsStart, ctx.r3.u32);
+            REX_STORE_U32(kProfileStart, ctx.r3.u32);
             skate3::audio::GuestCall(ctx, base, sub_82B48530, queue);
             if (REX_LOAD_U8(kRunning) == 0) {  // -> loc_82B21D50
               stop = true;
@@ -126,7 +131,7 @@ REX_FUNC(Native) {
             }
             // lwz r11,17868(r26) ; cmpwi cr6,r11,1 ; bne -> loc_82B21CAC -- the REQUEST, not the
             // mirror: a stop asked for during the drain skips the block.
-            if (Word(REX_LOAD_U32(kStateRequest)) == 1) {
+            if (Word(REX_LOAD_U32(kRunState)) == 1) {
               // bl 0x82b219e8 -- fill the current buffer; anything but 1 means it produced nothing
               skate3::audio::GuestCall(ctx, base, sub_82B219E8, self);
               if (Word(ctx.r3.u64) != 1) {
@@ -184,19 +189,19 @@ REX_FUNC(Native) {
 
           // loc_82B21CAC: charge the elapsed time, unless nothing is requested or the mirror
           // already reads 2.
-          if (Word(REX_LOAD_U32(kStateRequest)) != 0 && Word(REX_LOAD_U32(kStateMirror)) != 2) {
+          if (Word(REX_LOAD_U32(kRunState)) != 0 && Word(REX_LOAD_U32(kRunStateMirror)) != 2) {
             skate3::audio::GuestCall(ctx, base, sub_82B1F7E8);
             const uint64_t now = ctx.r3.u64;
-            const uint64_t total = REX_LOAD_U32(kStatsTotal);    // lwz r10,4(r29)
-            const uint64_t started = REX_LOAD_U32(kStatsStart);  // lwz r11,8(r29)
+            const uint64_t total = REX_LOAD_U32(kProfileTotal);    // lwz r10,4(r29)
+            const uint64_t started = REX_LOAD_U32(kProfileStart);  // lwz r11,8(r29)
             // subf r11,r11,r10 ; add r11,r3,r11 -- 64-bit, stored as a word
-            REX_STORE_U32(kStatsTotal, static_cast<uint32_t>(now + (total - started)));
+            REX_STORE_U32(kProfileTotal, static_cast<uint32_t>(now + (total - started)));
           }
 
           // loc_82B21CDC: reconcile the mirror with the request, moving the lock with it. 2 is the
           // state in which the lock is NOT held: leaving it re-acquires, entering it releases.
-          const uint64_t mirror = REX_LOAD_U32(kStateMirror);
-          const uint64_t request = REX_LOAD_U32(kStateRequest);
+          const uint64_t mirror = REX_LOAD_U32(kRunStateMirror);
+          const uint64_t request = REX_LOAD_U32(kRunState);
           if (Word(mirror) != Word(request)) {
             // rotlwi r11,r11,0 -- a no-op copy ; cmpwi cr6,r11,2 ; bne -> loc_82B21D00
             if (Word(mirror) == 2) {
@@ -204,17 +209,17 @@ REX_FUNC(Native) {
                          0x82B21D00);
             }
             // loc_82B21D00: lwz r11,17868(r26) -- the request is reloaded here
-            if (Word(REX_LOAD_U32(kStateRequest)) == 2) {
+            if (Word(REX_LOAD_U32(kRunState)) == 2) {
               CallImport(ctx, base, kRtlLeaveCriticalSection, REX_LOAD_U32(queue + kQueueLock),
                          0x82B21D14);
             }
             // loc_82B21D14: reloaded a third time, and that is what the mirror records
-            REX_STORE_U32(kStateMirror, REX_LOAD_U32(kStateRequest));
+            REX_STORE_U32(kRunStateMirror, REX_LOAD_U32(kRunState));
           }
 
           // loc_82B21D1C: go round the inner loop only while running is still asked for and the
           // next buffer to fill is free; otherwise -> loc_82B21D44.
-          if (Word(REX_LOAD_U32(kStateRequest)) != 1) break;
+          if (Word(REX_LOAD_U32(kRunState)) != 1) break;
           if (Word(REX_LOAD_U32(SlotAddr(self, REX_LOAD_U32(self + kFillIndex)))) != 0) break;
         }
       }
@@ -226,7 +231,7 @@ REX_FUNC(Native) {
   }
 
   // loc_82B21D50: release the lock unless the mirror says it was already given up.
-  if (Word(REX_LOAD_U32(kStateMirror)) != 2) {
+  if (Word(REX_LOAD_U32(kRunStateMirror)) != 2) {
     CallImport(ctx, base, kRtlLeaveCriticalSection, REX_LOAD_U32(queue + kQueueLock), 0x82B21D64);
   }
 

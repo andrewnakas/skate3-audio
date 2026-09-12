@@ -1,6 +1,6 @@
 // sub_82B238A8  role: advance a voice's gain ramp, then scale all its channels by the ramp   lifted: skate3_recomp.67.cpp:14104 (420 lines)
 // STATUS: verified
-// calls/session: boot 48283  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 43351  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B238A8.md
 namespace port_82B238A8 {
 

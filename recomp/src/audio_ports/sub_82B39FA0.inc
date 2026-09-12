@@ -1,6 +1,6 @@
 // sub_82B39FA0  role: mix dispatcher over the same descriptor as sub_82B3D4F8 -- when the word at +8 is zero, call the five-gain kernel sub_82B399D0 with three outgoing stack arguments and latch its returned f1 into the gain block's +32; otherwise just memset the +20 buffer to zero   lifted: skate3_recomp.68.cpp:905 (92 lines)
-// STATUS: pending
-// calls/session: boot 182370  play ?  map ?          thread: RwAudioCore Dac
+// STATUS: verified
+// calls/session: boot 136722  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B39FA0.md
 namespace port_82B39FA0 {
 
@@ -107,21 +107,107 @@ REX_FUNC(Native) {
   ctx.r31.u64 = REX_LOAD_U64(ctx.r1.u32 - kSaveSlot);           // ld r31,-16(r1)
 }
 
+// The kernel path's write set, mirrored from the callee's own enumeration.
+//
+// WARNING, and it is the load-bearing sentence of this file: the span shapes below are COPIED
+// from `port_82B399D0::Windows()` in recomp/src/audio_ports/sub_82B399D0.inc. A change to that
+// port's window arithmetic requires the same change here. The primitives are referenced rather
+// than copied -- kPermTable, kBlockBytes, QuarterToZero, Lower, Upper all resolve into that
+// namespace (it is included first in ports_68a.manifest.inc), so only the union structure is
+// duplicated, and the duplicated part is annotated line by line with its counterpart.
+//
+// Why a copy and not a call: the callee reads `mixed`, `copy` and the clear flag off
+// 84/92/100(r1), which is THIS function's frame and does not exist yet when Windows() runs. The
+// three values are nonetheless known from entry state -- they are what the prologue above stores
+// into those slots: desc[16], desc[20] and r5. Every other input of that enumeration is an
+// argument this function passes: r3 = r4 (count), r9 = desc[0], r10 = desc[4].
+//
+// This does lean on `sub_82B399D0`'s port being green, and it is: zero divergence over 141,462
+// comparisons with skipped=0, so its enumeration has been checked against the lifted callee far
+// more thoroughly than a re-derivation from here could be.
+bool KernelWindows(uint8_t* base, skate3::audio::PortSpec& spec, uint32_t desc, int32_t count,
+                   uint32_t clear) {
+  const uint32_t mixed = REX_LOAD_U32(desc + kDescMixed);    // -> 84(r1), the callee's kArgMixed
+  const uint32_t copy = REX_LOAD_U32(desc + kDescCopy);      // -> 92(r1), the callee's kArgCopy
+  const uint32_t addend = REX_LOAD_U32(desc + kDescAddend);  // -> r9
+  const uint32_t source = REX_LOAD_U32(desc + kDescSource);  // -> r10
+  constexpr uint32_t kBlock = port_82B399D0::kBlockBytes;
+
+  const uint32_t span = (static_cast<uint32_t>(count) << 2) & 0xFFFFFFFCu;
+  const int32_t blocks = port_82B399D0::QuarterToZero(count) - 4;
+  const uint32_t iters = blocks > 0 ? ((static_cast<uint32_t>(blocks - 1) >> 2) + 1u) : 0u;
+  const int64_t tail = static_cast<int64_t>(blocks) * 16;  // negative for count < 16
+
+  // The eight-word vperm128 table the kernel rebuilds in .data on every call, at a fixed address.
+  spec.write(port_82B399D0::kPermTable, port_82B399D0::kPermTableBytes);
+  spec.read(port_82B399D0::kPermTable, port_82B399D0::kPermTableBytes);
+
+  // mixed: four stvx128 at the 16-byte floor for the first block, sixteen unmasked stfs plus four
+  // masked stvx128 per iteration, then sixteen stfs at mixed + 16*blocks.
+  uint64_t lo = static_cast<uint64_t>(mixed) & ~0xFull;
+  uint64_t hi = lo + kBlock;
+  if (iters != 0) {
+    lo = port_82B399D0::Lower(lo, static_cast<uint64_t>(mixed));
+    hi = port_82B399D0::Upper(hi, (static_cast<uint64_t>(mixed) & ~0xFull) +
+                                      kBlock * (static_cast<uint64_t>(iters) + 1));
+    hi = port_82B399D0::Upper(hi,
+                              static_cast<uint64_t>(mixed) + kBlock * static_cast<uint64_t>(iters));
+  }
+  const int64_t tail_mixed = static_cast<int64_t>(mixed) + tail;
+  if (tail_mixed < 0) return false;  // count < 16 walks the tail block off the bottom of the map
+  lo = port_82B399D0::Lower(lo, static_cast<uint64_t>(tail_mixed));
+  hi = port_82B399D0::Upper(hi, static_cast<uint64_t>(tail_mixed) + kBlock);
+  if (hi > 0x100000000ull) return false;
+  spec.write(static_cast<uint32_t>(lo), static_cast<uint32_t>(hi - lo));
+  spec.read(static_cast<uint32_t>(lo), static_cast<uint32_t>(hi - lo));
+
+  // copy: four stvx128 per iteration and four for the tail block, plus -- when the flag is zero --
+  // the dcbzl establish, from the 128-byte FLOOR of copy over ceil(count*4 / 128) whole lines.
+  const int64_t tail_copy = static_cast<int64_t>(copy) + tail;
+  if (tail_copy < 0) return false;
+  uint64_t clo = static_cast<uint64_t>(tail_copy) & ~0xFull;
+  uint64_t chi = clo + kBlock;
+  if (iters != 0) {
+    clo = port_82B399D0::Lower(clo, static_cast<uint64_t>(copy) & ~0xFull);
+    chi = port_82B399D0::Upper(chi, (static_cast<uint64_t>(copy) & ~0xFull) +
+                                        kBlock * static_cast<uint64_t>(iters));
+  }
+  if (clear == 0 && span != 0) {
+    const uint64_t lines = static_cast<uint64_t>((span - 1u) / 128u) + 1u;
+    const uint64_t zlo = static_cast<uint64_t>(copy) & ~127ull;
+    clo = port_82B399D0::Lower(clo, zlo);
+    chi = port_82B399D0::Upper(chi, zlo + 128ull * lines);
+  }
+  if (chi > 0x100000000ull) return false;  // the clear would wrap the address space
+  spec.write(static_cast<uint32_t>(clo), static_cast<uint32_t>(chi - clo));
+  spec.read(static_cast<uint32_t>(clo), static_cast<uint32_t>(chi - clo));
+
+  // Read, never written: addend a block at a time, and source one line further because every
+  // group is also read a single along.
+  const uint64_t alo = static_cast<uint64_t>(addend) & ~0xFull;
+  const uint64_t ahi = alo + kBlock * (static_cast<uint64_t>(iters) + 1);
+  if (ahi <= 0x100000000ull) spec.read(static_cast<uint32_t>(alo), static_cast<uint32_t>(ahi - alo));
+  const uint64_t slo = static_cast<uint64_t>(source) & ~0xFull;
+  const uint64_t shi = slo + kBlock * (static_cast<uint64_t>(iters) + 1) + 16;
+  if (shi <= 0x100000000ull) spec.read(static_cast<uint32_t>(slo), static_cast<uint32_t>(shi - slo));
+  return true;
+}
+
 // Every byte the call writes, from ENTRY state only. The selector at +8 picks the path and is
-// readable before the call, so the refusal below is predicted, not discovered.
+// readable before the call, so both paths are decided here, not discovered.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   const uint32_t desc = ctx.r7.u32;
   spec.read(desc, kDescBytes);
 
-  // The kernel path reaches sub_82B399D0: 901 lines, sixteen stvx128 / fourteen stfsx / thirty
-  // stfs, with bases that are loop cursors and inter-buffer deltas built inside the call -- 56
-  // gate-2 suspects in its census. (One store is easy, into the lis-based global at
-  // 0x830D1524; the rest are not.) Not enumerable from here. A guessed superset is not acceptable: the harness replays the
-  // callee on rewound memory, so a byte written outside the windows is applied twice to the live
-  // game with no rewind. Mirror sub_82B399D0's own Windows() once it has one -- the way
-  // sub_82B3D4F8's port mirrors sub_82B3CF58's -- and this path opens up together with the
-  // stfs f1,32(r31) latch, which is the only store of this function's own.
-  if (REX_LOAD_U32(desc + kDescSelect) == 0) return false;
+  if (REX_LOAD_U32(desc + kDescSelect) == 0) {
+    // The kernel path. Its own store is one single -- stfs f1,32(r31) -- and everything else is
+    // sub_82B399D0's, enumerated by KernelWindows above from the values this function is about to
+    // hand it. The five gains are read; only the fifth is written.
+    const uint32_t gains = ctx.r3.u32;
+    spec.read(gains + kGain0, 20);  // lfs f1..f5 at +16..+32
+    spec.write(gains + kGainState, 4);
+    return KernelWindows(base, spec, desc, ctx.r4.s32, ctx.r5.u32);
+  }
 
   // The clear path: memset writes exactly its length, no overshoot (byte-align prologue, then
   // 16-byte blocks, then (len>>2)&3 words, then len&3 bytes -- 16*(n>>4) + 4*((n>>2)&3) + (n&3)
@@ -134,4 +220,4 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 }
 
 }  // namespace port_82B39FA0
-SKATE3_PORT(82B39FA0, skate3::audio::kPortPending, skate3::audio::kReturnNone)
+SKATE3_PORT(82B39FA0, skate3::audio::kPortVerified, skate3::audio::kReturnNone)
