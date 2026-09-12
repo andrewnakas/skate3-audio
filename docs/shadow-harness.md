@@ -128,6 +128,64 @@ input point, not over a distribution: other formats, rates and channel counts ar
 as is every `fctidz` edge the conversion reproduces (NaN, values past 2^63, the `>` versus
 `>=` boundary at exactly 2^63). **Not promoted.**
 
+## The queue producer — 6,706 calls, and which paths they were
+
+`sub_82B28A00` is the command-queue producer, and a **leaf on all four paths**: no direct
+calls, no indirect calls, nothing the harness cannot replay. It is the first hook here that
+needs no skip counter, so its divergence figure covers every call it saw.
+
+Selectors 0, 1 and 2 append a record whose first word is the consumer's own address and whose
+length that consumer implies — 20 bytes for `EVENT_PLAY`, 8 for `EVENT_STOP`, 12 for
+`EVENT_SUBMIT`. Those three sizes and handler addresses were derived here from the producer's
+`lis`/`addi` pairs and match the three consumers read independently, which is a real
+cross-check rather than a restatement. The derivation is `static_assert`ed against the
+consumer addresses, so a misread of the lifted body fails the build.
+
+Any other selector does not touch the queue. It asks whether the packet at `params+4` is
+still live — walking the submitted-packet FIFO at `+0x148` through `next` at `+0xC`, the same
+list `EVENT_STOP` unlinks, then the 20-entry table at `+0x54`, where a hit only counts as live
+when its discriminator byte is not 2 — and writes a constant plus the NaN payload
+`0x7FF7FFF1` into the caller's params.
+
+**Measured, 2026-09-11: 6,706 comparable calls, zero register and zero memory divergence,
+zero skipped.** The strongest result in the project so far — and the total on its own would
+overstate it. Per selector, sampled through the session:
+
+| selector | what it does | calls |
+|---|---|---|
+| 0 | append a 20-byte `EVENT_PLAY` record | **1** |
+| 1 | append an 8-byte `EVENT_STOP` record | **0** |
+| 2 | append a 12-byte `EVENT_SUBMIT` record | 1,541 |
+| 3+ | query whether a packet is live; writes the caller's params | 4,602 |
+
+So about three queries per submitted packet, and the headline figure is roughly three quarters
+query path, one quarter submit append. **The play append ran once and the stop append never
+ran at all.** Those two paths are written, built and essentially unexercised; a promotion
+would run them for real on inputs nothing has checked.
+
+Open question, recorded rather than resolved: the `EVENT_STOP` *consumer* (`sub_82B28C18`) was
+called once in these same sessions, so a stop record existed — yet selector 1 never fired
+while the shadow was armed. Either something else enqueues stop records (`sub_82B48530` is the
+other queue function, and it is **not** a leaf) or that consumer call did not arrive through
+this queue. Worth settling before anyone treats selector 1 as dead code.
+
+The ordering fix from `docs/command-queue.md` is deliberately **not** in this port. The
+producer publishes the write offset at `+204` before storing the handler and payload, which is
+bug 1, and reproducing it exactly is what makes the body comparable at all: a fix would
+diverge from the original by construction, and the harness cannot tell an intended behaviour
+change apart from a porting mistake. The fix lands as its own change, against a verified body.
+
+### What the buffer-pair functions will cost
+
+`sub_82B7F828` (buffer-pair init, 76 lines) screens clean — its only callee, `sub_82F52040`,
+is a 98-line leaf confirmed to be `memset` (byte fill to alignment, `rlwimi` splat, a 16-byte
+unrolled `stw` loop, then 4-byte and byte tails). But it `memset`s **two caller-supplied
+buffers of caller-supplied length**, and `kMaxWatch` is 64 KB across all windows, with the
+overflow path dropping the offending window *and every window after it*. Since a write outside
+the windows is never rewound, an under-covered port would leak native writes into the live
+game rather than merely under-verify. So the lengths get measured before any native body is
+written — the same check that `EVENT_STOP` taught, applied before writing instead of after.
+
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,
 `msr` and the reservation state are not compared. Another thread writing a watched window
@@ -226,7 +284,7 @@ Two consequences:
 | file | what |
 |---|---|
 | `recomp/src/skate3_audio_shadow.{h,cpp}` | the harness |
-| `recomp/src/skate3_audio_native.cpp` | `EVENT_SUBMIT`, `EVENT_STOP`, `EVENT_PLAY`; three modes each |
+| `recomp/src/skate3_audio_native.cpp` | the queue producer, `EVENT_SUBMIT`, `EVENT_STOP`, `EVENT_PLAY`; three modes each |
 | `recomp/src/skate3_audio_dump.cpp` | the `audio_dump_path` tap |
 | `recomp/src/skate3_audio_probe.cpp` | XMA feed probe, unchanged |
 | `probe/harness/run_session.sh` | one session |
