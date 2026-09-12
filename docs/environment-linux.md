@@ -191,6 +191,33 @@ against a rewound context copy, compare, discard.
 Treat the `CLAUDE.md` trap as **version-specific to the macOS tree**, not wrong in general.
 That machine may carry newer codegen that introduced the header.
 
+### But a NEW source file is silently ignored (2026-09-11)
+
+The cheap-relink rule above holds for a hook added to a translation unit the build already
+knows about. It does **not** hold for a new file, and the failure mode is silent.
+
+`CMakeLists.txt` carries an **explicit source list** (around line 256, every `src/*.cpp` named
+individually) — not a `file(GLOB)`. Add a new TU, build, and `ninja` prints nothing unusual and
+**exits 0**. Nothing compiles it, no object file appears, and any `extern "C" REX_FUNC(...)`
+overrides in it stay weak `W`, so the binary behaves exactly as before.
+
+That cost a wasted session here. A counting-hook TU for the Phase 3 kernels was written, built
+"successfully", and a session run against it — and the only reason the result was not read as
+"these kernels are never called" is that the symbols were checked rather than the exit code:
+
+```
+overrides now strong: 0/4 sampled          # and no .o file for the new TU
+```
+
+**So check the artifact, never the exit status.** After listing the file, the same two checks
+pass unambiguously: the object file exists, and 15 of 15 symbols report strong `T`.
+
+Two corrections to costs quoted elsewhere. Adding a source file does **not** trigger the
+"reconfigure plus 261 build steps" that `docs/shadow-harness.md`'s table implies: measured here
+it was **11 steps in 8 s**, because only `main.cpp`, `rex_app.cpp` and the new TU needed
+rebuilding. And the reconfigure is automatic — `ninja` re-ran CMake itself, no manual configure
+step was needed.
+
 ## The VMX128 kernels are readable right now
 
 `CLAUDE.md` calls VMX128 exactness "the single biggest risk in any effort estimate." It is
