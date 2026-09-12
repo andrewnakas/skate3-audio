@@ -151,7 +151,9 @@ wasted candidate to learn:
    harness only rewinds what its windows cover, so a write outside them lands in the live
    game. `sub_82B482F8` passes gate 1 and fails here: it walks a list of unknown length and
    performs doubly-linked surgery across three objects per node, so the addresses are
-   data-dependent and cannot be enumerated before the call. `sub_82B7F828` looked like it would fail here too, by
+   data-dependent and cannot be enumerated before the call. `sub_82B7F8A8` fails it a second
+   way: its `memset` length is `r29 + r27`, both read out of stack scratch that a callee fills
+   *during* the call, so the window cannot be sized until the work has already happened. `sub_82B7F828` looked like it would fail here too, by
    `memset`ting two caller-supplied buffers of caller-supplied length — **measured, it
    passes**: 192 and 196 bytes on the first call, maxima 400 and 256 across a session, against
    a 65,536-byte budget. The inference would have disqualified a portable function, so it was

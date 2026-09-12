@@ -194,7 +194,18 @@ function is called tens of times per session — milestones fired at 1 and 16 an
 so unlike `REQUEUE` it does arrive. The suspicion that it would fail gate 2 was wrong, and
 recording it as disqualified would have written off a portable function on an inference.
 
-A native port still needs a **self-guard** rather than trust in those maxima: they describe the
+**Ported and verified, 2026-09-11: 222 comparable calls, zero register and zero memory
+divergence.** Both observed size combinations — `(192,196)` and `(400,256)` — zero budget
+warnings, and the oversize guard never fired. The native body reproduces the original's store
+order and calls the guest `memset` on an isolated context copy rather than substituting a host
+zero-fill, so the callee's behaviour at length 0 is identical by construction rather than by my
+reading of its alignment preamble.
+
+This is the function whose gate-2 disqualification I had already written into PLAN from an
+inference. It is portable, it is now the second best-exercised function in Phase 2, and the
+only reason it was not written off is that the claim was downgraded to a suspicion and measured.
+
+The port still carries a **self-guard** rather than trust in those maxima: they describe the
 calls observed, not the function's range, and other content or worlds may pass larger buffers.
 If the two lengths plus the object's 40 bytes would exceed the budget, the hook must run the
 original and count the skip — because the failure mode here is not under-verification but a
@@ -250,6 +261,65 @@ So `EVENT_STOP` and `REQUEUE` are unverified for opposite reasons, which is a us
 keep in mind: the first arrives constantly and is never comparable, the second would be
 perfectly comparable and never arrives. Passing the gates buys nothing if the game does not
 call the function.
+
+## A window whose length arrives too late: `sub_82B7F8A8`
+
+The buffer-pair *measure* function is gate-1 clean — the whole family is, five levels down to
+`memset` and `memcpy` leaves — and it still cannot be windowed. The reason is new, and sharper
+than `sub_82B482F8`'s:
+
+```
+  stwu r1,-224(r1)            ; its own frame
+  ten zeroing stores          ; scratch at r1+80 .. r1+116
+  bl sub_82B7F998(r3, r1+80)  ; the callee FILLS that scratch
+  lwz r29,112(r1)             ; read back out of it
+  lwz r27,92(r1)
+  add r5,r29,r27              ; <- a length, computed from what the callee wrote
+  bl sub_82F52040(r30, 0, r5) ; memset the caller's buffer, THAT long
+  bl sub_82B7F828(r1+128, r30, r29, r11+r30, r27)
+  bl sub_82B7F998(r3, r1+128)
+```
+
+`sub_82B482F8` fails gate 2 because the **set of addresses** is data-dependent. This one fails
+because a window's **length is not knowable before the call**: `r5` is `r29 + r27`, and both
+come out of the stack scratch that `sub_82B7F998` fills *during* the call. To size the window,
+the hook would have to run the callee first — which is the one thing it cannot do, since
+running the original is what it is trying to bracket.
+
+Note what is *not* the problem. The stack frame is enumerable: the hook knows `r1` at entry, so
+the scratch sits at `r1-224+80` and the pair at `r1-224+128`. Being stack-local is no obstacle.
+The obstacle is purely the ordering — a length that exists only after the work has happened.
+
+Its transitive written set also absorbs the `sub_82B7F998` -> `sub_82B7FB40` -> `sub_82B7FC70`
+-> `memcpy` subtree, which would have to be read and bounded before any port. So the buffer-pair
+family splits: `sub_82B7F828` (init) is portable and measured, and `sub_82B7F8A8` (measure) is
+not a harness target.
+
+So gate 2 has two distinct failure modes, and both were found by reading bodies rather than by
+screening callees:
+
+| mode | example | why |
+|---|---|---|
+| address set data-dependent | `sub_82B482F8` | walks a list of unknown length, three objects patched per node |
+| window length arrives during the call | `sub_82B7F8A8` | `r5 = r29 + r27`, both written by a callee |
+| address set discovered mid-call | `sub_82B7F998` | writes through `r11` as it is loaded and advanced, plus `sub_82B7FB40`'s unbounded subtree |
+
+With that, every function in PLAN's Phase 2 bullet list is screened:
+
+| function | outcome |
+|---|---|
+| `sub_82B28CC0` `EVENT_SUBMIT` | **promoted**, 1,678 calls clean |
+| `sub_82B28A00` `ENQUEUE` | **6,706 calls clean** — but play=1, stop=0 |
+| `sub_82B7F828` buffer-pair init | **222 calls clean** |
+| `sub_82B28B78` `EVENT_PLAY` | 1 call clean, one input point |
+| `sub_82B48B28` `REQUEUE` | passes all three gates, **0 calls** |
+| `sub_82B28C18` `EVENT_STOP` | gate 1 — live decoder, 0 comparable |
+| `sub_82B48A50`, `sub_82B48530`, `sub_82B48440` | gate 1 — indirect calls (the last two levels down) |
+| `sub_82B1F7E8` | gate 3 — `mftb` |
+| `sub_82B482F8`, `sub_82B7F998`, `sub_82B7F8A8` | gate 2 — unwindowable |
+
+Three verified, one promoted, and eight that the harness cannot check or the game does not call.
+That ratio is the honest shape of Phase 2, and it was not visible from the function list.
 
 Still true of the harness: windows must cover every byte a function writes, because a write
 outside them keeps the lifted value while the native body runs. `lr`, `ctr`, `xer`, `fpscr`,
