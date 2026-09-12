@@ -66,9 +66,36 @@ which is how a bail got attributed to an X press that did not cause one. `sk8-en
 flagged exactly this: its own consumer filters on the local skater's animation interface and
 its note says the signal "needs a local-player filter before it is correct".
 
-Until the harness records which player each wipeout belongs to — the object pointer arrives
-in `r3` — **treat the count as "someone fell", not "the skater bailed", and confirm every
-bail against a frame.**
+The harness now records **which** player each wipeout belongs to (the object pointer arrives
+in `r3`) and **why** it fired.
+
+On which: `sk8-engine-linux` documents the local actor's skater-animation interface as
+`actor + 1808`, measured at `0x403D7020`. A peer session running this hook reported
+`player 403D7020` for a confirmed local bail, while every wipeout in these sessions was on
+`407C2820` — bystanders. Two codebases, two sessions, the same address, so that reading is
+measured rather than asserted. A local-skater *filter* was considered and dropped: the fork's
+local-player object and its action-graph actor are never the same object, so there is no cheap
+offset from `CreateLocalPlayer` to `actor + 1808`, and the identity comes from a per-frame
+action-graph input-fill hook instead.
+
+On why, from the lifted `sub_82DB9100`:
+
+```
+if (sub_82DB9188(this))            return 0;   // a guard that SUPPRESSES, not a trigger
+if (sub_82D91098(*(this + 1876)))  return 1;
+return (*(*(this + 1804) + 2480) & 0x8) != 0;  // bit 3: the physics world's own request
+```
+
+A true result means the guard was false and at least one condition held. Bit 3 is readable
+without calling anything, so the hook reads it once per event and attributes the `+1876`
+predicate by elimination. It prints `unknown` rather than guessing when the interface pointer
+falls outside the guest object band, because a flags word that was never read looks identical
+to one that read zero. Note that a **zero** result is ambiguous between "condition false" and
+"guard true", and that **nothing in the poll measures time** — a fixed-interval bail cannot
+originate here.
+
+Still true, and the reason the count is not a bail detector on its own: it is polled per
+physical player, so **confirm every bail against a frame.**
 
 **Frames.** `@capture` reads the presenter's guest output and writes a PPM;
 `probe/trace/frames_to_png.sh DIR [WIDTH]` converts a directory to PNG. In parallel,
