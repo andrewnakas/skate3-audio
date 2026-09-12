@@ -216,7 +216,15 @@ and bug 1's ordering fix is specified only as an objective, not an implementatio
 **Screened 2026-09-11 (`docs/execution-trace.md`).** The audio-thread surface is **16 kernels,
 1,487 vector instructions**, and **gate 1 closes across all 24 functions in the subtree with
 zero indirect calls** — unlike Phase 2, where gate 1 killed three candidates. Eleven are leaves.
-First target is `sub_82B50380` (217 vec, 1,284 lines, no callees), which passes gates 2 and 3;
+Frequency is measured, not assumed (`skate3_audio_kernel_census`): 15,085,386 calls across
+~100 s, and the order is not the one instruction counts imply — `sub_824531C8` runs 7,962,020
+times on 43 instructions while `sub_82B22898` runs 40,160 on 583, and `sub_82B427D8` manages 4.
+A **fourth gate** came out of it: the result must land where the harness can observe it.
+`sub_824531C8` has zero stores and returns in `v0/v1/v12/v13/v59/v60`, none of which is in
+`SHADOW_PRESERVED_VRS` or reachable by a `kReturn*` flag, so comparing it would check nothing on
+eight million calls. Fixable by extending `ShadowReturn`; until then, register-only kernels are
+out. First target is `sub_82B50380` (217 vec, 1,284 lines, no callees, 254,917 calls, 111
+observable stores), which passes gates 2, 3 and 4;
 `sub_82B22898` (583 vec) is the heaviest but has five callees and a four-level subtree, so it is
 not the place to start. One hazard is named there and not covered by Phase 0b: the
 `stvlx128`/`stvrx128` unaligned store lowering writes partial vectors with opposite lane

@@ -234,6 +234,59 @@ will not be finding checkable functions.
 Only `sub_82B22898` is entangled: 2,339 lines and five callees, with a subtree that took four
 further levels to close. Porting it first would be the wrong order while eleven leaves wait.
 
+### Frequency, measured — and it inverts the order instruction counts suggested
+
+Counting hooks on all fifteen (`skate3_audio_kernel_census`, cvar-gated) over ~100 s:
+**15,085,386 calls, every kernel called.**
+
+| kernel | calls | vec | stores | observable result regs |
+|---|---|---|---|---|
+| `sub_824531C8` | **7,962,020** | 43 | **0** | none |
+| `sub_82B44B20` | 3,307,685 | 33 | 9 | none |
+| `sub_82B3BED8` | 1,511,888 | 25 | 11 | none |
+| `sub_82B3C098` | 1,360,578 | 69 | 12 | none |
+| `sub_82B50380` | 254,917 | 217 | **111** | none (memory is the output) |
+| `sub_82B399D0` | 206,226 | 98 | 63 | v25–v28 |
+| `sub_82B3CF58` | 205,964 | 25 | 6 | none |
+| `sub_82B238A8` | 62,397 | 16 | 29 | none |
+| `sub_82B3D0A8` | 59,373 | 56 | 24 | none |
+| `sub_82B22898` | 40,160 | **583** | 21 | v125–v127 |
+| `sub_82B42C98` | 39,156 | 99 | 52 | v29–v31 |
+| `sub_82B389A0` | 34,371 | 42 | 8 | v30 |
+| `sub_82B44D18` | 25,439 | 84 | 12 | v24–v31 |
+| `sub_82B373C8` | 15,208 | 29 | 14 | none |
+| `sub_82B427D8` | **4** | 36 | 34 | none |
+
+Instruction count measures **porting effort**, not value, and it was being read as both.
+`sub_82B22898` is heaviest at 583 instructions and runs 200x less often than `sub_824531C8`
+across 2,339 lines and five callees. `sub_82B427D8` manages four calls — `REQUEUE` again, and
+the reason this census exists at all.
+
+### Gate 4: the result has to land where the harness can see it
+
+`sub_824531C8` looked ideal — 113 lines, leaf, 43 vector instructions, eight million calls, and
+**zero stores**, so gate 2 is trivially satisfied. It is in fact unportable under this harness,
+and nearly became the first Phase 3 port on the strength of that zero.
+
+With no stores there are no memory windows, so its output can only be in the vector registers it
+writes: `v0`, `v1`, `v12`, `v13`, `v59`, `v60`. `SHADOW_PRESERVED_VRS` covers `v14`–`v31` and
+`v64`–`v127`; the return flags are `kReturnR3`, `kReturnF1`, `kReturnV2`. **None of those six is
+observable.** A shadow comparison would compare nothing at all and report a clean pass on every
+one of eight million calls — the vacuous green the first negative control exposed, total rather
+than partial.
+
+So: **a candidate must produce output the harness can observe** — memory inside a window, or a
+register in the preserved set or a `kReturn*` flag. This is a property of the harness, not of the
+function, and it is fixable: extend `ShadowReturn` so a hook can name the volatile vector
+registers its function returns in.
+
+Note what this does **not** disqualify. "Volatile" is not "not a result" — `r3`, `f1` and `v2`
+are all volatile and all return registers. Kernels with substantial stores (`sub_82B50380` 111,
+`sub_82B399D0` 63, `sub_82B42C98` 52, `sub_82B238A8` 29) write real guest memory, and *that* is
+their observable output; their volatile vector writes are very likely scratch a caller cannot
+rely on. Only **register-only** kernels fail gate 4, and on this evidence that is
+`sub_824531C8` definitively.
+
 ### `sub_82B50380`, the first target, and one hazard it carries
 
 217 vector instructions, 1,284 lines, **no callees**. Gate 3 passes outright: no timebase, no
