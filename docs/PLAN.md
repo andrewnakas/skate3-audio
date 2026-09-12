@@ -127,6 +127,15 @@ all detailed in `docs/shadow-harness.md`:
 
 ### Phase 2 — struct layouts and scalar plug-in logic, native C++
 
+> **COMPLETE, 2026-09-12, and by a route this section argued against.** The "do not sweep the
+> 200" decision below was correct about the economics it measured — 12 functions hand-screened
+> for 3 verified — and the user reversed it once scripted screening, batched verification and a
+> result-register mask changed those economics. **All 216 audio-thread functions now have a
+> native body; 138 are shadow-verified with zero divergence.** Results in `docs/port-loop.md`,
+> per-function status in `docs/ports.md`. The reasoning below is kept because the gates it
+> earned are still the screening rules, and because the cost estimate was right for the method
+> it was estimating.
+
 In Phase 0a frequency order where available, else call-graph order:
 
 - Command queue producer/consumer (`sub_82B28A00`, `sub_82B28B78/C18/CC0`, `sub_82B48530`) —
@@ -212,6 +221,14 @@ and bug 1's ordering fix is specified only as an objective, not an implementatio
 (`docs/command-queue.md`).
 
 ### Phase 3 — VMX128 kernels, native C++
+
+> **COMPLETE, 2026-09-12.** 14 of the 16 audio-thread vector kernels are verified; two carry
+> gate 2. The two open items named below are both resolved: `ShadowCompare` did **not** need a
+> buffer-output variant (the window list plus a `ShadowResults` register mask sufficed), and
+> **gate 4 is retired** — `sub_824531C8`, the zero-store sine kernel, verified over **6,994,118
+> calls** once arbitrary result registers could be named. Shadow overhead on that kernel proved
+> negligible, so the sampling fallback was never needed. `sub_82B50380`'s gate-2 verdict stands,
+> re-derived independently while porting it.
 
 **Screened 2026-09-11 (`docs/execution-trace.md`).** The audio-thread surface is **16 kernels,
 1,487 vector instructions**, and **gate 1 closes across all 24 functions in the subtree with

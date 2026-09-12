@@ -45,9 +45,21 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Container formats | all three decoded and documented |
 | Conversion | **sample-exact** on ambience, speech and music |
 | Rust crates | **two**. `skate-audio-formats`: 33 tests, three containers, validated on real archives. `skate-audio-core`: started 2026-09-11, the queue path ported from the shadow-verified C++ (`system.rs`, `player.rs`, 11 tests) — **tier 1 met**: every comparison of a complete session — **8,607** real recorded vectors — replayed against the C++'s own results, 0 disagreements, four functions (`system.rs`, `player.rs`, `buffers.rs`), 13 unit tests, four negative controls that fail correctly. Read the limits in `docs/shadow-harness.md` before quoting the number |
-| Shadow harness | **proven**: `EVENT_SUBMIT` 1,678 runs, zero divergence (`docs/shadow-harness.md`) |
-| Native functions | six written. Well exercised: the queue producer `sub_82B28A00` **6,706 calls** (but stop-append never ran), buffer-pair init `sub_82B7F828` **222 calls**, `EVENT_SUBMIT` promoted. Thin or unverified: `EVENT_PLAY` **one input point**, `EVENT_STOP` no comparable path, `REQUEUE` never called. PLAN's Phase 2 list is now fully screened — screen against its **three gates** before writing anything |
+| Shadow harness | **proven** and extended: `ShadowResults` compares any GPR/FPR/VR/CR, budget overflow is a hard failure, nested replays are suppressed (`docs/shadow-harness.md`) |
+| Native functions | **the sweep is COMPLETE, 2026-09-12: all 216 audio-thread functions have a body; 138 shadow-verified with zero divergence.** The other 78 carry the gate that makes them uncheckable: 69 gate 1, 3 gate 2, 4 gate 3, 2 pre-existing. Do not re-port any of them — read `docs/ports.md` for per-function status and `docs/port-loop.md` for how the loop runs |
 | Guest-mix capture | `audio_dump_path` written for Linux and validated; **not reproducible run to run** |
+
+### What to work on next
+
+The native sweep is finished, so the live fronts are:
+
+1. **Promotion.** The 138 verified bodies run only behind `--skate3_audio_native=true`. Which
+   should become the default is a judgement separate from proving them equal, and it is open.
+2. **The Rust engine** (`docs/PLAN.md` Phase 4). Every function it needs now has a verified or
+   gate-labelled C++ reference in `recomp/src/audio_ports/`, so each port is transcription, not
+   analysis. `scheduler.rs`, `xma.rs`, `dsp/` and `graph.rs` are unwritten.
+3. **`.mpf` sequencing sections 0–3** — the headline format gap, below.
+4. **Bug 1's ordering fix**, now that `docs/command-queue.md` records a *second* producer.
 
 ### Open
 
@@ -119,25 +131,40 @@ and the four heaviest kernels did not run at all.
 
 ## Workflow for native audio
 
-1. Read the function. On Linux read the **lifted** form:
-   `grep -n 'DEFINE_REX_FUNC(sub_XXXXXXXX)' generated/skate3_recomp.*.cpp`. There is no
-   Ghidra corpus and no JDK on that box, so `out/decomp/sub_XXXXXXXX.c` is macOS-only —
-   looking for it there wastes a lookup. The lifted form is also what actually executes.
-2. Write the native version in `recomp/src/skate3_audio_native.cpp`.
-3. Register the hook: add `REX_FUNC(sub_XXXXXXXX)`, run `tools/gen_hooked_funcs.sh`. On Linux
-   there is no registration step: an `extern "C" REX_FUNC(sub_XXXXXXXX)` definition wins at
-   link time.
-4. Build, run with `--skate3_audio_shadow=true`, play. On Linux `probe/harness/run_session.sh`
-   does this. Functions on the PacketPlayer path only run while a frontend movie plays.
-5. Promote to `--skate3_audio_native=true` **only** after zero divergence.
+The sweep is done, so this is now the recipe for *revisiting* a port — tightening a window,
+fixing a divergence, or promoting one — not for starting from nothing. It is automated; use the
+tooling rather than the steps it replaced.
+
+```sh
+SK8_PKG_DIR=/tmp/pkg python3 probe/ports/package.py ADDR   # body + census + store provenance
+$EDITOR recomp/src/audio_ports/sub_ADDR.inc                # Native() and Windows() only
+python3 probe/ports/lint.py                                # 8 structural checks, pre-build
+probe/ports/cycle_build.sh /tmp/expect.txt                 # manifests, sync, build, artifact check
+OUT=$PWD/probe/harness/out SHADOW=true PORT_CENSUS=true DURATION=110   EXPECT_T=/tmp/expect.txt probe/harness/run_session.sh LABEL
+python3 probe/harness/summarize_session.py probe/harness/out/LABEL.log   --expect-file /tmp/expect.txt --json /tmp/s.json
+python3 probe/ports/promote.py /tmp/s.json --profile boot   # queue + .inc STATUS
+```
+
+A port supplies only `Native()` and `Windows()` inside `namespace port_ADDR`, plus one
+`SKATE3_PORT(...)` line; the macro generates the census, shadow and promotion wrapper. The
+window builder is the only per-function intelligence, and `docs/port-loop.md` explains what it
+must cover. Read `probe/ports/SUBAGENT_BRIEF.md` for the exact-semantics rules — store order,
+`fctidz` edges, FMA versus separate multiply, flush-mode call points.
+
+Three profiles matter, and one session is not enough: the **boot** profile misses functions that
+only a played session reaches. Two functions read as never-called on boot evidence and then
+verified over 100,810 and 106 calls under a scripted skate-and-bail
+(`INPUT_SCRIPT=probe/trace/scripts/bail_replay_v2.txt`).
 
 The harness runs the original first and keeps its result, then runs yours against a rewound
-copy and discards it. A wrong native implementation cannot corrupt the running game, so it
-is safe to leave armed through normal play — and the game generates far better test inputs
-than anything you would write, at 187.5 frames a second.
+copy and discards it. A wrong native implementation cannot corrupt the running game **as long as
+every byte it writes is inside a declared window** — that is what `Windows()` is for, and a write
+outside them is never rewound. So it is safe to leave armed through normal play, and the game
+generates far better test inputs than anything you would write, at 187.5 frames a second.
 
-**Batch several native functions per build cycle.** Adding a hook forces a full rebuild
-(see traps) — **on macOS only**. On Linux run a tight one-function-at-a-time loop instead.
+**Adding a port costs one aggregator compile plus a relink**, roughly 4 s: the `.inc` files are
+included by six TUs that ninja tracks. No CMake edit, no batching. The macOS full-rebuild trap
+below does not apply here.
 
 ## Traps that cost real time
 
@@ -188,6 +215,27 @@ consistent with the evidence gathered at the time. Check the whole distribution.
 
 **A coherent story that explains several loose ends at once is the most dangerous kind.**
 It feels like insight. Verify it anyway.
+
+**Compute a `lis`-based constant address, never read it by eye.** `((imm & 0xFFFF) << 16) + offset`.
+Misreading one digit of `lfs f13,18868(r9)` produced this project's first shadow divergence, and a
+second wrong value reached a committed note before another pass caught it. The arithmetic is three
+characters of Python; the guess costs a session.
+
+**RexGlue's `add` and `mullw` are 64-bit on zero-extended operands.** A sum can carry into bit 32.
+Stores keep only the low word, so a chain truncated to 32 bits leaves memory **byte-identical** and
+the returned register wrong — which surfaced on the 120th call of one function. Keep 64-bit
+intermediates and cast at the stores.
+
+**A window builder that refuses too often is also wrong.** It produces a green covering less than
+it looks like, so `skipped` is a first-class result, not a footnote. Two ports verified clean while
+declining two thirds of their calls; re-reading them lifted one to ~90% and the other to ~99%, and
+the second earned a kernel its first real verification because the skipped branch was the only
+path that called it.
+
+**An exit status saying *success* is as untrustworthy as one saying nothing.** `cycle_build.sh` read
+`PIPESTATUS` after `|| true`, so a failed build printed its error and reported success, and the next
+session silently ran the previous binary. Check the artifact: the object file, the `nm` symbol, and
+that the binary is *newer* than its sources.
 
 **Grep on decompiled offsets does not discriminate.** Offsets like `+0x30`, `+0x34`,
 `+0xCC` appear on unrelated structures; searching for them returns noise. Three separate

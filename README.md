@@ -28,7 +28,10 @@ Everything derived is **reproducible in minutes** from your own copy of the game
 `docs/REPRODUCING.md`. This matches the posture of both projects above, which ship no
 retail content either.
 
-## What works
+## What is done
+
+**The audio engine now exists twice: as the recompiled original, and as readable native C++
+that has been proved equal to it call for call.**
 
 | | status |
 |---|---|
@@ -37,16 +40,79 @@ retail content either.
 | Container formats | all three decoded — `.sns`, `.dat`, `.mus` |
 | Audio conversion | **sample-exact** on all three classes |
 | Real-data coverage | 33,448 speech sub-sounds, 8,179 music segments, 1,384 ambience blocks |
-| Rust container parsing | 33 tests, validated against real archives |
-| Exactness harness | shadow verification + bit-exact mixer comparator |
+| **Native C++ port** | **all 216 audio-thread functions written; 138 shadow-verified, zero divergence** |
+| Exactness harness | shadow verification, per-call, against the running game |
+| Rust container parsing | `skate-audio-formats`, 33 tests, validated on real archives |
+| Rust queue path | `skate-audio-core`, 13 tests, 8,607/8,607 recorded vectors replayed |
+
+### The native port, in one table
+
+The 216 functions are those first called on the `RwAudioCore Dac` thread during play —
+the set that is actually audio and actually runs. Every one has a body; 138 of them are
+*proved* equal to the original, and the rest carry the reason they cannot be:
+
+| outcome | count | meaning |
+|---|---|---|
+| verified | **138** | zero register and zero memory divergence against the original, on real game inputs |
+| gate 1 | 69 | reaches an indirect call, lock, allocation or release, so replaying it on rewound memory is unsound |
+| gate 2 | 3 | write set not derivable from entry state |
+| gate 3 | 4 | reads `mftb`, so two runs return two values and no comparison can pass |
+| uncalled | 0 | every function was reached by some profile |
+| pre-existing | 2 | hooked before this work (`EVENT_STOP`, the XMA probe) |
+
+A gate is a property of the function, not a gap in the work. Each gated port still has a
+readable body and a note recording the write set it *would* have declared.
+
+Final verification, all 214 port files armed in one binary:
+
+| session | result |
+|---|---|
+| boot profile | 214 expected, 0 not green |
+| scripted skate and bail | 214 expected, 0 not green; **73.5M** counted calls |
+| promoted (`--skate3_audio_native=true`) | **138 native bodies ran for real**, audio 187.5 frames/s, no crash, capture matched its layout |
+
+Two results worth more than the port count. `sub_824531C8` — a four-lane sine kernel with no
+stores, whose result lives in a volatile vector register — verified over **6,994,118 calls**
+once the harness could compare arbitrary registers; under the old scheme that comparison
+checked nothing at all. And reading these bodies found a **second producer** of the command
+queue carrying the same publish-before-store race as the known bug, which means a fix confined
+to one function cannot close it (`docs/command-queue.md`).
+
+## What is next
+
+In rough order of value:
+
+1. **Promotion.** The 138 verified bodies run natively only behind `--skate3_audio_native=true`.
+   Deciding which to make the default is a separate judgement from proving them equal, and it is
+   the open question this work hands over.
+2. **The Rust audio engine** (`docs/PLAN.md` Phase 4). Every function the Rust port needs now has
+   a verified C++ reference, which turns each translation into a transcription risk rather than a
+   semantic one. `skate-audio-core` has the queue path; the scheduler, XMA feed and DSP graph are
+   not written.
+3. **`.mpf` sequencing**, sections 0–3. Interactive music needs segments *plus* the map that
+   orders them. The `.mus` side is complete; this is the headline format gap
+   (`docs/xma-transcode.md`, and the live lead in the guest image).
+4. **Bug 1's ordering fix**, now that two producers are known. `docs/command-queue.md` specifies
+   what a fix must achieve; landing it diverges from the original by construction, which the
+   harness cannot distinguish from a porting mistake, so it needs its own argument.
+5. **Codec in-crate.** Fold `tools/xma_decode.c`'s persistent-decoder pattern into the Rust
+   crate, replacing the shell pipeline.
+
+Explicitly **not** planned: ARM64 bit-exactness for the Rust port, a general-purpose XMA
+toolkit, and root-causing the two recomp bugs on QCS8550 hardware nobody here has. See
+`docs/PLAN.md` non-goals.
 
 ## Layout
 
 ```
-docs/     analysis: the engine, command queue, bugs, formats, struct header
-tools/    extraction, decoding and verification tooling
-rust/     skate-audio-formats — container parsing crate
-recomp/   sources to drop into the recomp: probe, shadow harness, native audio
+docs/     analysis: the engine, command queue, bugs, formats, struct header, port results
+tools/    extraction, decoding, verification and source-sync tooling
+rust/     skate-audio-formats (containers) and skate-audio-core (the ported engine)
+recomp/   sources to drop into the recomp: probe, shadow harness, 214 native ports
+probe/    the port loop: static screening, the queue, session running, log summarising
 ```
+
+Two documents carry the port work: `docs/port-loop.md` explains how the sweep was run and what
+it cost to learn, and `docs/ports.md` is the generated per-function status table.
 
 Start with `CLAUDE.md` if you are an agent picking this up, or `docs/` if you are not.
