@@ -39,6 +39,7 @@ namespace skate3::audio {
 enum PortStatus : uint8_t {
   kPortPending = 0,   // written, not yet compared clean
   kPortVerified,      // zero divergence over a session; promotable
+  kPortPartial,       // one path compared clean, another never compared; NEVER promotable
   kPortDivergent,     // compared and disagreed; kept for the record, never promoted
   kPortUncalled,      // passes the gates, the game never reached it
   kPortGate1,         // callees not replayable
@@ -115,7 +116,8 @@ void PortOversize(PortCounters& c, ShadowStats& stats, uint32_t total);
 void PortNativeRun(PortCounters& c);
 bool PortPromoted(PortStatus s);
 constexpr bool PortShadowable(PortStatus s) {
-  return s == kPortPending || s == kPortVerified || s == kPortDivergent || s == kPortUncalled;
+  return s == kPortPending || s == kPortVerified || s == kPortPartial ||
+         s == kPortDivergent || s == kPortUncalled;
 }
 
 /// Call a guest function from a native body with its arguments in r3.. on the LIVE context, so

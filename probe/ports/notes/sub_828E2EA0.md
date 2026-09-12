@@ -58,3 +58,21 @@ Result mask `kReturnR3`, the constant 0.
 Same three as `sub_828E2E08`: whether `+4` is a registration count or a refcount, what the
 container type is (nothing in `docs/rw_audio_structs.h` matches), and whether the allocator at
 `0x83083CCC` is the one `sub_828AAF88` returns.
+
+## Split and armed, 2026-09-12
+
+Converted from gate-1 to the path split this note proposed, identically to `sub_828E2E08` — see that
+note's "Split and armed" section for the full reasoning, including why each store address is checked
+against the words read after it. STATUS is `pending (partial: ...)`.
+
+- **Predicate:** false when `REX_LOAD_U32(container+4) == 1 && REX_LOAD_U32(0x83083CCC) != 0`, true
+  otherwise, plus the same aliasing declines. The only difference from `sub_828E2E08` is that the
+  cursor span is `container+8`.
+- **Comparable write set:** at most four 4-byte spans — the cursor at `+8` (only when it names this
+  node), `prev+0`, `next+4`, the count at `+4`. Reads `{container+4, 8}`, `{node+0, 8}`, the
+  allocator cell.
+- **Expected fraction:** the overwhelming majority of the 154 boot calls, for the same reason.
+- **Stays unchecked:** the free.
+- `Overlaps()` is duplicated in this file rather than referenced from `port_828E2E08`. Both are in
+  the same aggregator and the lint would allow the reference, but four lines copied are cheaper to
+  audit than a cross-port dependency.

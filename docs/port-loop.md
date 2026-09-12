@@ -147,6 +147,51 @@ Three fixes, each aimed at a different way this could recur:
 This is `CLAUDE.md`'s "check the artifact, never the exit status" rule, met from the other side: an
 exit status that says *success* is just as untrustworthy as one that says nothing.
 
+### A gate is often a property of one path, not the function
+
+69 functions were labelled gate 1 because they reach an indirect call, a lock, an allocation or a
+release. But a *call* that never reaches it is replayable, and the harness has always supported
+comparing those and counting the rest: `EVENT_PLAY` predicts its aliasing branch from entry state
+and skips it. Applying that to nine gate-labelled ports, measured in one scripted session:
+
+| function | compared | skipped | note |
+|---|---|---|---|
+| `sub_82B1C210` | 15,804 | 304 | the clamp loop, the substance, runs on the compared side |
+| `sub_82B30C50` | 13,240 | 0 | **near-vacuous**, see below |
+| `sub_82B33970` | 4,569 | 2,170 | thin: the compared path writes one byte and returns 1 |
+| `sub_82B1F440` | 367 | 544 | comparable when the owned instance is already null, and the whole tail compares |
+| `sub_828E2E08` | 164 | 0 | the unlink compares; no call was the container's last |
+| `sub_828E2F38` | 83 | 2,461 | the stale path writes two real words |
+| `sub_828E2EA0` | 42 | 122 | the same function over a different cursor |
+| `sub_82B217F0` | 0 | 1 | armed and waiting, like `REQUEUE` |
+| `sub_82B218E8` | 0 | 1 | once per boot, and that call took the calling path |
+
+**Zero divergence across all of it**, and seven of the nine went from "cannot be checked" to a real
+number. Two report zero comparable calls, which is the `REQUEUE` shape: the predicate is right and
+the game did not take that path.
+
+**A zero in the skipped column is not coverage.** `skipped` counts calls where `Windows()` refused,
+so it is zero both when the builder brackets everything *and* when the game simply never took the
+other path. `sub_82B30C50` is the second kind: all 13,240 calls took the early exit, its 958-line
+working path never ran, and what compared was a function that writes nothing and returns 1. It is
+recorded as near-vacuous in its own header rather than counted as a win. `sub_828E2E08`'s zero is
+the honest kind — the unlink itself compared, on every call that was not the container's last.
+
+**None of the nine is promotable, and the status enum enforces it.** `kPortPartial` is shadowable
+but `PortPromoted` tests `== kPortVerified`, so `--skate3_audio_native=true` leaves these on the
+original. The reason is specific: each body *does* implement the path `Windows()` declines, so
+promoting one would run code that was never compared against anything.
+
+Two safety points, because they are what makes this sound rather than optimistic. An empty-window
+split is only safe because `Windows()` and `Native()` read the same guard through the same constant;
+if they could disagree, the working path's stores would land outside the windows and reach the live
+game. And where the body reads a predicate word *after* one of its own stores, the builder declines
+the call rather than assuming no aliasing — which costs a comparison, never correctness.
+
+One split was declined on value rather than safety. `sub_82B28970`'s quiet path writes nothing and
+returns a word both bodies load identically: a vacuous green in the gate-4 sense, on a function
+that runs once per boot at shutdown, which is exactly when the decoder it tears down exists.
+
 ### Over-refusal is the other way to be wrong
 
 A window builder that returns false too often produces a green that covers less than it looks
