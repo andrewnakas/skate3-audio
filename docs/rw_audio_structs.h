@@ -123,7 +123,19 @@ typedef struct {
     uint8_t  channel_count;   /* +0x15F                        (confirmed)  */
     uint8_t  format_index;    /* +0x160  indexes the codec tag table
                               *         at 0x8210A310          (confirmed)  */
+    uint8_t  _pad161[0x11];
+    uint8_t  stop_field172;   /* +0x172  EVENT_STOP writes 16 (0x10) here.
+                              *         Meaning unknown; recorded because a
+                              *         verified body writes it.            */
+    uint8_t  stop_field173;   /* +0x173  EVENT_STOP clears                  */
+    uint8_t  stop_field174;   /* +0x174  EVENT_STOP clears                  */
 } rw_player;
+
+/* The struct above ran to +0x161 until 2026-09-11.  sub_82B28C18 (EVENT_STOP),
+ * read from the lifted form and reproduced natively, writes three bytes past
+ * that -- 16 to +0x172 and zero to +0x173/+0x174 -- so the Player is at least
+ * 0x175 bytes.  The values are reproduced because the job is to match the
+ * original; what they mean is not established. */
 
 /* A submitted packet; linked through the Player's FIFO. */
 typedef struct {

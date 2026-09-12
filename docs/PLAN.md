@@ -246,6 +246,21 @@ verified; no need to wait for either phase to finish. Two tiers:
 *Exit criterion:* every ported function passes its bit-compare; a representative scene (one
 ambience bed + one speech line + one music segment, mixed) matches bit-for-bit.
 
+**Status 2026-09-11 — the queue path is ported, and NOT yet bit-compared.** `skate-audio-core`
+holds `system.rs` (the producer's four paths) and `player.rs` (the three consumers, the FIFO and
+the liveness scan), with 11 tests that pin record layouts, the FIFO state machine, the liveness
+outcomes, the `EVENT_STOP` wipe, and the `fctidz` low-byte conversion.
+Those tests are **self-consistency, not tier 1**. Tier 1 requires identical inputs to the
+verified C++ *and* the Rust, compared byte for byte, which needs a C++ runner over shared
+vectors the way `probe/vmx128/` does it. Until that exists, the honest claim is "ported and
+layout-checked", not "bit-identical to the verified reference".
+One divergence is already known and deliberate, and the test suite pins it: the guest's
+`fctidz` and Rust's saturating `as i64` disagree at exactly `2^63` (`0x00` against `0xFF`), so
+the conversion is written branch for branch. A naive port would have been silently wrong there.
+The ring's publish ordering also diverges deliberately — records first, offset last — which
+leaves memory byte-identical and is therefore invisible to a single-threaded compare in either
+direction.
+
 **Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
 same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
 process, before it can be tested. Open — risk 7.
@@ -343,8 +358,21 @@ gameplay will *not* reliably exercise. Adversarial vectors give more coverage pe
 **`skate-audio-formats`** (exists, extend) — containers only, `#![forbid(unsafe_code)]`,
 no codec math. Add `.mpf` when Phase 5 lands. The only piece the recomp has no use for.
 
-**`skate-audio-core`** (new) — ported graph, scheduler, queue, DSP. Modules mirror
-`docs/rw_audio_structs.h`:
+**`skate-audio-core`** (**started 2026-09-11**: `lib.rs`, `system.rs`, `player.rs`, 11 tests;
+`scheduler.rs`, `xma.rs`, `dsp/` and `graph.rs` not yet written) — ported graph, scheduler,
+queue, DSP. Modules mirror `docs/rw_audio_structs.h`:
+
+Guest structures are modelled as **byte-addressed big-endian accessors over a `&mut [u8]`**
+(`Guest`), not as idiomatic Rust structs. These are recovered layouts with asserted offsets,
+and Phase 4's per-function criterion compares bytes against the verified C++, so a
+byte-addressed view makes that comparison direct instead of routing it through a serialisation
+step that could hide a discrepancy of its own. Offsets are asserted at compile time with
+`const _: () = assert!(...)`, mirroring `docs/rw_audio_structs_check.c`.
+
+Two callees are **closure parameters**, not ports: `sub_82B3C930` (`EVENT_STOP`'s decoder
+teardown, four indirect calls) and `sub_82B29018` (`EVENT_PLAY`'s restart branch, two indirect
+calls plus a critical section). Neither is portable, and the first is precisely why `EVENT_STOP`
+has no comparable path under the harness.
 
 - `system.rs` — `rw_system`: command ring, scheduler buckets, lock indirection. Host
   primitives, from the kernel-import survey: a **recursive** mutex (the fallback is

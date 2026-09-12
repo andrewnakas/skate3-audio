@@ -44,7 +44,7 @@ The Rust engine is the opposite: no audio exists, so implementation is the only 
 | Structures | 7 structs, 35 asserted offsets (`docs/rw_audio_structs.h`) |
 | Container formats | all three decoded and documented |
 | Conversion | **sample-exact** on ambience, speech and music |
-| Rust crate | 33 tests, three containers, validated on real archives |
+| Rust crates | **two**. `skate-audio-formats`: 33 tests, three containers, validated on real archives. `skate-audio-core`: started 2026-09-11, the queue path ported from the shadow-verified C++ (`system.rs`, `player.rs`, 11 tests) — **ported and layout-checked, not yet bit-compared** against the C++; that needs a runner over shared vectors |
 | Shadow harness | **proven**: `EVENT_SUBMIT` 1,678 runs, zero divergence (`docs/shadow-harness.md`) |
 | Native functions | six written. Well exercised: the queue producer `sub_82B28A00` **6,706 calls** (but stop-append never ran), buffer-pair init `sub_82B7F828` **222 calls**, `EVENT_SUBMIT` promoted. Thin or unverified: `EVENT_PLAY` **one input point**, `EVENT_STOP` no comparable path, `REQUEUE` never called. PLAN's Phase 2 list is now fully screened — screen against its **three gates** before writing anything |
 | Guest-mix capture | `audio_dump_path` written for Linux and validated; **not reproducible run to run** |
