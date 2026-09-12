@@ -1,5 +1,5 @@
 // sub_82B33870  role: advance one slot of the 80-byte array at +96 -- when the slot's state byte at +73 is 0, or the counter at +24 of the 48-byte parallel record is still below the slot's limit at +16, copy the live handle from +48 to +52, fetch the next source through sub_82B32550, record its low byte at +74 and install whatever sub_82B33418 returns at +48; otherwise defer to sub_82B332D0 and return its boolean   lifted: skate3_recomp.67.cpp:52848 (147 lines)
-// STATUS: uncalled
+// STATUS: gate-1 (sub_82B33418 reaches an indirect call two levels down: sub_82B3C870 `bctrl`, census depth 3 -- the boot session also never called it, but the gate is the label that matters: kPortUncalled is shadowable and this must not be shadowed)
 // calls/session: boot 0  play ?  map ?          thread: RwAudioCore Dac (static attribution only)
 // note: probe/ports/notes/sub_82B33870.md
 namespace port_82B33870 {
@@ -131,4 +131,4 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 }
 
 }  // namespace port_82B33870
-SKATE3_PORT(82B33870, skate3::audio::kPortUncalled, skate3::audio::kReturnR3)
+SKATE3_PORT(82B33870, skate3::audio::kPortGate1, skate3::audio::kReturnR3)

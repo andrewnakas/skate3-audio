@@ -39,6 +39,21 @@ def main():
         inc = os.path.join(PORTS, f"sub_{addr}.inc")
         if not os.path.exists(inc):
             continue
+        text = open(inc).read()
+        # A gate label is a property of the FUNCTION; a session verdict is a property of one
+        # run. Never let the second overwrite the first. This overwrote sub_82B33870's gate-1
+        # with "uncalled" twice: both facts were true, but kPortUncalled is in PortShadowable,
+        # so the label would arm the shadow branch on a function whose closure reaches an
+        # indirect call. Today Windows() returning false still stops it; that is a second line
+        # of defence, not a reason to mislabel.
+        current = ""
+        for line in text.splitlines():
+            if line.startswith("// STATUS:"):
+                current = line[len("// STATUS:"):].strip()
+                break
+        if current.startswith("gate-"):
+            print(f"  {name}: keeping {current.split()[0]} (a verdict does not outrank a gate label)")
+            continue
         verdict = v["verdict"]
         kind = verdict.split()[0]
         runs = verdict.split()[1] if " " in verdict else "0"
@@ -63,7 +78,6 @@ def main():
             print(f"  would set {name} -> {qstatus} ({calls} calls)")
             continue
 
-        text = open(inc).read()
         # STATUS header line, and the enum in the SKATE3_PORT line when the verdict allows it
         text = re.sub(r"^// STATUS: .*$", f"// STATUS: {word}", text, count=1, flags=re.M)
         if kind in ENUM:

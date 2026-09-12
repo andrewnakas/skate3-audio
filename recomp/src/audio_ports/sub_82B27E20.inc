@@ -1,6 +1,6 @@
 // sub_82B27E20  role: run the per-channel low-pass stage over a 256-frame block, or bypass it   lifted: skate3_recomp.67.cpp:24693 (214 lines)
 // STATUS: verified
-// calls/session: boot 173961  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 173444  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B27E20.md
 namespace port_82B27E20 {
 

@@ -1,6 +1,6 @@
 // sub_82B3DC48  role: rank the output segments by size, then fill each one out of the ring   lifted: skate3_recomp.68.cpp:10818 (184 lines)
 // STATUS: verified
-// calls/session: boot 249817  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 245503  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3DC48.md
 namespace port_82B3DC48 {
 

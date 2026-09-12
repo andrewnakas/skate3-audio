@@ -90,9 +90,11 @@ green). Nothing is compared either way: the macro never enters the shadow branch
 
 - The two imports are reached through their guest addresses (`0x82F9CB44`, `0x82F9CB54`) in the
   dispatch table rather than by name, because lint check 6 forbids naming an import thunk
-  directly from a port and a kernel import has no guest port to route a `GuestCall` through. Same code, one
-  difference: it writes `ctr`, which a `bl` does not. `ctr` is volatile and uncompared, and this
-  body never runs.
+  directly from a port and a kernel import has no guest port to route a `GuestCall` through. Both
+  addresses are inside `[REX_CODE_BASE, REX_CODE_BASE + REX_CODE_SIZE + REX_THUNK_RESERVE_SIZE)`
+  = `[0x82380000, 0x82FAE16C)`, so `REX_CALL_INDIRECT_FUNC` resolves them through the dispatch
+  table rather than falling back to the global resolver. Same code, one difference: it writes
+  `ctr`, which a `bl` does not. `ctr` is volatile and uncompared, and this body never runs.
 - The meaning of the spare head at `0x830BDEE0` is a reading from one site: it is consulted only
   to be advanced when it happens to name the node being moved. Whether it is a free list, an
   iteration cursor, or a cache of "the next one to visit" was not established.

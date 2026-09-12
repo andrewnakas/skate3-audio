@@ -1,6 +1,6 @@
 // sub_82B34BD0  role: unlink a voice, fold its gains into the owner, and clear its fields   lifted: skate3_recomp.67.cpp:55669 (109 lines)
 // STATUS: verified
-// calls/session: boot 2183  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 5238  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B34BD0.md
 namespace port_82B34BD0 {
 

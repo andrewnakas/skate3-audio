@@ -1,6 +1,6 @@
 // sub_82B1C910  role: step a multi-segment envelope: start it, jump it to a named segment, or count the current segment down and re-arm the next one; returns the value as an int   lifted: skate3_recomp.66.cpp:64938 (274 lines)
 // STATUS: verified
-// calls/session: boot 30708  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 31308  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1C910.md
 namespace port_82B1C910 {
 

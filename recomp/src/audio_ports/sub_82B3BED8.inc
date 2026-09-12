@@ -1,6 +1,6 @@
 // sub_82B3BED8  role: dst[i] = src[i] * scale over a float array -- 32 floats per iteration on a vector path when both buffers are 128-byte aligned and the count is a multiple of 64, a scalar loop otherwise   lifted: skate3_recomp.68.cpp:6345 (280 lines)
 // STATUS: verified
-// calls/session: boot 2252155  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 2367727  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3BED8.md
 namespace port_82B3BED8 {
 

@@ -1,6 +1,6 @@
 // sub_82B4F5F8  role: decode one unsigned variable-length integer, 1 to 5 bytes   lifted: skate3_recomp.68.cpp:53957 (127 lines)
 // STATUS: verified
-// calls/session: boot 15545  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 16841  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B4F5F8.md
 namespace port_82B4F5F8 {
 

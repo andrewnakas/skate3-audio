@@ -1,6 +1,6 @@
 // sub_82B3D0A8  role: two-source crossfade of B and C by the per-sample coefficient D -- writes the plain blend to F and the gain-weighted blend accumulated onto A to E; 16 floats per iteration on a vector path when both inputs are 16-byte aligned, a four-wide scalar path plus a one-float tail for the rest   lifted: skate3_recomp.68.cpp:9100 (662 lines)
 // STATUS: verified
-// calls/session: boot 87136  play ?  map ?          thread: RwAudioCore Dac
+// calls/session: boot 85916  play ?  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B3D0A8.md
 namespace port_82B3D0A8 {
 
