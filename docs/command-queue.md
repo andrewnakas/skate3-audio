@@ -270,3 +270,81 @@ reproduces it bug for bug, as every port here does.
 So the table should read: 20 bytes `sub_82B28B78`, 8 bytes `0x82B28C18`, 12 bytes `0x82B28CC0`,
 8 bytes `0x82B49238`. The consumer-side confirmation matters because the length is implied by
 the handler, which is the property that makes a torn read unrecoverable.
+
+## Correction, 2026-09-12 (second): there are at least fourteen producers, on three threads
+
+The section above corrects "one producer" to "two" and says the search for others should be
+treated as unfinished. It was. Searching the whole lifted corpus instead of reading bodies finds
+**thirteen more append sites, every one of them publishing the offset before storing the record**,
+and the two known producers are not among the thirteen — one of them is invisible to this search
+for a reason given below. So the floor is fourteen, not two.
+
+### How they were found, and why this is not an offset grep
+
+`CLAUDE.md` warns that grepping decompiled offsets does not discriminate, and that warning is
+earned: searching for a write to `+0xCC` after a read of it returns **217 functions**, because
+unrelated structures share those offsets. The search that works is a conjunction anchored on a
+**specific global**, `probe/screen/find_producers.py`:
+
+1. the function loads the audio System from `0x8307762C` — the lifted form is
+   `ctx.rX.s64 = -2096693248;` (that is `lis rX,-31993`, giving `0x83070000`) followed by
+   `REX_LOAD_U32(rX + 30252)`;
+2. it reads the write offset at `+0xCC` and the ring at `+0x30` from one base;
+3. it **adds those two values** — the record pointer, and the step no coincidence of offsets
+   produces;
+4. it stores through that pointer.
+
+That narrows 47,652 functions to 13, few enough to read. Two were read line by line to confirm
+the classifier: `sub_82975E70` and `sub_828EBCB0` both read the offset, read the ring, add them,
+store the advanced offset, and only then store the handler and payload.
+
+### The list
+
+| function | record words | thread, from `docs/audio-executed-set.txt` |
+|---|---|---|
+| `sub_8249BD80` | 12 | not reached in the traced sessions |
+| `sub_824A3140` | 27 | not reached |
+| `sub_828EBCB0` | 2 | not reached |
+| `sub_828EC3F0` | 4 | not reached |
+| `sub_828EC6F0` | 8 | not reached |
+| `sub_8295ED18` | 4 | not reached |
+| `sub_82975E70` | 2 | not reached |
+| `sub_82976360` | 20 | not reached |
+| `sub_82976860` | 24 | not reached |
+| `sub_82B1DCD0` | 3 | **render_thread** |
+| `sub_82B1E458` | 2 | **RwAudioCore Dac** |
+| `sub_82B1EBA0` | 23 | not reached |
+| `sub_82B48C48` | 2 | **load_thread** |
+
+**Three different threads append to this ring**, confirmed by execution rather than inferred:
+the render thread, the audio thread and the load thread. That is no longer a race that needs
+arguing for from first principles — the concurrency is measured. "Not reached" means those
+functions did not run in the traced sessions, which is a statement about coverage, not about
+whether they can run.
+
+### Two limits on this result, both load-bearing
+
+**The floor is fourteen, and the search cannot see all of them.** `sub_82B28A00`, the producer
+this document was originally written about, takes the System **in a register from its caller** and
+never loads the global, so the anchor that makes this search discriminating also makes it blind to
+that whole class. A complete enumeration needs the callers too. Treat thirteen as what one
+anchored search found, not as a count.
+
+**The classifier reads order, not reachability.** It compares the line of the publishing store
+against the lines of the record stores. A function with several append sites, or one that reuses
+a register between them, could be mislabelled; that is why hits are read rather than trusted.
+
+### What this does to the fix
+
+The previous correction concluded that a fix confined to `sub_82B28A00` cannot close the race.
+The conclusion is now stronger and less comfortable: the ordering discipline has to land at
+**every** append site, at least fourteen of them, most outside the audio band and therefore
+outside the 216 audio-thread functions this project has ported and verified. Eleven of the
+thirteen have never been observed executing, so the harness has no comparable calls for them and
+cannot verify a native body for them at all.
+
+The ordering change itself remains invisible to the harness in the good sense: storing the record
+before publishing the offset leaves memory byte-identical at the end of the call, so a corrected
+body still compares clean. That means the harness can confirm the fix **does not change the
+result**, and cannot confirm it **fixes the race**, because it replays one thread. Both halves of
+that sentence should survive into whatever argument is eventually made for landing this.

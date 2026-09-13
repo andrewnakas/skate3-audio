@@ -16,9 +16,11 @@
 
 pub mod buffers;
 pub mod counter;
+pub mod cursors;
 pub mod eval;
 pub mod fp;
 pub mod player;
+pub mod scheduler;
 pub mod system;
 
 /// One contiguous span of guest memory.
