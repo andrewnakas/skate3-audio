@@ -267,17 +267,31 @@ mod tests {
     }
 
     #[test]
-    fn a_denormal_sample_is_flushed_to_zero() {
-        // Both of RexGlue's MXCSR values carry DAZ, so the `lfs` reads the denormal as zero and the
-        // `stfs` writes +0. Under Rust's default MXCSR it would be stored unchanged.
-        let mut g = guest(1, 0.5, 256, 256);
-        fill(&mut g, BUF_A, (0..256).map(|_| 0.0));
-        g.set_u32(BUF_A, 1).unwrap(); // the smallest denormal single
+    fn a_finite_sample_inside_the_band_is_stored_unchanged() {
+        // The `lfs`/`stfs` round trip is exact for finite singles, so an in-band sample is copied
+        // bit for bit rather than merely to within a rounding.
+        // The level has to stay below the pool's 100.0 or the body does nothing — which is the
+        // mistake this test made on its first run, and the reason it read back 0xDEADBEEF.
+        let mut g = guest(1, 99.0, 256, 256);
+        let values = [0.375f32, -98.5, 1.0, 7.125e-20];
+        fill(&mut g, BUF_A, values.iter().copied().chain(std::iter::repeat(0.0)).take(256));
 
         hard_clip(&mut g, STATE, PAIR).unwrap();
 
-        assert_eq!(g.u32(BUF_B).unwrap(), 0);
+        for (i, v) in values.iter().enumerate() {
+            assert_eq!(g.u32(BUF_B + (i as u32) * 4).unwrap(), v.to_bits(), "sample {i}");
+        }
     }
+
+    // **A denormal sample is deliberately not asserted.** `examples/flush_probe` measured why on
+    // 2026-09-13: LLVM folds the `lfs`/`stfs` pair (`fptrunc(fpext(x))`) into a no-op at
+    // `opt-level >= 1`, so `DAZ` never sees the value and the denormal is copied through; at
+    // `opt-level = 0` the conversions run and it becomes `+0`. Which of those the *recomp* does is
+    // unmeasured — its lifted body has the same pair and is built `-O3` — and no recorded vector
+    // for this function contains a denormal, so the shadow harness never decided it. An assertion
+    // either way would pin this crate's profile rather than the kernel. Flush mode still matters
+    // here for real arithmetic: the probe's denormal *product* is `+0` under both profiles, which is
+    // the case `crate::dsp::biquad` depends on.
 
     #[test]
     fn the_pool_addresses_come_from_the_lis_immediates() {

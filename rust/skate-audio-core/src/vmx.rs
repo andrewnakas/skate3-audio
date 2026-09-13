@@ -153,6 +153,17 @@ pub fn set_mxcsr(v: u32) {
 /// depended on it either way, because the ops there are called under whatever mode their caller
 /// established — which is why every body that uses them holds an [`Fpscr`] of its own.
 ///
+/// **What holding the mode cannot do, measured 2026-09-13.** `examples/flush_probe` sets `FZ|DAZ`,
+/// confirms MXCSR reads back `0x9FC0`, and then shows that an `lfs`/`stfs` round trip of the same
+/// value flushes a denormal at `opt-level = 0` and **does not** at `opt-level >= 1` — because LLVM
+/// folds `fptrunc(fpext(x))` into a no-op and the conversions never execute. Real arithmetic is
+/// unaffected: a denormal *product* is `+0` under both profiles, which is the behaviour
+/// [`crate::dsp::biquad`]'s denormal-avoidance bias exists for. So the mode is honoured wherever an
+/// operation actually happens, and a pure widen/narrow pair is not an operation the optimizer keeps.
+/// Two tests used to assert the flush through such a pair; they were wrong, and say so now. clang
+/// has the same fold available for the recomp's own `double(f32)`/`float(f64)` pairs, which is why
+/// no claim is made about the original's answer either — no recorded vector exercises it.
+///
 /// **One deliberate divergence.** The guest's FPSCR is sticky: a lifted function leaves the mode
 /// it last set and the next one inherits it. [`Fpscr`] restores the entry MXCSR when it is dropped,
 /// so a Rust caller's own float code is not silently switched into flush-to-zero. That is safe for

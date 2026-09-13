@@ -246,23 +246,24 @@ mod tests {
     #[cfg(target_arch = "x86_64")]
     #[test]
     fn the_value_round_trips_through_a_double() {
-        // Every finite single survives; a signalling NaN does not, because `lfs`/`stfs` go through
-        // a double and the widening quiets it. 0x7FA00000 (sNaN, payload 0x200000) comes back
-        // 0x7FE00000. Asserted on the bits: a port that copied the word straight across would
-        // store 0x7FA00000 and every value test above would still pass.
+        // Every finite single survives `lfs` then `stfs` exactly, which is what this asserts and all
+        // it asserts.
         let mut g = guest();
-        record(&mut g, 2, 0x7FA0_0000);
-        stamp_slot(&mut g, RECORD).unwrap();
-        assert_eq!(g.u32(SLOTS + 2 * SLOT_STRIDE + 4).unwrap(), 0x7FE0_0000);
+        for bits in [0.375f32.to_bits(), 1.0f32.to_bits(), (-2.5e30f32).to_bits(), 0x0000_0000] {
+            record(&mut g, 2, bits);
+            stamp_slot(&mut g, RECORD).unwrap();
+            assert_eq!(g.u32(SLOTS + 2 * SLOT_STRIDE + 4).unwrap(), bits);
+        }
 
-        // And the smallest denormal single is flushed to +0, because `DAZ` is set in both of the
-        // guest's modes — the `disableFlushMode` at the load does not clear it. This is the
-        // assertion that fails if the port stops holding an `Fpscr`: Rust's default MXCSR would
-        // carry the denormal through and store 0x00000001.
-        let mut g = guest();
-        record(&mut g, 3, 0x0000_0001);
-        stamp_slot(&mut g, RECORD).unwrap();
-        assert_eq!(g.u32(SLOTS + 3 * SLOT_STRIDE + 4).unwrap(), 0);
+        // **What a denormal or a signalling NaN does here is a property of the build, not of this
+        // port, and it is not settled.** Measured 2026-09-13 with `examples/flush_probe`: LLVM folds
+        // `fptrunc(fpext(x))` into a no-op at `opt-level >= 1`, so the two conversions are simply
+        // deleted and neither `DAZ` nor the hardware's sNaN quieting happens. At `opt-level = 0`
+        // both execute, a denormal becomes `+0` and `0x7FA00000` comes back `0x7FE00000`. The recomp
+        // is built `-O3` and its lifted body has the same `double(f32)`/`float(f64)` pair, so it is
+        // very likely folded there too — but that was not measured, and no recorded vector for this
+        // function carries a denormal or an sNaN, so the harness never decided it either. Asserting
+        // either answer would be asserting this crate's profile flags.
     }
 
     #[cfg(target_arch = "x86_64")]
