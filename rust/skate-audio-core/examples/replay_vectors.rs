@@ -595,6 +595,30 @@ fn main() {
                     .map(|_| None)
                     .map_err(|e| e.to_string())
             }
+            // The hard clipper: 256 samples a channel, then the pair swap. Its `r3 = 1` is the
+            // recorded return, and the clamped block is the rest of the comparison.
+            "sub_82B22678" => dsp::clip::hard_clip(&mut g, v.r3, v.r4)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            // atan2 spills both arguments 16 bytes above the entry r1 — the caller's frame, which
+            // its window declares — so a recording without the wide r1 column cannot be replayed.
+            "sub_82F52318" if v.r1.is_none() => {
+                t.unreplayable += 1;
+                if t.first_gap.is_none() {
+                    t.first_gap = Some(format!("run {}: needs r1, where it spills y and x", v.run));
+                }
+                continue;
+            }
+            "sub_82F52318" => {
+                let (y, x) = (f64::from_bits(v.f[0]), f64::from_bits(v.f[1]));
+                match mathlib::atan2(&mut g, y, x, v.r1.unwrap_or(0) as u32) {
+                    Ok(r) => {
+                        float_result = Some(r.to_bits());
+                        Ok(None)
+                    }
+                    Err(e) => Err(e.to_string()),
+                }
+            }
             _ => {
                 t.skipped += 1;
                 continue;

@@ -12,6 +12,10 @@
 //! | [`Trig::cosine`] | `sub_82F4DFB0` | cosine | **no `.inc` at all** | — | — |
 //! | [`log10`] | `sub_82F55068` | `log10(double)`, one callee | verified | 125,566 | 169,118 |
 //! | [`log`] | `sub_82F54ED8` | that callee: the natural log | **outside the corpus** | — | — |
+//! | [`atan2`] | `sub_82F52318` | `atan2(y, x)`, octant-reduced rational atan | verified | 87,372 | 56,807 |
+//!
+//! [`atan2`] is replayed against **3,015 recorded calls**, compared by the bits of `f1` and by the
+//! sixteen bytes it spills into its caller's frame.
 //!
 //! [`log10`] is replayed against **3,000 recorded calls, compared by the bits of `f1`** and so is
 //! [`log`] with it, since every one of those calls goes through it. That is what stands behind the
@@ -519,6 +523,165 @@ pub fn log10(g: &Guest, x: f64) -> Result<f64> {
     Ok(natural * multiplier) // fmul f1,f1,f0
 }
 
+// ------------------------------------------------------------------------------------- atan2
+
+/// `lis r11,-32005 ; addi r11,r11,20584` — the atan2 pool at `0x82FB5068`, twenty-four doubles.
+///
+/// Every value below was read out of `probe/harness/out/image/`. The body loads all of them, so a
+/// wrong offset here is a wrong answer rather than a compile error — which is why each is named by
+/// what it measured rather than by what it ought to be.
+pub const ATAN_POOL: u32 = LIS_82FB0000 + 20584;
+/// `+8`, measured `1.5707963267948966` — pi/2, the angle when `x` is zero.
+pub const ATAN_HALF_PI: u32 = ATAN_POOL + 8;
+/// `+16`, measured `3.141592653589793`.
+pub const ATAN_PI: u32 = ATAN_POOL + 16;
+/// `+24`, measured `0.2679491924311227` — tan(pi/12), the threshold for the second reduction.
+pub const ATAN_TAN_PI_12: u32 = ATAN_POOL + 24;
+/// `+40`, measured `1.7320508075688772` — sqrt(3).
+pub const ATAN_SQRT3: u32 = ATAN_POOL + 40;
+/// `+128`, measured `{0, pi/6, pi/2, pi/3}` — four doubles, indexed by the octant code.
+pub const ATAN_OFFSETS: u32 = ATAN_POOL + 128;
+/// `+168`, measured `0.0` as a **single**, which is what the zero tests compare against.
+pub const ATAN_ZERO_SINGLE: u32 = ATAN_POOL + 168;
+/// `+176`, measured `1.0` as a single.
+pub const ATAN_ONE_SINGLE: u32 = ATAN_POOL + 176;
+/// The rational's numerator coefficients, at `+56`, `+64`, `+72` and `+80`: measured
+/// `-13.688768894191927`, `-20.505855195861653`, `-8.494624035132068`, `-0.8375829936815006`.
+pub const ATAN_NUM: [u32; 4] = [ATAN_POOL + 56, ATAN_POOL + 64, ATAN_POOL + 72, ATAN_POOL + 80];
+/// The denominator's, at `+88`, `+96`, `+104` and `+112`: measured `41.06630668257578`,
+/// `86.15734959713025`, `59.57843614259735`, `15.024001160028575`.
+pub const ATAN_DEN: [u32; 4] = [ATAN_POOL + 88, ATAN_POOL + 96, ATAN_POOL + 104, ATAN_POOL + 112];
+
+/// `stfd f1,16(r1)` — the spill of `y`, in the **caller's** frame; this leaf allocates none.
+pub const ATAN_SPILL_Y: u32 = 16;
+/// `stfd f2,24(r1)` — the spill of `x`, reloaded for its sign bit.
+pub const ATAN_SPILL_X: u32 = 24;
+/// `rlwinm. rN,rN,0,0,0` — the sign bit of a double's high word.
+const SIGN_BIT: u32 = 0x8000_0000;
+
+const _: () = assert!(ATAN_POOL == 0x82FB_5068, "lis -32005 ; addi 20584");
+const _: () = assert!(ATAN_OFFSETS == 0x82FB_50E8 && ATAN_ONE_SINGLE == 0x82FB_5118);
+
+/// `sub_82F52318` — `atan2(y, x)` in double, octant-reduced rational atan.
+///
+/// Verified, 87,372 calls in a boot session; all 22 lifted call sites read the result through
+/// `frsp`, so `f1` is the whole of it. `y` arrives in `f1` and `x` in `f2`.
+///
+/// **It writes sixteen bytes of the caller's frame, and that is part of the port.** `stfd f1,16(r1)`
+/// and `stfd f2,24(r1)` spill both arguments above the entry `r1` — this leaf never opens a frame of
+/// its own — and the body reloads their high words for the sign tests. The C++ port declares them as
+/// its write window for a specific reason its note records: unwindowed, the native run would read
+/// the *lifted* run's spill back and agree for the wrong reason. So `sp` is an argument here and the
+/// two stores actually happen.
+///
+/// The shape, and the three places a rewrite drifts:
+///
+/// - **Zero is a single, not a double.** The `x == 0` and `y == 0` tests compare against the pool's
+///   `f32` zero widened, and the four-way result for `(±0, ±0)` comes from the sign *bits* read back
+///   out of the spill: `x` positive returns `y` **unchanged** (so `atan2(-0, +0)` is `-0`), `x`
+///   negative returns `±pi` from the pool.
+/// - **The octant code is built from two comparisons**, `|y| > |x|` giving 2 and `t > tan(pi/12)`
+///   giving 1, and it indexes a four-entry table of `{0, pi/6, pi/2, pi/3}`. Codes above 1 negate
+///   `t` first. Getting the table order wrong is a plausible curve that is wrong in two octants.
+/// - **The second reduction is `(sqrt(3)·t − 1)/(sqrt(3) + t)`** with the numerator a single
+///   `fma` and the denominator a separate add — scalar, one rounding, as `std::fma`.
+///
+/// The final choice is an `fsel` on `x`, so `x = -0.0` takes the *non*-reflected arm (`-0.0 >= 0.0`
+/// holds) and a NaN `x` takes the reflected one. Then `y`'s sign bit, read from memory, negates.
+pub fn atan2(g: &mut Guest, y: f64, x: f64, sp: u32) -> Result<f64> {
+    let mut fpscr = Fpscr::capture();
+    fpscr.disable_flush_mode_unconditional(); // emitted at stfd f1,16(r1)
+
+    g.set_u64(sp + ATAN_SPILL_Y, y.to_bits())?; // stfd f1,16(r1)
+    g.set_u64(sp + ATAN_SPILL_X, x.to_bits())?; // stfd f2,24(r1)
+    let zero = fp::load_single(g, ATAN_ZERO_SINGLE)?; // lfs f0,168(r11)
+
+    let angle;
+    // fcmpu cr6,f2,f0 ; bne cr6 -> the main path (a NaN x is unordered, so it takes it)
+    if x == zero {
+        // fcmpu cr6,f1,f0 ; bne cr6 -> x is zero but y is not
+        if y == zero {
+            // lwz r10,24(r1) ; rlwinm. r10,r10,0,0,0 ; beqlr -- +0 for x returns y as it came in
+            if g.u32(sp + ATAN_SPILL_X)? & SIGN_BIT == 0 {
+                return Ok(y);
+            }
+            // lwz r10,16(r1) ; rlwinm. r10,r10,0,0,0
+            if g.u32(sp + ATAN_SPILL_Y)? & SIGN_BIT == 0 {
+                return fp::load_double(g, ATAN_PI); // lfd f1,16(r11)
+            }
+            return Ok(fp::neg_double(fp::load_double(g, ATAN_PI)?)); // lfd f0,16(r11) ; fneg f1,f0
+        }
+        angle = fp::load_double(g, ATAN_HALF_PI)?; // lfd f0,8(r11) ; b loc_82F52428
+    } else {
+        // loc_82F52370
+        let abs_x = fp::abs_double(x); // fabs f13,f2
+        let mut octant = 0u32; // li r10,0
+        let mut num = fp::abs_double(y); // fabs f0,f1
+        let mut den = abs_x; // fmr f12,f13
+        // fcmpu cr6,f0,f13 ; ble cr6 -> keep the order
+        if num > abs_x {
+            den = num; // fmr f12,f0
+            octant = 2; // li r10,2
+            num = abs_x; // fmr f0,f13
+        }
+
+        // loc_82F52394
+        let mut t = num / den; // fdiv f0,f0,f12
+        if t > fp::load_double(g, ATAN_TAN_PI_12)? {
+            let sqrt3 = fp::load_double(g, ATAN_SQRT3)?; // lfd f13,40(r11)
+            octant += 1; // addi r10,r10,1
+            let one = fp::load_single(g, ATAN_ONE_SINGLE)?; // lfs f12,176(r11)
+            let denominator = sqrt3 + t; // fadd f11,f13,f0
+            t = sqrt3.mul_add(t, -one); // fmsub f0,f13,f0,f12
+            t /= denominator; // fdiv f0,f0,f11
+        }
+
+        // loc_82F523BC: the two chains, interleaved in the original.
+        let t2 = t * t; // fmul f5,f0,f0
+        let n = [
+            fp::load_double(g, ATAN_NUM[0])?, // lfd f8,56(r11)
+            fp::load_double(g, ATAN_NUM[1])?, // lfd f10,64(r11)
+            fp::load_double(g, ATAN_NUM[2])?, // lfd f12,72(r11)
+            fp::load_double(g, ATAN_NUM[3])?, // lfd f13,80(r11)
+        ];
+        let d = [
+            fp::load_double(g, ATAN_DEN[0])?, // lfd f6,88(r11)
+            fp::load_double(g, ATAN_DEN[1])?, // lfd f7,96(r11)
+            fp::load_double(g, ATAN_DEN[2])?, // lfd f9,104(r11)
+            fp::load_double(g, ATAN_DEN[3])?, // lfd f11,112(r11)
+        ];
+        let mut p = n[3].mul_add(t2, n[2]); // fmadd f13,f13,f5,f12
+        let mut q = d[3] + t2; // fadd f12,f11,f5
+        p = p.mul_add(t2, n[1]); // fmadd f13,f13,f5,f10
+        q = q.mul_add(t2, d[2]); // fmadd f12,f12,f5,f9
+        p = p.mul_add(t2, n[0]); // fmadd f13,f13,f5,f8
+        q = q.mul_add(t2, d[1]); // fmadd f12,f12,f5,f7
+        p *= t2; // fmul f13,f13,f5
+        q = q.mul_add(t2, d[0]); // fmadd f12,f12,f5,f6
+        p *= t; // fmul f13,f13,f0
+        p /= q; // fdiv f13,f13,f12
+        t = p + t; // fadd f0,f13,f0
+
+        // cmpwi cr6,r10,1 ; ble cr6 -- signed, and the codes are 0..3
+        if octant as i32 > 1 {
+            t = fp::neg_double(t); // fneg f0,f0
+        }
+        // loc_82F52418: rlwinm r10,r10,3,0,28 ; addi r9,r11,128 ; lfdx f13,r10,r9
+        let offset = fp::load_double(g, ATAN_OFFSETS + (octant << 3))?;
+        angle = offset + t; // fadd f0,f13,f0
+    }
+
+    // loc_82F52428
+    let pi = fp::load_double(g, ATAN_PI)?; // lfd f13,16(r11)
+    let reflected = pi - angle; // fsub f13,f13,f0
+    let y_negative = g.u32(sp + ATAN_SPILL_Y)? & SIGN_BIT != 0; // lwz r11,16(r1) ; rlwinm.
+    let result = fp::fsel(x, angle, reflected); // fsel f1,f2,f0,f13
+    if !y_negative {
+        return Ok(result); // beqlr
+    }
+    Ok(fp::neg_double(result)) // fneg f1,f1
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -702,6 +865,170 @@ pub(crate) mod tests {
         let g = log_guest();
         let before = crate::vmx::get_mxcsr();
         log10(&g, 42.0).unwrap();
+        assert_eq!(crate::vmx::get_mxcsr(), before);
+    }
+
+    /// The atan2 pool's twenty-four doubles, as read out of `probe/harness/out/image/`.
+    pub fn with_atan_pool(g: &mut Guest) {
+        let pool: [u64; 24] = [
+            0x3E46_A09E_667F_3BCD, // +0    (unread by this body)
+            0x3FF9_21FB_5444_2D18, // +8    pi/2
+            0x4009_21FB_5444_2D18, // +16   pi
+            0x3FD1_2614_5E9E_CD56, // +24   tan(pi/12)
+            0x3FE7_6CF5_D0B0_9955, // +32   (unread)
+            0x3FFB_B67A_E858_4CAA, // +40   sqrt(3)
+            0x7FD0_0000_0000_0000, // +48   (unread)
+            0xC02B_60A6_5106_1CE2, // +56   numerator
+            0xC034_817F_B9E2_BCCB, // +64
+            0xC020_FD3F_5C8D_6A63, // +72
+            0xBFEA_CD7A_D9B1_87BD, // +80
+            0x4044_887C_BCC4_95A9, // +88   denominator
+            0x4055_8A12_040B_6DA5, // +96
+            0x404D_CA0A_320D_A3D7, // +104
+            0x402E_0C49_E14A_C710, // +112
+            0x3FF0_0000_0000_0000, // +120  (unread)
+            0x0000_0000_0000_0000, // +128  octant 0: 0
+            0x3FE0_C152_382D_7366, // +136  octant 1: pi/6
+            0x3FF9_21FB_5444_2D18, // +144  octant 2: pi/2
+            0x3FF0_C152_382D_7366, // +152  octant 3: pi/3
+            0x0010_0000_0000_0000, // +160  (unread)
+            0x0000_0000_3F00_0000, // +168  the f32 zero is the high half of this word
+            0x3F80_0000_0000_0000, // +176  the f32 one, likewise
+            0x4415_AF1D_78B5_8C40, // +184  (unread)
+        ];
+        let mut bytes = Vec::with_capacity(24 * 8);
+        for word in pool {
+            bytes.extend_from_slice(&word.to_be_bytes());
+        }
+        g.put(ATAN_POOL, bytes);
+    }
+
+    const ATAN_SP: u32 = 0x5000_0000;
+
+    /// A guest with the atan2 pool and a stack page for the two spills.
+    fn atan_guest() -> Guest {
+        let mut g = Guest::default();
+        with_atan_pool(&mut g);
+        g.put(ATAN_SP, vec![0xAA; 64]);
+        g
+    }
+
+    #[test]
+    fn the_atan_pool_addresses_come_from_the_lis_immediates() {
+        assert_eq!(ATAN_POOL, 0x82FB_0000 + 20584);
+        assert_eq!(ATAN_HALF_PI, 0x82FB_5070);
+        assert_eq!(ATAN_OFFSETS, 0x82FB_50E8);
+        assert_eq!(ATAN_ZERO_SINGLE, 0x82FB_5110);
+        assert_eq!(ATAN_ONE_SINGLE, 0x82FB_5118);
+        // The two "singles" are the *high* halves of their words, which is what `lfs` reads.
+        let g = atan_guest();
+        assert_eq!(fp::load_single(&g, ATAN_ZERO_SINGLE).unwrap(), 0.0);
+        assert_eq!(fp::load_single(&g, ATAN_ONE_SINGLE).unwrap(), 1.0);
+        assert_eq!(fp::load_double(&g, ATAN_PI).unwrap(), std::f64::consts::PI);
+    }
+
+    #[test]
+    fn atan2_matches_an_independent_oracle_in_every_quadrant() {
+        // `f64::atan2` is outside this translation. Both octant branches and both swap arms are
+        // covered by the ratios below, in all four quadrants and at three magnitudes.
+        let mut g = atan_guest();
+        let ratios = [0.0, 0.05, 0.2, 0.2679, 0.3, 0.7, 1.0, 1.4, 5.0, 40.0];
+        for scale in [1e-8f64, 1.0, 1e9] {
+            for r in ratios {
+                for (sy, sx) in [(1.0f64, 1.0f64), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+                    let (y, x) = (sy * r * scale, sx * scale);
+                    let got = atan2(&mut g, y, x, ATAN_SP).unwrap();
+                    let want = y.atan2(x);
+                    assert!(
+                        (got - want).abs() <= 8.0 * f64::EPSILON * want.abs().max(1.0),
+                        "atan2({y:e}, {x:e}): got {got}, oracle {want}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_zero_cases_are_decided_by_the_spilled_sign_bits() {
+        let mut g = atan_guest();
+        // x = +0: y comes back *unchanged*, sign and all — not recomputed.
+        assert_eq!(atan2(&mut g, 0.0, 0.0, ATAN_SP).unwrap().to_bits(), 0);
+        assert_eq!(
+            atan2(&mut g, -0.0, 0.0, ATAN_SP).unwrap().to_bits(),
+            (-0.0f64).to_bits(),
+            "atan2(-0, +0) keeps the negative zero"
+        );
+        // x = -0: the pool's pi, with y's sign.
+        assert_eq!(atan2(&mut g, 0.0, -0.0, ATAN_SP).unwrap(), std::f64::consts::PI);
+        assert_eq!(atan2(&mut g, -0.0, -0.0, ATAN_SP).unwrap(), -std::f64::consts::PI);
+        // x = 0 with y non-zero: pi/2, and `-0.0 >= 0.0` holds so a negative zero x is not
+        // reflected either.
+        assert_eq!(atan2(&mut g, 2.0, 0.0, ATAN_SP).unwrap(), std::f64::consts::FRAC_PI_2);
+        assert_eq!(atan2(&mut g, -2.0, 0.0, ATAN_SP).unwrap(), -std::f64::consts::FRAC_PI_2);
+        assert_eq!(atan2(&mut g, 2.0, -0.0, ATAN_SP).unwrap(), std::f64::consts::FRAC_PI_2);
+    }
+
+    #[test]
+    fn it_spills_both_arguments_into_the_callers_frame() {
+        // The spills are the port's declared write window, so they have to happen — on every path,
+        // including the one that returns before any arithmetic.
+        let mut g = atan_guest();
+        atan2(&mut g, -0.0, 0.0, ATAN_SP).unwrap();
+        assert_eq!(g.u64(ATAN_SP + ATAN_SPILL_Y).unwrap(), (-0.0f64).to_bits());
+        assert_eq!(g.u64(ATAN_SP + ATAN_SPILL_X).unwrap(), 0.0f64.to_bits());
+
+        atan2(&mut g, 3.5, -2.5, ATAN_SP).unwrap();
+        assert_eq!(g.u64(ATAN_SP + ATAN_SPILL_Y).unwrap(), 3.5f64.to_bits());
+        assert_eq!(g.u64(ATAN_SP + ATAN_SPILL_X).unwrap(), (-2.5f64).to_bits());
+        // Nothing outside the sixteen bytes.
+        assert_eq!(g.u64(ATAN_SP + 8).unwrap(), u64::from_be_bytes([0xAA; 8]));
+        assert_eq!(g.u64(ATAN_SP + 32).unwrap(), u64::from_be_bytes([0xAA; 8]));
+    }
+
+    #[test]
+    fn each_octant_takes_its_own_table_entry() {
+        // The four codes come from `|y| > |x|` (2) and `t > tan(pi/12)` (1). Patching one entry has
+        // to move exactly the inputs that use it, which is what a wrong table order would fail:
+        // these four arguments cover codes 0, 1, 2 and 3 in that sequence.
+        let inputs = [(0.1f64, 1.0f64), (0.9, 1.0), (1.0, 0.1), (1.0, 0.9)];
+        for (code, (y, x)) in inputs.iter().enumerate() {
+            let mut g = atan_guest();
+            let before = atan2(&mut g, *y, *x, ATAN_SP).unwrap();
+            let cell = ATAN_OFFSETS + (code as u32) * 8;
+            let patched = fp::load_double(&g, cell).unwrap() + 1.0;
+            g.set_u64(cell, patched.to_bits()).unwrap();
+            let after = atan2(&mut g, *y, *x, ATAN_SP).unwrap();
+            assert!(
+                (after - before - 1.0).abs() < 1e-15,
+                "octant {code}: patching its offset moved the result by {}",
+                after - before
+            );
+            // And the *other* three entries must not matter for this input.
+            for other in 0..4u32 {
+                if other == code as u32 {
+                    continue;
+                }
+                let mut h = atan_guest();
+                let cell = ATAN_OFFSETS + other * 8;
+                let bumped = fp::load_double(&h, cell).unwrap() + 1.0;
+                h.set_u64(cell, bumped.to_bits()).unwrap();
+                assert_eq!(atan2(&mut h, *y, *x, ATAN_SP).unwrap(), before, "octant {code} vs {other}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_nan_argument_comes_out_nan() {
+        let mut g = atan_guest();
+        assert!(atan2(&mut g, f64::NAN, 1.0, ATAN_SP).unwrap().is_nan());
+        assert!(atan2(&mut g, 1.0, f64::NAN, ATAN_SP).unwrap().is_nan());
+    }
+
+    #[test]
+    fn atan2_restores_the_entry_flush_mode() {
+        let mut g = atan_guest();
+        let before = crate::vmx::get_mxcsr();
+        atan2(&mut g, 1.0, 2.0, ATAN_SP).unwrap();
         assert_eq!(crate::vmx::get_mxcsr(), before);
     }
 
