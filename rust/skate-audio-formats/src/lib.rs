@@ -8,6 +8,7 @@
 
 pub mod eaac;
 pub mod eb;
+pub mod mpf;
 pub mod mus;
 
 /// A parse failure, with the byte offset it was detected at.

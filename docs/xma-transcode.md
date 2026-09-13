@@ -763,6 +763,11 @@ harvesting for the rest of the music API.
 and it is the route into sections 0-3 — which byte-pattern inference should not be asked to
 supply, given this document has already had to retract three readings reached that way.
 
+> **Both paragraphs below are superseded.** The path strings are referenced by
+> `sub_82498E50`, `sub_82499148`, `sub_82499240` and `sub_8249A6A8`, which queue an async load
+> through `sub_82D155E0`; and the parser *is* in the lifted corpus after all. See "Measured
+> 2026-09-12: sections 0-3" at the end of this section.
+
 **Why the parser could not be read instead.** The magic is not greppable anywhere: zero hits for
 `"PFDx"` or `"PFD"` in `default.xex`, either `default.xexp`, or `EAWebkit.xex`, and zero for the
 `0x50464478` immediate (or its reversed and split forms) across **47,889** lifted functions --
@@ -772,8 +777,255 @@ evidence rather than a coverage gap. The reason is that `default.xex` is a **XEX
 the decrypted image, which the recomp necessarily holds in memory at `virtual_membase +
 0x82000000`.
 
+### Measured 2026-09-12: sections 0-3, read out of the guest's own reader
+
+The paragraph above was wrong on its central point, and the retraction is the reason the rest
+of this section is worth trusting.
+
+**Retraction: the magic *is* in the lifted corpus.** The earlier search looked for
+`0x50464478` and its byte permutations. XenonRecomp emits immediates in **decimal**, and a
+32-bit constant arrives as a `lis`/`ori` pair, so the thing to search for is `20550` and
+`17528`. There is exactly one hit in 47,889 functions:
+
+```
+skate3_recomp.51.cpp:31638    // lis r11,20550
+skate3_recomp.51.cpp:31642    // ori r9,r11,17528      -> 0x50464478 == "PFDx"
+```
+
+That is `sub_82956DD0`, the `.mpf` loader, and it sits in one contiguous module,
+`0x82950000`-`0x8295C400`, that owns the whole format. Everything below is read from that
+module and then checked against the three retail files. No image dump was needed. **The
+lesson is narrow and reusable: search the lifted corpus for decimal immediates and for the
+`lis`/`ori` halves, never for the hex constant.**
+
+#### How the loader reaches a section
+
+`sub_82956DD0(image)` validates `"PFDx"` and both version bytes (`5`, then `3`; anything else
+prints and aborts), then resolves every section once:
+
+```c
+P = current_map;                 // the module singleton at 0x83084220
+P->f24 = image;
+for (i = 0; i < 9; i++)
+    P->f(28 + 4*i) = image + *(u32*)(image + 0x14 + 4*i);
+```
+
+So **section *i* lives at field `28 + 4*i` of the runtime object**, which is what lets a
+section be identified from any accessor: `P->f28` is section 0, `P->f52` is section 6, and so
+on. The loader keeps **four** maps live at once (slots at `0x83084210`), keyed on header byte
+`0x0C`, and refuses a second file with the same key but a different `u16` at `0x0A`.
+
+#### Header, corrected and completed
+
+```text
+0x00  "PFDx"
+0x04  u8 u8   major.minor -- the loader rejects anything but 5.3
+0x06  u16     0xB003 in all three files; no reader found
+0x08  u32     0
+0x0C  u8      map type. The loader keys its four slots on it and sets bit
+              0x01000000 << type; the music manager's load request carries the same
+              bit (game 0x12000001, ipod 0x14000001, world 0x11000001 against types
+              1, 2, 0). DEMONSTRATED, code on both sides.
+0x0D  u8      section 6 entry count. Bound-checked in PATHI_verifymusfile.
+0x0E  u8      14 / 3 / 4. UNKNOWN -- nothing in the module reads header byte 14.
+0x0F  u8      section 2 entry count (scripts). Bound in sub_82953588.
+0x10  u8      0 in all three files. UNKNOWN.
+0x11  u8      section 4 record count (variables). Bound in sub_829543E0.
+0x12  u16     section 0 entry count (nodes). Bound in sub_829534F8.
+0x14  u32[10] section byte offsets; [0] == 0x48, [9] == file size
+```
+
+The four bytes at `0x0C` were previously called "four byte-sized counts (meaning unknown)";
+three of the four are now pinned by the guest's own bound checks, and the fourth (`0x0E`) is
+recorded as unknown rather than guessed at.
+
+#### Two encodings
+
+* A **word offset**: a `u16` or `u32` multiplied by 4 to give a byte offset *from the start of
+  the file*. Sections 0, 2, 5 and 6 are tables of these. Every index table is padded to a
+  4-byte boundary, which is the whole of the "trailing zero" that made section 0 look
+  non-monotonic in the earlier pass.
+* A record addressed only through such a table. No section holds a fixed stride, which is why
+  a periodicity test found nothing.
+
+#### Section 0 -> section 1: the node graph
+
+`sub_829534F8(id)` is the whole of section 0:
+
+```c
+if (id < 0 || id > *(u16*)(image + 0x12)) error;
+return image + ((u16*)section0)[id] * 4;
+```
+
+**Section 0 is `u16 node_offset[node_count]`**, and a node record lives in section 1.
+DEMONSTRATED: on all three files `section0[0] * 4` is exactly section 1's first byte, the
+table is strictly ascending, and the records tile section 1 with no gap and no overlap.
+
+**Section 1 record** -- 16-byte header plus a variable branch table:
+
+```text
++0x00  s16   segment. > 0 selects a .mus segment, 1-based, and is also the 1-based
+             index into section 8. <= 0 marks a control node (see below).
++0x02  u16   bit field:
+               bits 11..15  track, 0..23 (sub_82957CA0 rejects >= 24)
+               bits  5..10  6-bit group id, passed to the host's node callback
+               bits  0..4   5-bit signed value a -1 control node writes to the track
++0x04  u32   bits 15..19  branch count
+             bits  8..11  meter: the divisor applied to the section 8 rate
+             bits  0..7   1 in every record
++0x08  u32   unidentified: a u16 index plus a 0x40 flag byte
++0x0C  u32   0 except on 8 records across the three files. Bit 31 makes the timing
+             code take its rate from the player instead of the tempo table; bits
+             8..31 are the script id a -3 control node triggers.
++0x10  { i8 lo; i8 hi; s16 next_node } * branch_count
+```
+
+The branch count comes from the guest, not from a fit: `sub_82957CA0` computes
+`(word_at_4 >> 15) & 0x1F` and walks that many 4-byte entries from `node + 16`. The record
+length `16 + 4 * count` then holds for **all 9,199 records of all three files** with no
+exceptions -- the code and the data are independent here, and they agree.
+
+`sub_82957CA0(node_id, value, flag)` is the transition:
+
+```c
+for (i = 0; i < count; i++)
+    if (value >= (i8)e[i].lo && value <= (i8)e[i].hi && (s16)e[i].next >= 0)
+        return e[i].next;
+// nothing matched: take the entry whose endpoint is nearest to value
+```
+
+`value` is a signed 5-bit field carried on the *track*, not the node, which is why the
+endpoints are signed: `world.mpf`'s dominant pair is `(-1, 75)` then `(75, 127)`, i.e. "below
+zero goes here, at or above goes there". Ranges are contiguous within a record in
+2024/2024 (ipod), 5823/5848 (world) and 1174/1186 (game) of the records that have them.
+
+Control nodes are dispatched in `sub_82957F20` on the sign of `+0x00`:
+
+| segment | behaviour |
+|---|---|
+| `> 0` | play `.mus` segment *n*; stop walking |
+| `0` | call the host's registered node callback with the 6-bit group id |
+| `-1` | write the node's 5-bit field into the track's branch value |
+| `-2` | re-draw the track's branch value from `sub_829588A0` (masked to 7 bits) |
+| `-3` | look up `word12 >> 8` as a script and run it |
+
+`-4` also occurs (16 records in `game.mpf`) and falls through to none of those tests, so it
+behaves as a plain pass-through. Recorded as observed, not explained.
+
+#### Section 2 -> section 3: scripts
+
+`sub_82953588(id, mask)` is the whole of section 2:
+
+```c
+for (i = script_count - 1; i >= 0; i--) {
+    node = image + ((u16*)section2)[i] * 4;
+    if (((*(u32*)(node + 12) >> 8) & mask) == (id & mask)) return node;
+}
+```
+
+**Section 2 is `u16 script_offset[header[0x0F]]`**, same word-offset encoding as section 0,
+pointing into section 3. DEMONSTRATED: every entry of every file lands inside section 3, and
+the records tile it exactly.
+
+**Section 3 record** -- 20-byte header plus a 12-byte event list:
+
+```text
++0x00  u32 u32 u32   zero in the file; overwritten with timing when the record is
+                     copied into a player slot
++0x0C  u32           bits 8..31 script id, bits 0..7 event count
++0x10  u32           zero in the file
++0x14  { u32 track_mask; u32 word; u32 payload } * count
+```
+
+`len == 20 + 12 * (word12 & 0xFF)` holds for all 23 scripts in the three files. The 20-byte
+header and 12-byte stride are not inferred from the data: `sub_82956828` ticks a player at
+`slot + 20 + 12*i`, reads the count from `slot + 15` and the id from `slot + 12 >> 8`, which
+is the same record memcpy'd into RAM.
+
+`sub_82953660` executes one event: it loops the 24 tracks testing bits 0..23 of `track_mask`,
+then switches on `(word >> 17) & 0x7F`. The table has **18 entries**; opcodes 10, 11 and 12
+branch to the loader's error printer, so 15 opcodes are live. Observed across the three
+files: 1, 2, 4, 8, 13 and 14. Bit 16 of `word` is the runtime "handled" flag and is clear in
+every event in every file -- a real check, since a misread field would not be uniformly zero.
+
+Two opcodes are identified well enough to name, from the code only:
+
+* opcode 4 (`loc_82953904`) resolves two operands, searches for a node matching a criterion,
+  saves 576 bytes of player state and re-enters -- the **transition** opcode.
+* opcode 9 (`loc_82953BBC`) builds a 24-bit id, calls `sub_82953588` and runs the result --
+  **call another script**. The others are described only by the helper they call.
+
+#### Section 4, corrected
+
+**Section 4 is `{ char name[16]; u32 value } * header[0x11]`**, not a NUL-separated string
+pool. `sub_829543E0` resolves operand mode 2 as `*(u32*)(section4 + 20*i + 16)`, bound-checked
+against header byte `0x11`, and byte `0x11` equals the record count exactly in all three files
+(8 / 3 / 2). The name field is a fixed 16 bytes; the bytes after its NUL are **stale**, left
+from a longer earlier name in the authoring tool's buffer, which is what produced the earlier
+reading of `chaser\0ers\0n` as several fields. The value word is the runtime parameter the
+game writes and the sequencer branches on; it is 0 in every record on disc.
+
+Mode 1 of the same function is a 28-way table of built-in expressions, and mode 0 is a
+literal. So an operand is one of: a constant, a built-in, or a named variable.
+
+#### Sections 5-8, tightened
+
+* **Section 5** is a single `u32` word offset, and in all three files it points at section 6's
+  first byte. A pointer to the table of pointers.
+* **Section 6** is `u32 word_offset[header[0x0D]]`, each naming a section 7 record.
+* **Section 7** is `{ u32 x2; u32 checksum; u32 mus_offset; u32 }`, 20 bytes per `.mus`.
+  `PATHI_verifymusfile` compares `+0x08` against the opened `.mus`'s checksum, which is where
+  the field's meaning comes from. `ipod.mpf` has two links and the second's checksum is
+  `0xF1F1F1F1` -- filler. The function's other path indexes `base + 16*i + 20`, which runs off
+  the end of a 20-byte record; that path is not understood and is left alone.
+* **Section 8** is `{ u32 position; u32 rate }`. `sub_82957A00` reads record
+  `node.segment - 1`, converts `rate` to float, divides it by the node's meter nibble, and
+  uses the result as the denominator of a tick-to-time conversion. So `rate` is a **rate, not
+  a duration** -- which independently kills the retracted "1600 ms" reading rather than merely
+  contradicting it. `position` ascends strictly in all three files and is still unidentified.
+
+**The cross-file check.** Section 8 holds exactly one record per `.mus` segment: 1074 / 1380 /
+5725 against the segment counts `mus.rs` reads out of `Game_Stream.mus`, `Ipod_Stream.mus` and
+`World_Stream.mus`. Stronger still, the *positive* `segment` fields of section 1 cover
+`1..=n` exactly, with no value missing and none out of range, in all three files. `game.mpf`
+and `world.mpf` use each segment once; `ipod.mpf` reaches its 1380 segments from 1932 nodes.
+Neither of those could survive a wrong reading of the node header.
+
+#### What this replaces
+
+| earlier reading | status |
+|---|---|
+| "the index addresses section 1 in `u16` units" | **wrong**: the unit is 4 bytes, from the file start. The `x2` reading halved every record length. |
+| "one 478-byte record in world, 70 and 58 in game" | **retracted**: an artefact of the `x2` error. The real maximum is 40 bytes, in `game.mpf` only. |
+| "section 1 is not fully covered by the index -- 11,986 bytes beyond it" | **retracted**: with `x4` the index tiles section 1 exactly, 0 bytes left over, in all three files. |
+| "sections 0 and 2 are one continuous ascending `u16` index" | **half right**: same encoding, two separate tables, into two different sections. s2's values sit above s0's last because section 3 sits above section 1. |
+| "section 4 is a small NUL-separated string pool" | **wrong**: fixed 16-byte name plus a `u32`, with stale bytes after the NUL. |
+| "the leading `u16` is a value (position or delta), not an opcode" | **stands, and is now named**: it is the signed segment index. The MIDI reading stays retracted. |
+| "`counts[3]` at `0x0F` is section 2's element count" | **confirmed** from the guest's bound check, not just from the byte sizes. |
+| "`"PFDx"` is absent from the decrypted image / the parser cannot be found" | **wrong**: see the retraction at the top. |
+
+#### Still unknown
+
+* Header `0x0E` (14 / 3 / 4) and `0x10`. No reader anywhere in the module. Note `0x0E`
+  resembles the range of the node's 6-bit group id (game 1..12, ipod 1..2, world 1..2) without
+  matching it; that resemblance is **not** evidence and no claim is made.
+* Header `0x06` (`0xB003`) -- present, constant, unread.
+* Node `+0x08`. A `u16` index and a `0x40` flag; no consumer identified.
+* Section 8's `position`.
+* 12 of the 15 live opcodes: which helper they call is readable, what the helper does is not.
+* The `.rodata` float constant in the tick-to-time conversion, which needs the decrypted image.
+* Whether `-4` control nodes mean anything beyond "fall through".
+
+#### Reproducing
+
+`rust/skate-audio-formats/src/mpf.rs` parses all of the above;
+`cargo run --release --example verify_mpf` walks the three retail maps and every record in
+them. It reports **33,227 checks, all agreeing**, including the two cross-file checks against
+the `.mus` files. Negative controls: clearing one bit of a node's branch-count field, and
+pointing a node at a segment past the tempo table, each make it exit 1 and name the record.
+
 ### Not attempted
 
-Sequencing semantics -- how sections 0 through 3 drive transitions between segments -- is
-untouched. Converting interactive music means emitting segments *plus* a usable map, and
-the map's meaning is the open half.
+How a *session* drives the graph -- which node a mode starts at, and what the host writes into
+the track's branch value -- is still open. The map's own structure is decoded; the policy that
+walks it lives in the game code above this module.
