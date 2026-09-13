@@ -116,10 +116,12 @@ In rough order of value:
    envelope correlation cannot fingerprint a steady ambience bed, and a whole log-spectrum
    correlation scores ~0.85 on *any* two audio signals.
 
-   **What is still missing is the choice of stream.** The metadata table that maps a sound to a
-   map or an event is not decoded, so a stream is named by hand
-   (`SKATE_AUDIO_PLAY=archive:entry:channels:rate`). That table is the next piece of real work on
-   the engine side.
+   **Choosing the stream is now half solved** (`docs/audio-banks.md`). Skate 3 names every audio
+   object with a string, hashes it, and the hash is the join key between game code, world data and
+   the banks: an emitter record names a bank by hash, each bank exports named ports, and a symbol
+   table resolves them (187 agree, 0 disagree). What is *not* pinned is the step from "board
+   landed" to a message port firing, because no port key appears as a constant anywhere in the
+   corpus, so that lookup is built at run time.
 3. ~~**`.mpf` sequencing**, sections 0–3.~~ **Decoded.** The node graph in section 1 is the
    transition mechanism: each node carries branches `{lo, hi, next}` and the one whose range holds
    a signed 5-bit track value is taken. `verify_mpf` agrees on 33,227 checks across all three
