@@ -237,6 +237,34 @@ harness.
 The second is the more instructive: correct memory hid a wrong register, and the carry appeared
 once in 120 calls. No unit test written against the source would have found either.
 
+### The read set is for replay, and declaring it is nearly free
+
+A port's `Windows()` has two jobs and only one of them affects safety. The **write** spans are what
+the harness rewinds, and a store outside them reaches the live game, so they have to be right. The
+**read** spans are recorded into a vector and nothing else: they are never rewound, and
+`PortSpec::total()` counts writes only, so a read span costs nothing against the 32 KB budget.
+
+That asymmetry is easy to under-use. Five verified ports declared the structures they read and not
+the *data* they worked on, and it cost nothing until the Rust translations needed replaying against
+real inputs. Then it cost everything: two ring functions reported 312 of 312 and 206 of 206 vectors
+**unreplayable**, every one at the ring's data, and three spatial functions could not replay at all
+because five rodata cells reached through their callees were never named. A recording that holds a
+function's registers and its structures but not its inputs cannot be replayed, and the failure
+looks like a broken port rather than a thin recording.
+
+So the rule is: **declare every span the body reads, including what a callee reaches**, and where a
+constant belongs to another port, copy its address locally with a comment saying to keep the two in
+step — a cross-port reference is what lint check 8 forbids.
+
+Adding those spans to five verified ports changed nothing about their verification, which is the
+point and was checked rather than assumed: one scripted session afterwards, **147 ports comparing,
+zero divergence**, audio at 187.5 frames a second with no silent submits, and the five carrying
+between 74,832 and 312,332 comparable calls each.
+
+One rough edge worth knowing: an overflowing **write** set sets `overflowed` and forces the hook to
+skip, while an overflowing read set is silently truncated at 32 spans. A port that needs more read
+spans than that will record an incomplete read set and say nothing about it.
+
 ## Measurements
 
 Static census over the 216 (`docs/ports-static.md`):
