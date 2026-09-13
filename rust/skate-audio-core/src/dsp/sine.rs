@@ -362,6 +362,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)] // the probes below are input angles, not uses of pi
     fn it_computes_sine_against_an_independent_oracle() {
         // f64::sin is outside this translation entirely. A swapped lane, a wrong splat immediate or
         // a reduction that used pi instead of 2pi all survive a self-consistency check and none of

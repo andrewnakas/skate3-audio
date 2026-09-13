@@ -886,7 +886,7 @@ mod tests {
 
         // step = (1.0 - 0.0)/64, so the kernel's gain is k/64 for the first 64 samples and then 1.0.
         for channel in 0..2u32 {
-            let base = dst + 2048 * 0 + 1024 * channel;
+            let base = dst + 1024 * channel; // row 0 of the destination, then a channel of 256
             assert_eq!(at(&g, base), 0.0, "channel {channel} sample 0 takes the applied gain");
             assert_eq!(at(&g, base + 4), 1.0 / 64.0, "sample 1");
             assert_eq!(at(&g, base + 4 * 64), 1.0, "sample 64 holds at the target");
