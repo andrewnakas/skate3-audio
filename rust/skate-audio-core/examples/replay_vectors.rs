@@ -17,8 +17,8 @@
 
 use skate_audio_core::mathlib::Trig;
 use skate_audio_core::{
-    Guest, buffers, cursors, dsp, filters, gains, mathlib, mix, player, ring, scheduler, spatial,
-    stage, system,
+    Guest, buffers, crossfade, cursors, dsp, filters, gains, mathlib, mix, player, ring,
+    scheduler, spatial, stage, system,
 };
 
 struct Vector {
@@ -456,6 +456,40 @@ fn main() {
             "sub_82B26568" => filters::highpass_stage(&mut g, &mut mathlib::Image, v.w[0], v.w[1])
                 .map(|r| Some(r as u32))
                 .map_err(|e| e.to_string()),
+            // The crossfade and its dispatcher both need r1, and the crossfade r9 and r10 as well.
+            "sub_82B3D0A8" | "sub_82B3D4F8" if v.r1.is_none() || v.r10.is_none() => {
+                t.unreplayable += 1;
+                if t.first_gap.is_none() {
+                    t.first_gap = Some(format!("run {}: needs r1/r9/r10, predates them", v.run));
+                }
+                continue;
+            }
+            // count r3, then A..E in r6..r10, F off the caller's frame at 84(r1), gains in f1 and f2.
+            "sub_82B3D0A8" => crossfade::crossfade(
+                &mut g,
+                v.w[0],
+                v.w[3],
+                v.w[4],
+                v.w[5],
+                v.r9.unwrap_or(0),
+                v.r10.unwrap_or(0),
+                v.r1.unwrap_or(0) as u32,
+                f64::from_bits(v.f[0]),
+                f64::from_bits(v.f[1]),
+            )
+            .map(|_| None)
+            .map_err(|e| e.to_string()),
+            // The dispatcher opens a 96-byte frame below r1 and passes the crossfade its sixth
+            // pointer through it. That frame is the call's own stack, never a window and never
+            // recorded, so it is seeded with zeroes -- sound because the port writes the back chain
+            // and the argument slot before the callee reads either.
+            "sub_82B3D4F8" => {
+                let sp = v.r1.unwrap_or(0) as u32;
+                g.put(sp.wrapping_sub(96), vec![0u8; 96]);
+                crossfade::run_mix(&mut g, v.r3, v.w[1], v.r7, sp)
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
             _ => {
                 t.skipped += 1;
                 continue;
