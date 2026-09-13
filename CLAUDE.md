@@ -94,7 +94,10 @@ The native sweep is finished, so the live fronts are:
   surface, are bit-identical between RexGlue's C++ and a Rust translation — 56,880 lane
   comparisons, both flush-to-zero states. Run `probe/vmx128/run.sh` to reproduce; it needs
   no Ghidra, no game build and no play session. Full cookbook in
-  `docs/vmx128-exactness.md`. What survives, both narrow: `vexptefp128`/`vlogefp128` go
+  `docs/vmx128-exactness.md`. **Corrected 2026-09-13:** that probe built its reference with
+  `-march=native`, which made SIMDe's `vmaddfp`/`vnmsubfp` fused. The recomp has no `-mfma`, so
+  they round **twice** (rule 1 now says so, and the probe builds with the recomp's flags). Found
+  by 4 of 2,000 replayed sine-kernel calls. Scalar `fmadds` is `std::fma` and stays fused. What survives, both narrow: `vexptefp128`/`vlogefp128` go
   through libm and match only because Rust and glibc share a symbol here, so keep them
   bit-checked forever; and commutative float ops are **not** NaN-commutative, where the
   winning operand is chosen by register allocation in GCC and in clang-20, the recomp's own

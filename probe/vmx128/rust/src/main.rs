@@ -6,7 +6,9 @@
 //! this file must reproduce them bit-for-bit over the shared `vectors.bin`.
 //!
 //! Translation rules being tested (PLAN.md section 5):
-//!   * `vmaddfp*` must use a genuine fused multiply-add, never `a * b + c`.
+//!   * `vmaddfp*` rounds TWICE, as the recomp computes it: it is built without FMA, so SIMDe
+//!     falls back to `(a * b) + c` and `-(a * b) + c`, which clang emits as `c - a * b`.
+//!     (Corrected 2026-09-13; the probe used to require a fused multiply-add.)
 //!   * flush-to-zero is toggled per instruction class, so every op runs under
 //!     both MXCSR states.
 //!   * the BE<->LE lane mask and the PPC estimate tables port as literal data.
@@ -234,9 +236,9 @@ macro_rules! ops {
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vaddfp(a: __m128i, b: __m128i, _c: __m128i) -> __m128i { f(_mm_add_ps(p(a), p(b))) }
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vsubfp(a: __m128i, b: __m128i, _c: __m128i) -> __m128i { f(_mm_sub_ps(p(a), p(b))) }
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vmulfp(a: __m128i, b: __m128i, _c: __m128i) -> __m128i { f(_mm_mul_ps(p(a), p(b))) }
-// vmaddfp: a genuine fused multiply-add. NEVER `a * b + c`.
-#[target_feature(enable = "sse4.1,fma")] unsafe fn o_vmaddfp(a: __m128i, b: __m128i, c: __m128i) -> __m128i { f(_mm_fmadd_ps(p(a), p(b), p(c))) }
-#[target_feature(enable = "sse4.1,fma")] unsafe fn o_vnmsubfp(a: __m128i, b: __m128i, c: __m128i) -> __m128i { f(_mm_fnmadd_ps(p(a), p(b), p(c))) }
+// vmaddfp: two roundings, the product first (see the header).
+#[target_feature(enable = "sse4.1,fma")] unsafe fn o_vmaddfp(a: __m128i, b: __m128i, c: __m128i) -> __m128i { f(_mm_add_ps(_mm_mul_ps(p(a), p(b)), p(c))) }
+#[target_feature(enable = "sse4.1,fma")] unsafe fn o_vnmsubfp(a: __m128i, b: __m128i, c: __m128i) -> __m128i { f(_mm_sub_ps(p(c), _mm_mul_ps(p(a), p(b)))) }
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vmaxfp(a: __m128i, b: __m128i, _c: __m128i) -> __m128i { f(_mm_max_ps(p(a), p(b))) }
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vminfp(a: __m128i, b: __m128i, _c: __m128i) -> __m128i { f(_mm_min_ps(p(a), p(b))) }
 #[target_feature(enable = "sse4.1,fma")] unsafe fn o_vrefp(a: __m128i, _b: __m128i, _c: __m128i) -> __m128i { f(_mm_div_ps(_mm_set1_ps(1.0), p(a))) }

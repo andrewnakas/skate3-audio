@@ -247,7 +247,8 @@ static simde__m128i op_lvlx_swap5(simde__m128i a, simde__m128i, simde__m128i) {
 // payload of one particular operand slot, and which program variable a compiler puts in
 // that slot follows register allocation. Measured on this CPU:
 //   vaddps/vmulps     the first source (src1) wins
-//   vfmadd/vfnmadd    the first FACTOR of the encoded form wins (213: op2; 132: op1)
+//   vfmadd/vfnmadd    the first FACTOR of the encoded form wins (213: op2; 132: op1) -- but
+//                     the recomp is built without -mfma, so none of its multiply-adds are fused
 // GCC and clang-20 disagree, in opposite directions, on add and on FMA. Building with
 // -DPIN_COMMUTATIVE_OPERAND_ORDER routes these four through naked functions whose
 // encoding puts `a` in the winning slot. vmaxps/vminps need no pinning: SSE defines them
@@ -261,10 +262,10 @@ __attribute__((naked, noinline)) static simde__m128i op_vmulfp_pin(simde__m128i,
   __asm__("vmulps %xmm1, %xmm0, %xmm0\n ret");                       // xmm0 = a * b, src1 = a
 }
 __attribute__((naked, noinline)) static simde__m128i op_vmaddfp_pin(simde__m128i, simde__m128i, simde__m128i) {
-  __asm__("vmovaps %xmm1, %xmm3\n vfmadd213ps %xmm2, %xmm0, %xmm3\n vmovaps %xmm3, %xmm0\n ret");  // a*b + c
+  __asm__("mulps %xmm1, %xmm0\n addps %xmm2, %xmm0\n ret");         // (a*b) + c, two roundings, src1 = product
 }
 __attribute__((naked, noinline)) static simde__m128i op_vnmsubfp_pin(simde__m128i, simde__m128i, simde__m128i) {
-  __asm__("vmovaps %xmm1, %xmm3\n vfnmadd213ps %xmm2, %xmm0, %xmm3\n vmovaps %xmm3, %xmm0\n ret"); // -(a*b) + c
+  __asm__("mulps %xmm1, %xmm0\n subps %xmm0, %xmm2\n movaps %xmm2, %xmm0\n ret"); // c - (a*b): not commutative, pinned only for symmetry
 }
 #define PIN_OR(fn) fn##_pin
 #else

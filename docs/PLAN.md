@@ -402,12 +402,14 @@ touches functions disjoint from Phase 2's. Phase 4 is a rolling queue, not a gat
 
 1. **The lowering is already validated** across a large recompilation effort. Re-deriving
    it is redundant and riskier than transcribing it.
-2. **FMA is semantically load-bearing.** `vmaddfp`/`vmaddfp128` lower to
-   `simde_mm_fmadd_ps` — a genuine single-rounding fused multiply-add. The rule:
-   **translate `vmaddfp*` to `mul_add`/`_mm_fmadd_ps`; translate a `vmulfp128` followed by
-   a separate `vaddfp128` as two separate ops, never let them collapse.** LLVM will not
-   auto-contract without fast-math, so the real risk is a human writing `a*b+c` for what
-   was two instructions. Guard with convention and a lint, not by hoping the default holds.
+2. **The rounding of every multiply-add is load-bearing, in the direction the recomp computes it.**
+   *Corrected 2026-09-13:* `vmaddfp`/`vmaddfp128` lower to `simde_mm_fmadd_ps`, but the recomp
+   is built without `-mfma`, so SIMDe's fallback rounds the product and then the sum: **two**
+   roundings. Scalar `fmadds` lowers to `std::fma` and stays single-rounding. The rule is:
+   **translate `vmaddfp*` as `_mm_add_ps(_mm_mul_ps(a, b), c)`, `vnmsubfp*` as
+   `_mm_sub_ps(c, _mm_mul_ps(a, b))`, and `fmadds` as `mul_add`.** LLVM will not auto-contract
+   without fast-math, so the risk is a human writing the wrong one of the two.
+   `docs/vmx128-exactness.md` rule 1 has the evidence, and how the probe missed it.
 3. **FTZ is per-instruction-class and measurable.**
    `ctx.fpscr.{enable,disable}FlushModeUnconditional()` appears 999 + 136 times in
    `skate3_recomp.67.cpp` alone, before vector and scalar float ops respectively — VMX is

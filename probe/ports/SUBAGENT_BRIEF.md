@@ -29,7 +29,9 @@ never rewound and reaches the live game -- that is the one thing you must not do
 - Float: keep `lfs`/`stfs` single-precision round trips; `fctidz`/`fctiwz` edge cases (NaN,
   values past 2^63, the `>` versus `>=` at exactly 2^63) branch for branch, as in
   `TruncatedLowByte` in recomp/src/skate3_audio_native.cpp. FMA only where the lifted line is
-  `fmadd`/`fmsub`/`vmaddfp*`; a `mul` followed by `add` stays two operations.
+  `fmadd`/`fmsub` (scalar, `std::fma`, one rounding). `vmaddfp*` stays `simde_mm_fmadd_ps`,
+  which this build compiles to a multiply and an add (two roundings), so never replace it with a
+  per-lane `std::fma`. A `mul` followed by `add` stays two operations.
 - `ctx.fpscr.enableFlushModeUnconditional()` / `disableFlushModeUnconditional()` calls stay at
   the same points relative to the float work. Native float math runs under the guest's mode;
   do NOT mask exceptions around it. Only host-only work (logging) gets masked, and you should

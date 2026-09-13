@@ -48,16 +48,35 @@ and the BE↔LE lane mask.
 
 ## The cookbook
 
-### 1. `vmaddfp*` is a genuine fused multiply-add
+### 1. `vmaddfp*` rounds twice in the recomp — it is **not** a fused multiply-add
+
+*Corrected 2026-09-13.* Until then this rule said the opposite, which is wrong for the game.
 
 `vmaddfp`, `vmaddfp128` and `vmaddcfp128` lower to `simde_mm_fmadd_ps`; `vnmsubfp*` to
-`simde_mm_fnmadd_ps`. Both are single-rounding. Translate to `_mm_fmadd_ps` /
-`_mm_fnmadd_ps`, never to `a * b + c` — LLVM will not contract a separate multiply and add
-without fast-math, so the failure mode is a human writing the algebraic form, not the
-compiler. A `vmulfp128` followed by a separate `vaddfp128` must stay two operations.
+`simde_mm_fnmadd_ps`. What those become depends on the compiler flags. The recomp is built with
+`-O3 -march=x86-64 -msse4.1 -mtune=generic` and no `-mfma`, so `__FMA__` is undefined and SIMDe
+takes its portable fallback: `(a * b) + c` and `-(a * b) + c`, a rounded product and then a
+rounded add. clang-20 emits exactly `mulps` then `addps`, and `mulps` then `subps`: it rewrites
+`-(p) + c` as `c - p`. The recomp's lifted sine kernel `sub_824531C8` is 25 `mulps`, 11 `addps`,
+1 `subps` and no FMA instruction.
 
-Verified: `vmaddfp` and `vnmsubfp` are bit-identical over the full adversarial set under both
-GCC and clang-20, with NaN-operand order pinned per rule 4.
+Translate to `_mm_add_ps(_mm_mul_ps(a, b), c)` and `_mm_sub_ps(c, _mm_mul_ps(a, b))`. A
+subtraction is not commutative, so `vnmsubfp`'s NaN winner is fixed: `c`, then the product with its
+sign *not* flipped. The scalar `fmadds` family is different. It lowers to `std::fma`, which is
+correctly rounded with or without the instruction, so it stays single-rounding.
+
+**How this was missed.** The probe built its reference with `-march=native`, which defines
+`__FMA__`. So the reference itself was fused, and a fused Rust layer matched it 45 of 45. The
+error surfaced in the recorded-vector replay: 4 of 2,000 real `sub_824531C8` calls disagreed.
+Emulating two roundings matched all 16 distinct inputs, where the fused form matched 12. `run.sh`
+now builds every reference with the recomp's flags. Against those builds the Rust layer is 45 of 45
+on `clang20_pinned`, `gcc_pinned` and `clang20_plain`.
+
+**Only one kernel's real data could tell the two apart.** Every other recorded vector replays
+clean under both layers (48,399 of 48,403 fused, 48,403 unfused, the 4 all in the sine kernel).
+The unit tests with constructed inputs pin `vmx`, `dsp::gain_ramp`, `dsp::scale`, `dsp::sine` and
+`crossfade`, which failed when the layer changed. `stage` and `dsp::scale_add` have no test that
+distinguishes the two.
 
 ### 2. Flush-to-zero is toggled per instruction class, not per function
 
@@ -103,7 +122,10 @@ which is what the recomp is built with (`CMAKE_CXX_COMPILER` in the jammy build 
 | `fmadd_ps(a,b,c)`, operands loaded from memory | a | a |
 
 In the probe's op table the two compilers fail on *different* pairs: GCC diverges from Rust
-on `vaddfp128`/`vmulfp128`, clang-20 on `vmaddfp`/`vnmsubfp`. Rust returned `a` in every
+on `vaddfp128`/`vmulfp128`, clang-20 on `vmaddfp`/`vnmsubfp`. That was measured under `-march=native`. Under the recomp's own
+flags, clang-20 unpinned matches Rust on all 45 and GCC unpinned diverges on `vmaddfp`/`vnmsubfp`
+in two lanes of 632. The FMA rows of the table above describe instructions the recomp never emits.
+Rust returned `a` in every
 op, but that too is only what its own calling context produced.
 The op table passes `__m128i`
 arguments through a function pointer, and that alone is enough to flip GCC's add to `b`
@@ -158,8 +180,10 @@ about the reference, not about Xenon.
 and vendored SIMDe. It needs **`-std=c++23`** (`rex::byte_swap` uses `std::byteswap`);
 C++20 fails. `sizeof(PPCContext)` is 2688 bytes. The recomp itself is built with clang-20,
 installed here only as `clang++-20` — there is no unversioned `clang++`, so check that name
-before concluding clang is absent. Build both sides with `-march=native` /
-`-C target-cpu=native` so FMA and SSE4.1 are available without runtime dispatch.
+before concluding clang is absent. Build the reference with the recomp's own
+flags, `-O3 -march=x86-64 -msse4.1 -mtune=generic`, and **never `-march=native`**: that defines
+`__FMA__` and silently changes what rule 1 measures. The Rust side may use `-C target-cpu=native`,
+because it writes each intrinsic out and LLVM does not contract without fast-math.
 
 ## What this does not settle
 
@@ -192,7 +216,7 @@ before concluding clang is absent. Build both sides with `-march=native` /
 
 | file | what |
 |---|---|
-| `probe/vmx128/run.sh` | builds the reference under GCC and clang-20, plain and pinned, plus the Rust candidate; runs and compares all four. One command. |
+| `probe/vmx128/run.sh` | builds the reference under GCC and clang-20, plain and pinned, with the recomp's own code-generation flags, plus the Rust candidate; runs and compares all four. One command. |
 | `probe/vmx128/gen_vectors.py` | adversarial vectors — denormals, NaN payloads, ±0, ±inf, rounding boundaries, conversion edges, an `rsqrt` table sweep, 512 xorshift patterns. Written once to a file both sides read, so the two cannot disagree about inputs. |
 | `probe/vmx128/cpp/runner.cpp` | the reference. Every body is RexGlue's lowering verbatim. `-DPIN_COMMUTATIVE_OPERAND_ORDER` applies rule 4. |
 | `probe/vmx128/rust/src/main.rs` | the candidate: hand translation to `core::arch::x86_64`. |
