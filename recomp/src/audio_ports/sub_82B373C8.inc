@@ -1,5 +1,5 @@
 // sub_82B373C8  role: per-channel RMS and peak meters over one block, into ring histories   lifted: skate3_recomp.67.cpp:61681 (451 lines)
-// STATUS: verified (zero divergence) but THIN: 23 comparable calls in the weaker profile, 10112 in the stronger, against 451 lifted lines -- 451 lines against 23 calls in the weaker profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 23 comparable calls in the weaker profile, 10112 in the stronger, against 451 lifted lines -- 451 lines against 23 calls in the weaker profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 46  play 20294  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B373C8.md
 namespace port_82B373C8 {

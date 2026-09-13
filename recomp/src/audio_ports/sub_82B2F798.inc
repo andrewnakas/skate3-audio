@@ -1,5 +1,5 @@
 // sub_82B2F798  role: settle two level terms from log10 of a stored single and of the largest of up to 255 candidates, store one at +32 and add the pair's delta into (*(+12))+40   lifted: skate3_recomp.67.cpp:43282 (178 lines)
-// STATUS: verified (zero divergence) but THIN: 4 comparable calls in the weaker profile, 4 in the stronger, against 178 lifted lines -- four calls. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 4 comparable calls in the weaker profile, 4 in the stronger, against 178 lifted lines -- four calls. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 4  play 4  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B2F798.md
 namespace port_82B2F798 {

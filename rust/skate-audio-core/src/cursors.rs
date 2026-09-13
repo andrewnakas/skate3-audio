@@ -27,6 +27,22 @@
 //! Nothing in `docs/rw_audio_structs.h` names any of the three objects below; every field name is
 //! a reading of what the code does with the cell, and the offsets are the ones the verified C++
 //! bodies use.
+//!
+//! **Four things here are reproduced rather than tidied, and no test in this crate catches their
+//! absence.** Each was checked by breaking it and watching the whole suite still pass:
+//!
+//! - [`advance_ring_cursor`] reloads the cursor byte after writing it, instead of keeping the
+//!   value it just computed. The two differ only if the entry table overlaps the cursor byte;
+//! - [`advance_ring_cursor`] stores zero into `+432` a second time on the latch path. It is the
+//!   same value to the same address, so no single-threaded comparison can see it in either
+//!   direction — the same argument the crate README makes for the command ring's publish order;
+//! - [`advance_segment_position`] reloads `+49` after zeroing the retired segment's end word, and
+//!   reloads `+49` and `+36` again before addressing the new segment. All three differ only for a
+//!   segment table that overlaps the object's own header.
+//!
+//! They are kept because the originals have them, and because the aliasing cases they guard are
+//! real hazards for a caller that lays memory out itself — not because any evidence here
+//! distinguishes them.
 
 use crate::fp;
 use crate::{Guest, Result};

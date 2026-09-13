@@ -15,8 +15,10 @@ than at a misunderstanding of the engine.
 | `fp.rs` | the guest's scalar FP idioms: `lfs`/`stfs`, `fcfid`/`frsp`, the single-rounded forms, `fctiwz`, `rlwinm` | unit-tested only |
 | `counter.rs` | `sub_82B1F360`, the six-word cascading counter the evaluator draws from | verified C++ reference; unit-tested only |
 | `eval/` | the expression evaluator's 40-slot opcode table at guest `0x82FD3600` — **31 slots**, every one that has a verified C++ body | verified C++ reference; unit-tested only |
+| `scheduler.rs` | `sub_82B489D0` and `sub_82B39690`: an instance detaching itself from the scheduler, and the bucket list mechanic that removal runs on | verified C++ reference; unit-tested only |
+| `cursors.rs` | `sub_82B32550`, `sub_82B349A8`, `sub_82B3C9D8`: the three verified cursor advances — which ring slot, which entry, which segment comes next | verified C++ reference; unit-tested only |
 
-`cargo test` runs 79 unit tests. **Read the next two sections before reading that as one number:
+`cargo test` runs 104 unit tests. **Read the next two sections before reading that as one number:
 the three original modules and everything added after them are checked in different ways, and only
 the first three have replay figures.**
 
@@ -34,17 +36,24 @@ game generated, not synthetic ones. An address the port reaches that was not rec
 vector **unreplayable**, never zero-filled, because feeding it fabricated input would turn a
 failure into a meaningless pass.
 
-**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`. The C++ body each
-of these was translated from was compared call-for-call against the original under the harness, on
-real inputs, at zero divergence. The Rust has no vectors of its own: none of these functions has a
-direct call site in the lifted tree (the evaluator reaches all 40 slots through one `bctrl` on a
-data word), so the harness never bracketed them individually and there is nothing recorded to
-replay. What that buys is a much smaller search space — a fault here is a transcription error, not
-a misreading of the engine — and what it does not buy is a number.
+**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, `scheduler.rs`,
+`cursors.rs`. The C++ body each of these was translated from was compared call-for-call against
+the original under the harness, on real inputs, at zero divergence. The Rust has no vectors of its
+own, for one of two reasons. For `fp.rs`, `counter.rs` and `eval/` there is no direct call site in
+the lifted tree at all (the evaluator reaches all 40 slots through one `bctrl` on a data word), so
+the harness never bracketed them individually. For `scheduler.rs` and `cursors.rs` the harness does
+bracket the functions — that is how they were verified — but it records no per-call inputs for
+them, so there is still nothing to replay. Either way what this buys is a much smaller search
+space — a fault here is a transcription error, not a misreading of the engine — and what it does
+not buy is a number.
 
 The unit tests are held to the standard the vector work is: each was checked by breaking the
-function it covers and confirming the test fails. **28 negative controls** were run across
-`fp.rs`, `counter.rs` and `eval/`; 25 now fail correctly, 21 of them on the first attempt.
+function it covers and confirming the test fails. **53 negative controls** have been run:
+
+- 28 across `fp.rs`, `counter.rs` and `eval/`; 25 now fail correctly, 21 of them on the first
+  attempt;
+- 25 across `scheduler.rs` and `cursors.rs` — one per test — all 25 failing correctly on the
+  first attempt, with each break restored and re-checked.
 
 Four passed at first and were fixed by writing sharper tests, not by lowering the claim.
 `op_round_product`'s multiply order needed inputs where an intermediate product actually rounds —
@@ -68,6 +77,26 @@ Three still pass, and each is an equivalent transformation rather than a weak te
 Those three are reproduced as the original has them anyway, and said so in their doc comments, but
 no test in this crate would catch their absence.
 
+`scheduler.rs` and `cursors.rs` add **six more of the same kind**, each measured the same way — by
+making the change and watching all 104 tests still pass — rather than assumed:
+
+- `recycle_node` re-reads the node's two link words between the neighbour stores instead of
+  hoisting both loads, which differs only when a neighbour's link field overlaps the node's own;
+- `detach_instance` loads `instance + 0` after storing the parked bucket index, which differs only
+  if that store lands on the node pointer — the input the C++ `Windows()` refuses as gate 2;
+- `advance_ring_cursor` reloads the cursor byte it has just written, and stores zero into `+432` a
+  second time on the latch path. The second of those is the same value to the same address, so it
+  is invisible to a single-threaded compare in either direction, like the ring's publish ordering;
+- `advance_segment_position` reloads `+49` after retiring a segment, and `+49` and `+36` again
+  before addressing the next one — all three differ only for a segment table that overlaps the
+  object's header.
+
+One reload of this family *is* pinned, by `scheduler.rs`'s
+`the_free_head_is_re_read_after_the_nodes_link_words_are_written`. Read that test's comment before
+quoting it: the aliasing layout it uses is one the C++ `Windows()` refuses to bracket, so what it
+establishes is that the reload survived the transcription, **not** that the guest agrees with the
+answer. Nothing establishes the latter.
+
 ### Limits carried over from the harness
 
 From `docs/shadow-harness.md`:
@@ -78,11 +107,15 @@ From `docs/shadow-harness.md`:
   **unreachable by these sessions**, recorded as a permanent limit rather than a pending task.
 - `EVENT_PLAY` is verified at one input point: 48 kHz, six channels.
 
-Three divergences from the original are deliberate and pinned by tests. The guest's `fctidz` and
+Four divergences from the original are deliberate and pinned by tests. The guest's `fctidz` and
 Rust's saturating `as i64` disagree at exactly 2^63, so that conversion is written branch for
-branch; `fctiwz` and `as i32` disagree on NaN, likewise; and the ring's publish ordering is
+branch; `fctiwz` and `as i32` disagree on NaN, likewise; the ring's publish ordering is
 inverted, which leaves memory byte-identical and is therefore invisible to a single-threaded
-compare in either direction.
+compare in either direction; and `scheduler::detach_instance` returns an out-of-segment `Error`
+where a null node would have sent the original to guest address 8 — the same choice
+`eval::state::op_shuffle_bag` makes, and for the same reason: the C++ `Windows()` refuses that
+input, so nothing is known about what the guest does there and inventing a write would turn a gap
+in coverage into a wrong answer.
 
 One behaviour is reproduced rather than fixed and can hang the caller: `eval::wave::op_oscillator`'s
 phase-wrap loop does not terminate on a NaN or infinite phase, because the guest's unordered compare
@@ -144,9 +177,25 @@ why `EVENT_STOP` has no comparable path under the harness.
 
 ## Not written yet
 
-`scheduler.rs` (two-bucket tick), `xma.rs` (the paired ring protocol against a decoder trait),
-`dsp/` (one file per plug-in family) and `graph.rs` (instantiation from descriptor metadata).
-Inside `eval`, the interpreter's node walk and the nine unported slots, for the reasons above.
+`xma.rs` (the paired ring protocol against a decoder trait), `dsp/` (one file per plug-in family)
+and `graph.rs` (instantiation from descriptor metadata). Inside `eval`, the interpreter's node walk
+and the nine unported slots, for the reasons above.
+
+**The scheduler tick cannot be written, and that is not a backlog item.** `docs/PLAN.md` section 6
+asks `scheduler.rs` for the "two-bucket tick, per-plug-in profiling toggle, mid-tick self-removal";
+only the last of the three is in `scheduler.rs`. The tick is `sub_82B48A50`, recorded `gate-1` in
+`docs/ports.md`: it calls each node's process function through a `bctrl`, and it reads the timebase
+through `sub_82B1F7E8` twice per node, which is gate 3 as well. Neither language has a verified
+reference for it, and the profiling toggle is a field that tick writes. A Rust version would be new
+analysis dressed as a transcription. Its two neighbours in the PLAN's Phase 2 list are out for the
+same reason — `sub_82B48440` is gate-1 through the allocator and `sub_82B482F8` is gate-2.
+
+Two verified functions in the same area were **considered and left out** on the status column
+rather than the gate: `sub_82B376B8` (the metering tick) and its callees `sub_82B370E8` and
+`sub_82B373C8` are recorded `thin` in `docs/ports.md` — verified, but on too few calls for their
+size to carry promotion — and `sub_82B373C8` is a VMX128 kernel besides, which this crate has no
+vector layer for until PLAN Phase 3 lands. Translating a `thin` body would blur a distinction this
+README exists to keep.
 
 All 216 audio-thread functions have a verified or gate-labelled C++ reference in
 `recomp/src/audio_ports/`, so the remaining modules are transcription work rather than analysis.

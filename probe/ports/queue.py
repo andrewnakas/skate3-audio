@@ -237,8 +237,9 @@ def cmd_sync_status(a):
         if not header:
             continue
         word = header.split()[0].lower().rstrip(":,")
-        # A thin port's header still opens with "verified", because it IS verified -- what it
-        # lacks is enough calls for its size to carry promotion (docs/promotion.md).
+        # A thin port is verified -- what it lacks is enough calls for its size to carry
+        # promotion (docs/promotion.md). The header leads with "thin" so that a reader and
+        # docs/ports.md agree at a glance; an older wording led with "verified" and they did not.
         if "but THIN" in header:
             word = "thin"
         mapped = {"verified": "verified", "promoted": "promoted", "divergent": "divergent",

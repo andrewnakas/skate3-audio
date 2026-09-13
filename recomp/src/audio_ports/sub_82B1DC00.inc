@@ -1,5 +1,5 @@
 // sub_82B1DC00  role: find the global list entry whose container key matches u32[arg+8], unlink it, and when that empties the list hand the global record to sub_82B489D0; returns 12 always   lifted: skate3_recomp.67.cpp:3 (115 lines)
-// STATUS: verified (zero divergence) but THIN: 5 comparable calls in the weaker profile, 8 in the stronger, against 115 lifted lines -- a handful of calls. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 5 comparable calls in the weaker profile, 8 in the stronger, against 115 lifted lines -- a handful of calls. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 5  play 8  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B1DC00.md
 namespace port_82B1DC00 {

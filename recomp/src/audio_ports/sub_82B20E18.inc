@@ -1,5 +1,5 @@
 // sub_82B20E18  role: apply a rising per-frame ramp across a 128-frame interleaved block   lifted: skate3_recomp.67.cpp:7467 (143 lines)
-// STATUS: verified (zero divergence) but THIN: 1 comparable calls in the weaker profile, 1 in the stronger, against 143 lifted lines -- one call in each profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 1 comparable calls in the weaker profile, 1 in the stronger, against 143 lifted lines -- one call in each profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 3  play 3  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B20E18.md
 namespace port_82B20E18 {

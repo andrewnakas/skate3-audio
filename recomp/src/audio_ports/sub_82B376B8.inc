@@ -1,5 +1,5 @@
 // sub_82B376B8  role: the metering tick -- count off the interval at +380, and when it expires re-derive the ring length from the current rate, clear both history rings, then run the meters and re-expand the parameter blocks   lifted: skate3_recomp.67.cpp:62133 (171 lines)
-// STATUS: verified (zero divergence) but THIN: 23 comparable calls in the weaker profile, 10112 in the stronger, against 171 lifted lines -- 23 calls in the weaker profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 23 comparable calls in the weaker profile, 10112 in the stronger, against 171 lifted lines -- 23 calls in the weaker profile. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 23  play 10147  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B376B8.md
 namespace port_82B376B8 {

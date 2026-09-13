@@ -22,6 +22,21 @@
 //! does not record per-call inputs for them, so what the tests below buy is a small search space,
 //! not a replay count. See the crate README's "two kinds of green".
 //!
+//! **Two things here are reproduced rather than tidied, and no test in this crate catches their
+//! absence.** Both were checked by breaking them and watching the whole suite still pass:
+//!
+//! - [`recycle_node`] re-reads the node's two link words between the two neighbour stores rather
+//!   than hoisting both loads. Hoisting them differs only when a neighbour's link field overlaps
+//!   the node's own, which none of the tests below constructs;
+//! - [`detach_instance`] loads `instance + 0` *after* storing the parked bucket index, which
+//!   differs only if that store lands on the node pointer — and that is exactly the input the C++
+//!   `Windows()` predicate refuses as its gate-2 exit, so it was never compared in either
+//!   language.
+//!
+//! The one reload that *is* pinned by a test is `recycle_node`'s second read of the free head; see
+//! `the_free_head_is_re_read_after_the_nodes_link_words_are_written`, and read its comment before
+//! quoting it, because the input it uses was never compared either.
+//!
 //! **A struct-header correction, carried over from the C++ port.** `docs/rw_audio_structs.h`
 //! labels `rw_instance + 0x00` as `descriptor -> rw_plugin_desc` and `rw_node + 0x00` as `next`.
 //! What both of these functions actually do with those cells is follow `instance + 0` to a node

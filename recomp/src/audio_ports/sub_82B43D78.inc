@@ -1,5 +1,5 @@
 // sub_82B43D78  role: build the five normalised high-shelf biquad coefficients from an angle and a gain   lifted: skate3_recomp.68.cpp:25687 (163 lines)
-// STATUS: verified (zero divergence) but THIN: 23 comparable calls in the weaker profile, 257 in the stronger, against 163 lifted lines -- thin in both profiles. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
+// STATUS: thin -- verified (zero divergence) but on too few calls for its size: 23 comparable calls in the weaker profile, 257 in the stronger, against 163 lifted lines -- thin in both profiles. Held out of default promotion by docs/promotion.md; shadows normally, never promoted.
 // calls/session: boot 82  play 514  map ?          thread: RwAudioCore Dac
 // note: probe/ports/notes/sub_82B43D78.md
 namespace port_82B43D78 {
