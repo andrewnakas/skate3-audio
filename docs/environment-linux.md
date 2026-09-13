@@ -11,6 +11,39 @@ Read this before trusting a path, a build instruction, or a "trap" from the othe
 Linux, 12 cores, 30 GB RAM, 25 GB free on `/`. `rustc`/`cargo` **1.98.1** in `~/.cargo/bin`
 (installed 2026-09-11). `gcc` 15.2. `python3` 3.14. `ffmpeg` CLI 8.0.1.
 The recomp is built with **clang++-20** (`CMAKE_CXX_COMPILER` in the jammy build cache).
+
+## Rebuilding it from nothing, which is not what the preset alone gives you
+
+Measured 2026-09-13, after another session deleted `out/build` in a disk cleanup. The full
+recipe:
+
+```sh
+R=/home/nakas/Documents/skate3/skate3recomp-dev
+cmake -S $R -B $R/out/build/linux-release-jammy -G Ninja \
+  -DREXSDK_DIR=$R/third_party/rexglue-sdk -DREXGLUE_USE_VULKAN=ON \
+  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_LINKER=ld.lld-20 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSKATE3_TITLE_UPDATE_PACKAGE=/home/nakas/.local/share/skate3/title_update/TU_12K2276_000000C000000.00000000000O3 \
+  -DSKATE3_GAME_DATA_ROOT=/home/nakas/Documents/skate3/freeskate/runtime/game
+ninja -C $R/out/build/linux-release-jammy -j10 skate3        # 1053 steps, ~16 min here
+ln -s linux-release-jammy $R/out/build/linux-release          # other projects' launchers use this
+```
+
+**The two `-D`s at the end are not optional, and leaving them out costs a full build.** The
+`linux-release` preset sets neither. Without the title-update package,
+`SKATE3_HAS_TITLE_UPDATE=0`, and `src/exception_compat.cpp` then hooks the **retail 3.0.0.0**
+structured-exception guard `sub_82F44E40` — which `generated/` does not contain, because this
+checkout's lifted code was produced from the title update and holds `sub_82F6FAA0` instead. The
+build compiles all 1053 objects and fails at the link with `undefined reference to
+__imp__sub_82F44E40`. `SKATE3_GAME_DATA_ROOT` defaults to `$R/game`, which does not exist;
+the game root that does is `freeskate/runtime/game`.
+
+Two things the failure teaches beyond the flags. Codegen is **not** re-run —
+`generated/sources.cmake` is checked in, so the recompiler never runs and the 289 MB of lifted
+C++ is used as it stands. And `ninja` exiting 0 from a wrapper script still means nothing: the
+`ninja exit 1` line was three lines above a "completed" notification, and the check that
+mattered was `ls` of the binary plus `nm` for the port symbols.
+
 There is no unversioned `clang++`, so `which clang++` finding nothing does not mean clang
 is absent.
 
