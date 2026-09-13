@@ -265,6 +265,28 @@ One rough edge worth knowing: an overflowing **write** set sets `overflowed` and
 skip, while an overflowing read set is silently truncated at 32 spans. A port that needs more read
 spans than that will record an incomplete read set and say nothing about it.
 
+### Two ports beyond the 216, because a Rust port needed them
+
+The sweep's scope was the 216 functions **first** called on the audio thread. The image's sine and
+cosine fell outside it only because of that attribution: sine is first called on the load thread
+and cosine on the main thread. Both also run on the audio thread, through the spatial panner and
+the per-channel filter stages, and with no verified body four Rust translations could not be
+replayed at all. So both were ported and shadow-verified the same way as the rest:
+
+| function | scripted play | boot | divergence |
+|---|---|---|---|
+| sine, `sub_82F4DED0` | 436,266 | 414,229 | 0 |
+| cosine, `sub_82F4DFB0` | 268,332 | 228,467 | 0 |
+
+Each is a scalar leaf over one shared table: 1/pi, pi in two parts (Cody-Waite), a 2.2e8 range
+limit, a NaN, and the odd Taylor coefficients to x^19. Every constant was read out of the image
+dump and is read live.
+
+The lesson generalises. Attribution by first call under-counts shared leaves: a routine the whole
+game uses gets credited to whichever thread happened to reach it first, so a function outside the
+216 can still sit on the audio path. When a port's callee has no verified body, check the callee's
+thread by who calls it, not by who called it first.
+
 ## Measurements
 
 Static census over the 216 (`docs/ports-static.md`):
