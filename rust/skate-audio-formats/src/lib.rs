@@ -6,8 +6,10 @@
 //! This module owns bytes and bounds checks; codec arithmetic belongs elsewhere.
 #![forbid(unsafe_code)]
 
+pub mod banks;
 pub mod eaac;
 pub mod eb;
+pub mod hash;
 pub mod mpf;
 pub mod mus;
 

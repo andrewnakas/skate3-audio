@@ -20,7 +20,19 @@ u32   0x00000018                   identical in all 14
 Member sizes run from 123 KB to 284 KB, which is the right order for a set of short grain samples
 rather than for a metadata table.
 
-## What that suggests, and what would test it
+## The prediction below was tested and FAILED, 2026-09-12
+
+The test this file proposed was run: if the float-looking word is a duration, the ordering of the
+14 floats should match the ordering of their audio lengths. It does not. **Three adjacent pairs
+out of thirteen are inverted**, so the word is not a duration in the straightforward sense, and
+the paragraph below is kept only because a refuted prediction is worth more on the record than a
+deleted one.
+
+That is the whole point of stating a prediction over the entire set rather than checking two or
+three members and calling it read. A duration hypothesis that matched eleven of thirteen pairs
+would have looked convincing at a glance.
+
+## What that suggested, and how it was tested
 
 The float-looking word is the interesting one: values cluster between roughly 12 and 22, and the
 member with the smallest first word (`0x70`) also has the smallest float (`0x41426f5c`, about
