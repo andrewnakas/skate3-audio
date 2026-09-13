@@ -303,7 +303,7 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
         std::fprintf(g_vector_file,
                      "# skate3 shadow vectors: name run r3 r4 r5 r6 r7 ret_r3 then spans.\n"
                      "# F:n:bits              = entry f1..f4 as raw 64-bit patterns\n"
-                     "# R64:n:bits            = entry r3 and r4, full 64 bits\n"
+                     "# R64:n:bits            = entry r3..r8, full 64 bits\n"
                      "# Fr:1:bits             = f1 as the ORIGINAL left it\n"
                      "# I:addr:len:bytes      = read set, the memory the function saw\n"
                      "# W:addr:len:entry:exp  = write set, entry bytes and what the ORIGINAL "
@@ -377,12 +377,23 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
   }
   std::fprintf(g_vector_file, "\tFr:1:%016llX",
                static_cast<unsigned long long>(after.f1.u64));
-  // The fixed columns above keep only the low word of each argument. A chain formed 64-bit --
-  // RexGlue's add and mullw are 64-bit on zero-extended operands -- carries the high half into a
-  // returned address, so a truncated recording cannot exercise it and a truncated port passes.
-  std::fprintf(g_vector_file, "\tR64:3:%016llX\tR64:4:%016llX",
-               static_cast<unsigned long long>(entry.r3.u64),
-               static_cast<unsigned long long>(entry.r4.u64));
+  // The fixed columns above keep only the low word of r3..r7. Two things that costs:
+  //
+  // A chain formed 64-bit -- RexGlue's add and mullw are 64-bit on zero-extended operands --
+  // carries the high half into a returned address, so a truncated recording cannot exercise it
+  // and a truncated port passes. One port's ring copy receives an argument with all 64 bits set,
+  // produced by a branch-free max in its caller.
+  //
+  // And r8 was not recorded at all, so a body taking six arguments could not be replayed: feeding
+  // zero for the sixth makes every address it computes wrong, which turns a failure into a pass.
+  {
+    const PPCRegister* const gprs[6] = {&entry.r3, &entry.r4, &entry.r5,
+                                        &entry.r6, &entry.r7, &entry.r8};
+    for (int i = 0; i < 6; ++i) {
+      std::fprintf(g_vector_file, "\tR64:%d:%016llX", i + 3,
+                   static_cast<unsigned long long>(gprs[i]->u64));
+    }
+  }
   // The read set, from a snapshot taken BEFORE the lifted body ran.
   //
   // It used to be read from live memory here, on the reasoning that a read span is not written

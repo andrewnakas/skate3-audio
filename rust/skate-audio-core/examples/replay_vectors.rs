@@ -15,7 +15,7 @@
 //! on the command line. Deriving them from the expected bytes would be using the answer to
 //! check the answer.
 
-use skate_audio_core::{Guest, buffers, cursors, dsp, player, scheduler, system};
+use skate_audio_core::{Guest, buffers, cursors, dsp, mix, player, ring, scheduler, system};
 
 struct Vector {
     name: String,
@@ -29,6 +29,10 @@ struct Vector {
     /// Entry `f1`..`f4` as raw bit patterns. A DSP kernel's scale factor arrives in `f1`, so
     /// without these its memory and integer registers record a call that cannot be replayed.
     f: [u64; 4],
+    /// Entry `r3`..`r8`, full width. The fixed columns keep only the low word, and a port whose
+    /// argument genuinely carries 64 bits -- or whose sixth argument is `r8`, which the fixed
+    /// columns omit entirely -- cannot be replayed from those alone.
+    w: [u64; 6],
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
     /// The write set: entry bytes, and what the original lifted body produced.
@@ -48,6 +52,7 @@ fn parse(line: &str) -> Option<Vector> {
     let mut inputs = Vec::new();
     let mut windows = Vec::new();
     let mut fprs = [0u64; 4];
+    let mut wide = [None; 6];
     for tok in &f[8..] {
         let p: Vec<&str> = tok.split(':').collect();
         match (p.first(), p.len()) {
@@ -55,6 +60,13 @@ fn parse(line: &str) -> Option<Vector> {
             (Some(&"W"), 5) => windows.push((hex(p[1]), unhex(p[3]), unhex(p[4]))),
             // Vectors recorded before the float columns existed simply have none, and every
             // function that needs one fails loudly rather than replaying against a zero.
+            (Some(&"R64"), 3) => {
+                if let (Ok(i), Ok(bits)) = (p[1].parse::<usize>(), u64::from_str_radix(p[2], 16)) {
+                    if (3..=8).contains(&i) {
+                        wide[i - 3] = Some(bits);
+                    }
+                }
+            }
             (Some(&"F"), 3) => {
                 if let (Ok(i), Ok(bits)) = (p[1].parse::<usize>(), u64::from_str_radix(p[2], 16)) {
                     if (1..=4).contains(&i) {
@@ -68,8 +80,17 @@ fn parse(line: &str) -> Option<Vector> {
     if windows.is_empty() {
         return None; // a vector with no write set compares nothing; counted as malformed
     }
+    // Older files have no wide columns; fall back to the zero-extended low word, which is right
+    // whenever the high half was zero and wrong silently when it was not -- so the wide columns
+    // are what a new recording should carry.
+    let narrow = [hex(f[2]), hex(f[3]), hex(f[4]), hex(f[5]), hex(f[6]), 0];
+    let mut w = [0u64; 6];
+    for i in 0..6 {
+        w[i] = wide[i].unwrap_or(u64::from(narrow[i]));
+    }
     Some(Vector {
         f: fprs,
+        w,
         name: f[0].to_string(),
         run: f[1].parse().unwrap_or(0),
         r3: hex(f[2]),
@@ -180,6 +201,8 @@ fn main() {
         total += 1;
         let t = by_name.entry(v.name.clone()).or_default();
         let mut g = guest_of(&v);
+        // Whether this record predates the wide argument columns.
+        let wide_missing = !line.contains("\tR64:");
 
         // Dispatch. A name with no Rust port is skipped and counted, never dropped.
         let outcome: std::result::Result<Option<u32>, String> = match v.name.as_str() {
@@ -243,6 +266,46 @@ fn main() {
             "sub_82B3C098" => dsp::gain_ramp::gain_ramp_copy(
                 &mut g, v.r3, v.r4, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]))
                 .map(|_| None)
+                .map_err(|e| e.to_string()),
+            // The ring, mix and per-block DSP ports. Several of these take genuinely 64-bit
+            // arguments, so they are fed the wide columns rather than a zero-extended low word.
+            "sub_82B3DB90" => ring::copy_from_ring(&mut g, v.w[0], v.w[1], v.w[2], v.w[3], v.w[4])
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            "sub_82B3DC48" => {
+                ring::fill_segments(&mut g, v.w[0], v.w[1], v.w[2] as u32, v.w[3])
+                    .map(|r| Some(r as u32))
+                    .map_err(|e| e.to_string())
+            }
+            "sub_82B3DF90" => ring::fill_tail(&mut g, v.r3, v.r4, v.r5)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B43AF8" => dsp::biquad::biquad(&mut g, v.r3, v.r4, v.r5, v.r6, v.r7)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            // r8 is the step, and the fixed columns stop at r7 -- a vector without the wide
+            // columns would feed zero and make every address wrong, so it is refused instead.
+            "sub_82B43FB8" => {
+                if wide_missing {
+                    t.unreplayable += 1;
+                    if t.first_gap.is_none() {
+                        t.first_gap = Some(format!(
+                            "run {}: needs r8, which this recording predates", v.run));
+                    }
+                    continue;
+                }
+                dsp::resample::resample(&mut g, v.r3, v.r4, v.r5, v.r6, v.r7, v.w[5])
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
+            "sub_82B34E08" => mix::flush_accumulator(&mut g, v.r3, v.r4)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            "sub_82B3C668" => mix::fold_deltas(&mut g, v.r3, v.r4, v.r5)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B443F8" => mix::advance_and_clear(&mut g, v.r3, v.r4, v.r5, v.r6)
+                .map(|r| Some(r as u32))
                 .map_err(|e| e.to_string()),
             _ => {
                 t.skipped += 1;

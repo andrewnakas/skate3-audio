@@ -19,9 +19,27 @@ pub mod counter;
 pub mod cursors;
 pub mod eval;
 pub mod fp;
+pub mod mem;
 pub mod player;
 pub mod scheduler;
 pub mod system;
+
+/// The mixer's buffering and clearing layer.
+///
+/// Gated on x86_64 for one reason, and it is not SIMD: every body in these two modules emits
+/// `ctx.fpscr.disableFlushModeUnconditional()` where the original does, through [`vmx::Fpscr`],
+/// which models MXCSR. That is load-bearing rather than decorative — `rex/ppc/context.h` carries
+/// flush-to-zero and denormals-are-zero on the **scalar** side too (see [`fp`]'s module note), so a
+/// port that ran under Rust's default MXCSR would differ from the recomp on any denormal that
+/// reached it. `dsp::biquad` adds a constant to every feed-forward sum for exactly that reason,
+/// which is direct evidence denormals occur in this data.
+///
+/// [`ring::copy_from_ring`] and [`ring::fill_segments`] contain no float work at all and would run
+/// anywhere; they are here because they share a structure with [`ring::fill_tail`], which does.
+#[cfg(target_arch = "x86_64")]
+pub mod mix;
+#[cfg(target_arch = "x86_64")]
+pub mod ring;
 
 /// The VMX128 layer and the DSP kernels that stand on it.
 ///

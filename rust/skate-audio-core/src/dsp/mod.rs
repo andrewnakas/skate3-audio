@@ -10,8 +10,17 @@
 //! | [`scale`] | `sub_82B3BED8` | `dst[i] = src[i] * scale` | verified | 2,843,558 | 4,411,988 |
 //! | [`scale`] | `sub_82B44B20` | `dst[i] += src[i] * scale` | verified | 3,738,884 | 6,110,212 |
 //! | [`gain_ramp`] | `sub_82B3C098` | gain-ramped copy of 256 singles | verified | 2,126,778 | 3,023,068 |
+//! | [`biquad`] | `sub_82B43AF8` | a biquad over a run of singles, eight a pass | verified | 1,152,252 | 1,592,578 |
+//! | [`resample`] | `sub_82B43FB8` | linear interpolation walked by a 16.16 phase | verified | 404,358 | 748,902 |
 //!
-//! Every one of those four `.inc` bodies leads with `// STATUS: verified` — checked before
+//! The last two are **scalar**, which is worth saying in a directory named for vector kernels: they
+//! are here because they are DSP the mixer runs per block, not because they use [`crate::vmx`]'s
+//! operation table. What they do take from `vmx` is [`crate::vmx::Fpscr`] — the guest's flush mode
+//! is carried on the scalar side too (`rex/ppc/context.h` sets `FlushMask` when it initialises the
+//! host FPU), and `biquad` adds a rodata bias to every feed-forward sum precisely because denormals
+//! reach it.
+//!
+//! Every one of those `.inc` bodies leads with `// STATUS: verified` — checked before
 //! translating, because a header leading with `thin`, `partial` or `gate-` means the C++ was not
 //! compared on enough calls, or not on the path being translated, and would not be a reference at
 //! all. `sub_82B373C8` is the counter-example the README already names: verified but `thin`, and
@@ -44,6 +53,8 @@
 //! not others should be checked for NaN in the input run before anything else. Nothing in this
 //! directory may be reasoned about on that point; it stays bit-checked or it stays unknown.
 
+pub mod biquad;
 pub mod gain_ramp;
+pub mod resample;
 pub mod scale;
 pub mod sine;

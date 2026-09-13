@@ -103,6 +103,21 @@ pub fn fmadd_single(a: f64, b: f64, c: f64) -> f64 {
     (a.mul_add(b, c) as f32) as f64
 }
 
+/// `fnmsubs`: `c - a*b`, one fused multiply-add negated, then rounded to single.
+///
+/// PowerPC's `fnmsub` computes `-(a*b - c)`, so the fusion is over the whole expression and the
+/// product's low bits reach the subtraction. Written as the negation of a single `mul_add` for
+/// that reason — `sub_single(c, mul_single(a, b))` rounds twice and is a different function. The
+/// negation is exact, so applying it before or after the narrowing is the same value; it is
+/// written before, as the lifted `double(float(-std::fma(a, b, -c)))` has it.
+///
+/// The operand order is part of the semantics: `a` is the value, `b` the coefficient, `c` the
+/// accumulator, matching every `fnmsubs` site in `sub_82B43AF8`.
+#[inline]
+pub fn nmsub_single(a: f64, b: f64, c: f64) -> f64 {
+    ((-(a.mul_add(b, -c))) as f32) as f64
+}
+
 /// `fctiwz f13,fX ; stfd f13,-k(r1) ; lwz rN,-k+4(r1)`: truncate toward zero into a word, spill
 /// big-endian, read the low word back.
 ///
@@ -196,6 +211,31 @@ mod tests {
         assert_eq!(fmadd_single(a, b, -(a * b)), 0.0);
         // The unfused form rounds a*b to single first and cannot cancel.
         assert_ne!(add_single(mul_single(a, b), -(a * b)), 0.0);
+    }
+
+    #[test]
+    fn fnmsubs_is_one_fused_step_and_not_a_multiply_then_a_subtract() {
+        // `c - a*b` with the product needing 48 bits and `c` equal to the product's f32 rounding.
+        // Fused, the discarded low bits survive and the result is non-zero; unfused, the multiply
+        // throws them away first and the subtraction cancels exactly.
+        let a = (1.0f32 + f32::EPSILON) as f64;
+        let b = (1.0f32 - f32::EPSILON) as f64;
+        let c = ((a * b) as f32) as f64; // == 1.0
+        let fused = nmsub_single(a, b, c);
+        assert_ne!(fused, 0.0, "the fusion has to reach the subtraction");
+        assert_eq!(fused, ((c - a * b) as f32) as f64, "and it is c - a*b, not a*b - c");
+        assert_eq!(sub_single(c, mul_single(a, b)), 0.0, "the unfused form, which cancels");
+        // The scope of that, stated rather than left to be assumed. The realistic mistranscription
+        // is the line above — two `.s` roundings — and this test catches it. What it does *not*
+        // catch is a transcription that keeps the intermediate in **double**: `((c - a*b) as f32)`,
+        // asserted equal to the fused answer two lines up. For two `f32` operands the product needs
+        // at most 48 bits and is exact in an `f64`, so the two agree here and differ only through
+        // double rounding, which this input does not reach. Measured, not argued: breaking
+        // `nmsub_single` to that form leaves this test green.
+
+        // The sign is the other half of the instruction: fnmsub negates, fmsub does not.
+        assert_eq!(nmsub_single(2.0, 3.0, 10.0), 4.0);
+        assert_eq!(nmsub_single(2.0, 3.0, 0.0), -6.0);
     }
 
     #[test]

@@ -21,8 +21,13 @@ than at a misunderstanding of the engine.
 | `dsp/sine.rs` | `sub_824531C8`, four-lane sine by range reduction and an 11-term odd polynomial | verified C++ reference; unit-tested only |
 | `dsp/scale.rs` | `sub_82B3BED8` and `sub_82B44B20`: `dst[i] = src[i]*k` and `dst[i] += src[i]*k`, each on a vector and a scalar path | verified C++ reference; unit-tested only |
 | `dsp/gain_ramp.rs` | `sub_82B3C098`, a gain-ramped copy of a fixed 256-single block | verified C++ reference; unit-tested only |
+| `dsp/biquad.rs` | `sub_82B43AF8`, a biquad over a run of singles, eight a pass | verified C++ reference; unit-tested only |
+| `dsp/resample.rs` | `sub_82B43FB8`, linear interpolation walked by a 16.16 phase | verified C++ reference; unit-tested only |
+| `ring.rs` | `sub_82B3DB90`, `sub_82B3DC48`, `sub_82B3DF90`: the output read-out — copy out of the wrapping decode ring, rank and fill the segments, pad the tail with a rodata constant | verified C++ reference; unit-tested only |
+| `mix.rs` | `sub_82B34E08`, `sub_82B3C668`, `sub_82B443F8`: flush the mix accumulator, fold the pending deltas into the rows, advance a fill position and clear ahead of it | verified C++ reference; unit-tested only |
+| `mem.rs` | the write-set contract of `sub_82EDF460` (memcpy) and `sub_82EE5E80` (memset), which six of the bodies above call | not a port; see its module note |
 
-`cargo test` runs 155 unit tests. **Read the next two sections before reading that as one number:
+`cargo test` runs 226 unit tests. **Read the next two sections before reading that as one number:
 the modules are checked in different ways, and only the ones whose table row gives a replay figure
 have one.**
 
@@ -71,6 +76,13 @@ covered by a unit test only, and it stays that way until the recorder stores the
 cargo run --example replay_vectors -- VECTORS.tsv 00000000 3F800000
 ```
 
+**One new port cannot be replayed as the vector format stands.** `dsp::resample`
+(`sub_82B43FB8`) takes its 16.16 phase increment in **`r8`**, and the recorded vector carries
+`r3`…`r7` only. That increment determines every address the call reads, so feeding it a zero would
+turn a failure into a meaningless pass; the honest outcome is *unreplayable* until the recorder
+stores `r8`. Note also that `r3` is this function's **output sample count**, an input — a
+dispatcher that compared the recorded return against `r3` would be comparing the count with itself.
+
 The vectors are recorded by the harness itself (`skate3_audio_vectors_path`) — real inputs the
 game generated, not synthetic ones. An address the port reaches that was not recorded makes the
 vector **unreplayable**, never zero-filled, because feeding it fabricated input would turn a
@@ -118,14 +130,17 @@ being transcribed is right, and say nothing about the transcription. Do not quot
 were this crate's.
 
 The unit tests are held to the standard the vector work is: each was checked by breaking the
-function it covers and confirming the test fails. **104 negative controls** have been run:
+function it covers and confirming the test fails. **175 negative controls** have been run:
 
 - 28 across `fp.rs`, `counter.rs` and `eval/`; 25 now fail correctly, 21 of them on the first
   attempt;
 - 25 across `scheduler.rs` and `cursors.rs` — one per test — all 25 failing correctly on the
   first attempt, with each break restored and re-checked;
-- 51 across `vmx.rs` and `dsp/` — one per test — of which 50 fail correctly. The one that does not
-  is arithmetic rather than a weak test and is described below.
+- 51 across `vmx.rs` and `dsp/`'s first three kernels — one per test — of which 50 fail correctly.
+  The one that does not is arithmetic rather than a weak test and is described below;
+- 71 across `mem.rs`, `ring.rs`, `mix.rs`, `dsp/biquad.rs`, `dsp/resample.rs` and `fp.rs`'s new
+  `nmsub_single` — one per test — all 71 failing correctly, with each break restored and the whole
+  suite re-run afterwards. One of them passed on the first attempt and is described below.
 
 Five passed at first. Four were fixed by writing sharper tests, not by lowering the claim; the
 fifth was two tests that could not fail at all and were replaced.
@@ -173,6 +188,31 @@ Four still pass, and each is an equivalent transformation rather than a weak tes
 
 Those four are reproduced as the original has them anyway, and said so in their doc comments, but
 no test in this crate would catch their absence.
+
+**One of the 71 new controls passed on the first attempt, and it was a weak test.**
+`fp::nmsub_single`'s fusion test was broken to `((c - a*b) as f32) as f64` — the whole expression
+in double — and stayed green. That form is not the realistic mistranscription and the test now says
+so explicitly: for two `f32` operands the product needs at most 48 bits and is **exact** in an
+`f64`, so the double-intermediate form and the true `fnmsubs` differ only through double rounding,
+which the test's input does not reach. The control was re-run against the form that actually
+threatens the port — a separate `fmuls` then `fsubs`, two `.s` roundings — and fails correctly.
+
+**Three more writes join the "no test can catch this" list**, each measured the same way:
+
+- `dsp::biquad` stores the four-single history back even when the span wraps and the filter never
+  runs. Those are the values it just loaded, through the same `lfs`/`stfs` round trip, so the store
+  is a no-op in value. The one input that would distinguish it is a signalling NaN — and **measured
+  on this target, Rust's `as` casts leave sNaN payloads alone** rather than quieting them the way
+  the guest's widening load does, so even that does not work. Removing all four stores leaves the
+  suite green;
+- `ring::fill_tail`'s second cap on buffer 1 (`block + 255`, applied after `block + 127`) can never
+  fire. That is measured by `the_two_buffers_are_capped_at_different_lengths` reading 127 rather
+  than argued from the arithmetic, and both compares are written out because the original emits
+  both;
+- `dsp::resample`'s within-trip load/store interleaving is pinned only where the output aliases the
+  table *inside one group of eight*. `the_stores_that_precede_the_second_batch_of_loads_are_seen_by_
+  them` constructs exactly that layout and derives the answer by hand; outside it, reordering the
+  block is invisible.
 
 `scheduler.rs` and `cursors.rs` add **six more of the same kind**, each measured the same way — by
 making the change and watching the whole suite still pass — rather than assumed:
@@ -303,10 +343,22 @@ why `EVENT_STOP` has no comparable path under the harness.
 descriptor metadata). Inside `eval`, the interpreter's node walk and the nine unported slots, for the
 reasons above.
 
-`dsp/` is **started, not finished**: four kernels of the eighty-odd verified vector bodies in
-`recomp/src/audio_ports/`. What is there is the two families that carry the most calls — the sine
-helper and the buffer multiplies — and what is not is the filters, the resamplers and the rest of the
-gain plumbing. Every one of them now has a vector layer to stand on, so each is transcription too.
+`dsp/` is **started, not finished**: six kernels. What is there is the families that carry the most
+calls — the sine helper, the buffer multiplies, the gain ramp, the biquad and the resampler — and
+what is not is the rest of the gain plumbing and the heavier vector kernels. Every one of them has a
+vector layer to stand on, so each is transcription too.
+
+Two neighbours of the new modules were **considered and left out on their dependencies**, not on
+their status:
+
+- `sub_82B31838` (mix one source's channels into the bus blocks; verified, 626,736 calls a boot)
+  builds two pointer arrays **on its own guest stack frame** and hands them to its mixers. A
+  faithful port needs the guest `r1` as an argument and writes into a region no window declares and
+  no recorded vector contains, so a replay of it would be unreplayable by construction. It also
+  calls `sub_82B46810`, which is verified and not translated yet;
+- `sub_82B43978`, the generic-count biquad `dsp::biquad` delegates to, has **no `.inc` at all** — it
+  is outside the 216 audio-thread functions the sweep covered, so neither language has a verified
+  reference for it. `dsp::biquad` returns an `Error` naming it rather than guessing.
 
 **The scheduler tick cannot be written, and that is not a backlog item.** `docs/PLAN.md` section 6
 asks `scheduler.rs` for the "two-bucket tick, per-plug-in profiling toggle, mid-tick self-removal";
