@@ -451,7 +451,7 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
 bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lifted,
                    std::span<const ShadowWindow> windows,
                    std::span<const ShadowWindow> inputs, ShadowResults returns,
-                   ShadowStats& stats) {
+                   ShadowStats& stats, bool reads_truncated) {
   static const uint64_t report_cap = REXCVAR_GET(skate3_audio_shadow_reports);
   static const bool diverged_only = REXCVAR_GET(skate3_audio_vectors_diverged_only);
   EnsureReporter();
@@ -511,7 +511,15 @@ bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lif
   }
 
   const uint64_t run_number = stats.runs.load(std::memory_order_relaxed) + 1;
-  if (!diverged_only) {
+  // A truncated read set is worse than no vector: the comparison below is still sound -- only
+  // writes are rewound -- but a replay of the row would reach memory the row does not carry and
+  // count itself unreplayable. Say so once and record nothing.
+  if (reads_truncated && run_number == 1) {
+    REXLOG_WARN(
+        "skate3-audio-shadow: {} declares more read spans than fit; recording no vectors for it",
+        stats.name);
+  }
+  if (!diverged_only && !reads_truncated) {
     RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_inputs, mem_entry,
                  mem_lifted, run_number);
   }
@@ -559,7 +567,7 @@ bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lif
   if (bad_window) stats.memory_diffs.fetch_add(1, std::memory_order_relaxed);
   const uint64_t runs = stats.runs.fetch_add(1, std::memory_order_relaxed) + 1;
 
-  if (diverged && diverged_only) {
+  if (diverged && diverged_only && !reads_truncated) {
     RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_inputs, mem_entry,
                  mem_lifted, runs);
   }

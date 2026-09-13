@@ -262,8 +262,20 @@ zero divergence**, audio at 187.5 frames a second with no silent submits, and th
 between 74,832 and 312,332 comparable calls each.
 
 One rough edge worth knowing: an overflowing **write** set sets `overflowed` and forces the hook to
-skip, while an overflowing read set is silently truncated at 32 spans. A port that needs more read
-spans than that will record an incomplete read set and say nothing about it.
+skip, while an overflowing read set used to be silently truncated at 32 spans. A port that needed
+more read spans than that recorded an incomplete read set and said nothing about it.
+
+**That happened, and it is fixed (2026-09-13).** `sub_82B426D0` declares four read spans per route
+plus its tables and pointer arrays, which reaches 64. Its shadow comparison passed 19,800 times —
+correctly, because only writes are rewound and the write set was complete — while every one of its
+2,000 recorded vectors was unreplayable, failing on a source pointer the truncated read set had
+dropped. The worst of both outcomes: a green function whose vectors prove nothing.
+
+The read cap is now `kPortMaxReads = 192`, separate from the 32-window write cap, and anything past
+it sets `PortSpec::reads_truncated`, which makes the harness **record no vector for that call** and
+log the reason once per function. A missing row is honest; an unreplayable one is not. Re-recorded
+under the new cap, `sub_82B426D0` replays 500 of 500. Reads still cost nothing against the 32 KB
+budget, so raising the cap changes no skip decision.
 
 ### Two ports beyond the 216, because a Rust port needed them
 
