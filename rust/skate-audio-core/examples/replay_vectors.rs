@@ -15,9 +15,10 @@
 //! on the command line. Deriving them from the expected bytes would be using the answer to
 //! check the answer.
 
+use skate_audio_core::mathlib::Trig;
 use skate_audio_core::{
-    Guest, buffers, cursors, dsp, gains, mathlib, mix, player, ring, scheduler, spatial, stage,
-    system,
+    Guest, buffers, cursors, dsp, filters, gains, mathlib, mix, player, ring, scheduler, spatial,
+    stage, system,
 };
 
 struct Vector {
@@ -424,6 +425,37 @@ fn main() {
                     .map(|_| None)
                     .map_err(|e| e.to_string())
             }
+            // The image's sine and cosine: register-only, compared by the bits of f1.
+            "sub_82F4DED0" | "sub_82F4DFB0" => {
+                let x = f64::from_bits(v.f[0]);
+                let r = if v.name == "sub_82F4DED0" {
+                    mathlib::Image.sine(&g, x)
+                } else {
+                    mathlib::Image.cosine(&g, x)
+                };
+                match r {
+                    Ok(value) => {
+                        float_result = Some(value.to_bits());
+                        Ok(None)
+                    }
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+            // The four ports that call them, now given the real thing instead of `Unported`.
+            "sub_82B269C0" => spatial::place_panner(
+                &mut g, &mut mathlib::Image, v.r3, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B45788" => spatial::add_angular(
+                &mut g, &mut mathlib::Image, v.r3, v.r4, v.r6, f64::from_bits(v.f[0]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B27E20" => filters::lowpass_stage(&mut g, &mut mathlib::Image, v.w[0], v.w[1])
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            "sub_82B26568" => filters::highpass_stage(&mut g, &mut mathlib::Image, v.w[0], v.w[1])
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
             _ => {
                 t.skipped += 1;
                 continue;
