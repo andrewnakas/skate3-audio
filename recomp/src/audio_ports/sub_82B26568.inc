@@ -240,6 +240,13 @@ REX_FUNC(Native) {
 // them (every store lands in the object above +56, in the two descriptor slots, or in the output
 // block; the descriptors themselves are never written).
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
+  // Read by the image's sine and cosine, which this body calls. Copied here rather than referenced
+  // across ports: if sub_82F4DED0's table moves, move these too. Declared so a recorded vector
+  // carries what the callees reach; a read is never rewound and costs nothing against the budget.
+  spec.read(0x82FB4E20, 120);  // the shared trig table: 1/pi, pi in two parts, the coefficients
+  spec.read(0x82010108, 8);    // 1.0, the polynomial's leading term
+  spec.read(0x82FB58C8, 8);    // the NaN returned past the range limit
+
   const uint32_t object = ctx.r3.u32;
   const uint32_t stream = ctx.r4.u32;
   if (object == 0 || stream == 0) return false;

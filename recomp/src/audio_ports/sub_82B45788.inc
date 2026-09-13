@@ -322,6 +322,13 @@ REX_FUNC(Native) {
 // SECOND index after their first store, so a store landing there makes the second address unknowable
 // from entry state -- the same exit sub_82B454B8's port takes, for the same reason.
 bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
+  // Read by the image's sine and cosine, which this body calls. Copied here rather than referenced
+  // across ports: if sub_82F4DED0's table moves, move these too. Declared so a recorded vector
+  // carries what the callees reach; a read is never rewound and costs nothing against the budget.
+  spec.read(0x82FB4E20, 120);  // the shared trig table: 1/pi, pi in two parts, the coefficients
+  spec.read(0x82010108, 8);    // 1.0, the polynomial's leading term
+  spec.read(0x82FB58C8, 8);    // the NaN returned past the range limit
+
   const uint32_t object = ctx.r3.u32;
   const uint32_t record = ctx.r4.u32;
   const uint32_t gains = ctx.r6.u32;

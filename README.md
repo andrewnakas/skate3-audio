@@ -54,7 +54,7 @@ the set that is actually audio and actually runs. Every one has a body; 138 of t
 
 | outcome | count | meaning |
 |---|---|---|
-| verified | **124** | zero divergence, on enough calls for their size to carry promotion |
+| verified | **124** + 2 | zero divergence, on enough calls for their size to carry promotion. The + 2 are the image's sine and cosine, ported beyond the 216 because four Rust translations call them (`docs/port-loop.md`) |
 | verified but thin | 14 | zero divergence, but on too few calls for their size — held out of default promotion (`docs/promotion.md`) |
 | partial | 9 | one path compares clean, another is declined and never compared — never promotable |
 | gate 1 | 62 | reaches an indirect call, lock, allocation or release, so replaying it on rewound memory is unsound |
