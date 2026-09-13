@@ -551,3 +551,17 @@ Two consequences:
 
 The recomp's demo-path change (`skate3_demo_path_play_movies`) lives only in the recomp,
 because it is not an audio file.
+
+## What a shadow session sounds like — not representative, by design
+
+*Measured 2026-09-13, after the user heard choppy, slowed audio during these sessions.* A session with
+`SHADOW=true` runs every hooked audio call twice (the original and the port, with memory snapshots and
+rewinds in between) and, when recording vectors, writes the rows from inside the audio thread. That
+load can push the audio thread below real time. Across the day's sessions, about a third of the
+shadow runs dropped to **174–178 frames/s in one five-second window**, against the 187.5 real time
+needs, with **48–72 silence chunks** inserted, and that is what the user heard: audio in pieces with
+gaps between, and dragging. A session with the harness off (`NATIVE=true SHADOW=false`, no vectors)
+held 187.5/s throughout with zero silence chunks, and **sounded fine by ear**.
+
+So never judge the game's audio, or a port, by listening to a shadow session. Judge it by the
+`Audio stats` line — `silence_chunks=0` at `187.5/s` — or by a harness-off session.
