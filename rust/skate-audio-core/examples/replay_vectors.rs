@@ -44,6 +44,10 @@ struct Vector {
     r1: Option<u64>,
     r9: Option<u64>,
     r10: Option<u64>,
+    /// Entry v1..v3 as four host-order words each, and the v1 the original returned. None when the
+    /// recording predates them.
+    vin: [[u32; 4]; 3],
+    vret1: Option<[u32; 4]>,
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
     /// The write set: entry bytes, and what the original lifted body produced.
@@ -64,6 +68,18 @@ fn parse(line: &str) -> Option<Vector> {
     let mut windows = Vec::new();
     let mut fprs = [0u64; 8];
     let (mut r1, mut r9, mut r10) = (None, None, None);
+    let mut vin = [[0u32; 4]; 3];
+    let mut vret1 = None;
+    let words = |h: &str| -> Option<[u32; 4]> {
+        if h.len() != 32 {
+            return None;
+        }
+        let mut out = [0u32; 4];
+        for (i, w) in out.iter_mut().enumerate() {
+            *w = u32::from_str_radix(&h[i * 8..i * 8 + 8], 16).ok()?;
+        }
+        Some(out)
+    };
     let mut wide = [None; 6];
     let mut ret_f1 = None;
     for tok in &f[8..] {
@@ -73,6 +89,18 @@ fn parse(line: &str) -> Option<Vector> {
             (Some(&"W"), 5) => windows.push((hex(p[1]), unhex(p[3]), unhex(p[4]))),
             // Vectors recorded before the float columns existed simply have none, and every
             // function that needs one fails loudly rather than replaying against a zero.
+            (Some(&"V"), 3) => {
+                if let (Ok(i), Some(w)) = (p[1].parse::<usize>(), words(p[2])) {
+                    if (1..=3).contains(&i) {
+                        vin[i - 1] = w;
+                    }
+                }
+            }
+            (Some(&"Vr"), 3) => {
+                if p[1] == "1" {
+                    vret1 = words(p[2]);
+                }
+            }
             (Some(&"Fr"), 3) => {
                 if p[1] == "1" {
                     ret_f1 = u64::from_str_radix(p[2], 16).ok();
@@ -123,6 +151,8 @@ fn parse(line: &str) -> Option<Vector> {
         r1,
         r9,
         r10,
+        vin,
+        vret1,
         name: f[0].to_string(),
         run: f[1].parse().unwrap_or(0),
         r3: hex(f[2]),
@@ -236,6 +266,8 @@ fn main() {
         let mut g = guest_of(&v);
         // Set by an arm whose result is a float; compared against the recorded `Fr:1` below.
         let mut float_result: Option<u64> = None;
+        // Set by an arm whose result is a vector; compared against the recorded `Vr:1` below.
+        let mut vector_result: Option<[u32; 4]> = None;
         // Whether this record predates the wide argument columns.
         let wide_missing = !line.contains("\tR64:");
 
@@ -490,6 +522,21 @@ fn main() {
                     .map(|_| None)
                     .map_err(|e| e.to_string())
             }
+            // The four-lane sine: argument and result both in v1, no memory touched at all.
+            "sub_824531C8" if v.vret1.is_none() => {
+                t.unreplayable += 1;
+                if t.first_gap.is_none() {
+                    t.first_gap = Some(format!("run {}: needs v1, which this recording predates", v.run));
+                }
+                continue;
+            }
+            "sub_824531C8" => match dsp::sine::sine4(&g, v.vin[0]) {
+                Ok(r) => {
+                    vector_result = Some(r.v1);
+                    Ok(None)
+                }
+                Err(e) => Err(e.to_string()),
+            },
             _ => {
                 t.skipped += 1;
                 continue;
@@ -540,6 +587,15 @@ fn main() {
                         if got != want {
                             bad = Some(format!(
                                 "run {}: f1 returned {got:016X}, expected {want:016X}", v.run));
+                        }
+                    }
+                }
+                if bad.is_none() {
+                    // A vector result is compared lane for lane, by bits.
+                    if let (Some(got), Some(want)) = (vector_result, v.vret1) {
+                        if got != want {
+                            bad = Some(format!(
+                                "run {}: v1 returned {got:08X?}, expected {want:08X?}", v.run));
                         }
                     }
                 }
