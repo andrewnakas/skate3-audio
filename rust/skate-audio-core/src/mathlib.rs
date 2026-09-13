@@ -13,6 +13,10 @@
 //! | [`log10`] | `sub_82F55068` | `log10(double)`, one callee | verified | 125,566 | 169,118 |
 //! | [`log`] | `sub_82F54ED8` | that callee: the natural log | **outside the corpus** | — | — |
 //!
+//! [`log10`] is replayed against **3,000 recorded calls, compared by the bits of `f1`** and so is
+//! [`log`] with it, since every one of those calls goes through it. That is what stands behind the
+//! transcription of a body with no verified reference of its own.
+//!
 //! `sub_82F4DE80` is the hottest body anyone has ported in this project: 2.87 million calls in a
 //! boot session on `RwAudioCore Dac`, more than the sine kernel and the two buffer multiplies put
 //! together.

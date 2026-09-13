@@ -12,10 +12,13 @@
 //! | [`fourth_argument`] | `sub_82B2C8E8` | 7 | 123,881 | 225,599 | a pointer slot only |
 //! | [`stream_remaining`] | `sub_82B23C10` | 47 | 122,997 | 214,853 | five direct callers |
 //!
-//! **Not yet replayed.** No capture in `probe/harness/out/` contains any of these four
-//! addresses, so what stands behind them here is the verified C++ plus the tests below — not
-//! real recorded data. `AUDIO_VECTORS_ONLY` has to name them in a recording session before any
-//! of them can carry the claim the rest of this crate's modules carry.
+//! **Replayed against the game, 2026-09-13: 6,661 recorded vectors, 0 disagreements**
+//! (3,232 + 230 + 230 + 2,969, sessions `leaves` and `leaves2`). The four were recorded on purpose
+//! — no earlier capture contained them — by naming them in `AUDIO_VECTORS_ONLY`, and the same
+//! sessions compared them live against the original 672,366 / 161,603 / 99,945 / 97,943 times with
+//! zero divergence. One limit: the recording keeps only the low word of `r3`, so
+//! [`stream_remaining`]'s borrow into the upper word is checked by the tests below and not by any
+//! vector.
 //!
 //! Two of the four objects are unnamed. `docs/rw_audio_structs.h` has no entry for the slot
 //! array at `+0x10`, the `u16` at `+460`, or the stream table [`stream_remaining`] walks, so

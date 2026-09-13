@@ -11,6 +11,10 @@
 //! | [`ramp_channels`] | `sub_82B23B50` | verified | 119 | 292,165 | 435,555 | [`crate::dsp::gain_ramp`] |
 //! | [`ramp_gain_matrix`] | `sub_82B298E0` | verified | 319 | 142,508 | 180,524 | [`crate::dsp::gain_ramp`], both kernels |
 //!
+//! All three are replayed against recorded gameplay — 795 + 185 + 404 vectors, 0 disagreements.
+//! `sub_82B298E0`'s delta frame is its own stack, so a call with no source rows reads bytes no
+//! recording holds; the replay counts those unreplayable rather than seeding them (there were none).
+//!
 //! `sub_82B298E0` joined the first two later, and is [`apply_gain_matrix`] with a ramp: the same matrix,
 //! the same two passes, the same carried destination count, but every gain moves from the value the
 //! caller saved before this block to the one the matrix holds now, over the kernels' 64 samples. It is

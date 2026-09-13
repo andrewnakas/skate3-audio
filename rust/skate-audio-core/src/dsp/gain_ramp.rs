@@ -6,6 +6,9 @@
 //! | [`gain_ramp_copy`] | `sub_82B3C098` | verified | 278 | 2,126,778 | 3,023,068 |
 //! | [`gain_ramp_accumulate`] | `sub_82B44D18` | verified | 402 | 34,866 | 71,847 |
 //!
+//! Both are replayed against recorded gameplay: 166 vectors for the copy and 31 for the
+//! accumulate, 0 disagreements.
+//!
 //! Both `.inc` headers lead with `// STATUS: verified` and `docs/ports.md` agrees. They share a file
 //! because they share everything but the last step: the same thirteen rodata cells in the same roles,
 //! the same two-loop shape, the same literal 1024-byte extent. `sub_82B44D18` differs in three places —

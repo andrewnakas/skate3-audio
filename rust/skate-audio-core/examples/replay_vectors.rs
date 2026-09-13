@@ -17,7 +17,7 @@
 
 use skate_audio_core::mathlib::Trig;
 use skate_audio_core::{
-    Guest, buffers, crossfade, cursors, dsp, filters, gains, mathlib, mix, player, ring,
+    Guest, buffers, crossfade, cursors, dsp, filters, gains, leaves, mathlib, mix, player, ring,
     scheduler, spatial, stage, system,
 };
 
@@ -537,6 +537,64 @@ fn main() {
                 }
                 Err(e) => Err(e.to_string()),
             },
+            // ---------------------------------------------------------------- the four small leaves
+            // Three return a value and touch little or nothing, which the recorded `ret_r3`
+            // compares. Note the recording keeps only the **low word** of r3, so
+            // `stream_remaining`'s 64-bit borrow is checked in its low half alone — the upper word,
+            // where its subtraction borrows, is not in any vector.
+            "sub_82B463A8" => leaves::stamp_slot(&mut g, v.r3)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            "sub_82B34268" => leaves::set_field_460(&mut g, v.r3, v.r6 as u16)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            // No memory at all: the whole input is r6 and the whole result is r3.
+            "sub_82B2C8E8" => Ok(Some(leaves::fourth_argument(v.w[3]) as u32)),
+            "sub_82B23C10" => leaves::stream_remaining(&g, v.r3, v.r4 as u8)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            // log10, through the natural log: argument and result both in f1.
+            "sub_82F55068" => match mathlib::log10(&g, f64::from_bits(v.f[0])) {
+                Ok(r) => {
+                    float_result = Some(r.to_bits());
+                    Ok(None)
+                }
+                Err(e) => Err(e.to_string()),
+            },
+            // The accumulating gain ramp, the twin of sub_82B3C098 above: same arguments, and its
+            // result is the 1,024-byte destination rather than a register.
+            "sub_82B44D18" => dsp::gain_ramp::gain_ramp_accumulate(
+                &mut g, v.r3, v.r4, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            // The ramping gain matrix keeps its per-column deltas in a 432-byte frame below r1,
+            // which its window builder leaves undeclared because it is the call's own stack. Seeding
+            // it with zeroes is sound **only when there is at least one source row**: pass one
+            // writes every delta it later reads, so no seeded byte can reach the result. With zero
+            // source rows the original reads whatever its caller left on the stack, which no
+            // recording holds, so those calls are counted unreplayable instead of guessed at.
+            "sub_82B298E0"
+                if v.r1.is_none() || g.u32(v.r3 + gains::SOURCE_COUNT).unwrap_or(0) == 0 =>
+            {
+                t.unreplayable += 1;
+                if t.first_gap.is_none() {
+                    t.first_gap = Some(format!(
+                        "run {}: needs r1 and a non-empty source row set (its delta frame is its own stack)",
+                        v.run
+                    ));
+                }
+                continue;
+            }
+            "sub_82B298E0" => {
+                let sp = v.r1.unwrap_or(0) as u32;
+                g.put(
+                    sp.wrapping_sub(gains::RAMP_FRAME_BYTES),
+                    vec![0u8; gains::RAMP_FRAME_BYTES as usize],
+                );
+                gains::ramp_gain_matrix(&mut g, v.r3, v.r4, v.r5, v.r6, sp)
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
             _ => {
                 t.skipped += 1;
                 continue;
