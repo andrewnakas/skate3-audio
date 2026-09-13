@@ -304,6 +304,7 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
                      "# skate3 shadow vectors: name run r3 r4 r5 r6 r7 ret_r3 then spans.\n"
                      "# F:n:bits              = entry f1..f8 as raw 64-bit patterns\n"
                      "# R64:n:bits            = entry r1 and r3..r10, full 64 bits\n"
+                     "# V:n:words / Vr:1:words = entry v1..v3 and the v1 the original left\n"
                      "# Fr:1:bits             = f1 as the ORIGINAL left it\n"
                      "# I:addr:len:bytes      = read set, the memory the function saw\n"
                      "# W:addr:len:entry:exp  = write set, entry bytes and what the ORIGINAL "
@@ -405,6 +406,18 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
                  static_cast<unsigned long long>(entry.r9.u64),
                  static_cast<unsigned long long>(entry.r10.u64),
                  static_cast<unsigned long long>(entry.r1.u64));
+  }
+  // Entry v1..v3 and the v1 the original left, four host-order words each. The four-lane sine kernel
+  // takes its argument and returns its result in v1 and writes no memory at all, so without these
+  // its recorded calls hold nothing that could be replayed.
+  {
+    const PPCVRegister* const vrs[3] = {&entry.v1, &entry.v2, &entry.v3};
+    for (int i = 0; i < 3; ++i) {
+      std::fprintf(g_vector_file, "\tV:%d:%08X%08X%08X%08X", i + 1, vrs[i]->u32[0],
+                   vrs[i]->u32[1], vrs[i]->u32[2], vrs[i]->u32[3]);
+    }
+    std::fprintf(g_vector_file, "\tVr:1:%08X%08X%08X%08X", after.v1.u32[0], after.v1.u32[1],
+                 after.v1.u32[2], after.v1.u32[3]);
   }
   // The read set, from a snapshot taken BEFORE the lifted body ran.
   //
