@@ -44,7 +44,7 @@ that has been proved equal to it call for call.**
 | Exactness harness | shadow verification, per-call, against the running game |
 | Rust container parsing | `skate-audio-formats`, 33 tests, validated on real archives |
 | Rust queue path | `skate-audio-core`, 79 tests over 36 functions, 8,607/8,607 recorded vectors replayed |
-| **Audio in the Rust engine** | **decodes real game streams byte-exactly**, and they are wired into the engine's audio graph as a Bevy source. Verified by decoding, not by listening: see below |
+| **Audio in the Rust engine** | **plays real game streams**: decoded byte-exactly, fed to a Bevy audio source, and confirmed reaching the sound card by recording the output device |
 
 ### The native port, in one table
 
@@ -91,17 +91,27 @@ In rough order of value:
    semantic one. `skate-audio-core` has the queue path and the expression evaluator; the
    scheduler, XMA feed and DSP graph are not written.
 
-   **Decoding is done and the playback path is written.** `skate-3-rust-engine` reads a retail
-   archive member, decodes it byte-exactly against an independent reference, and hands the PCM to
-   a Bevy audio source. Two honest limits on that:
+   **Playback works and has been measured at the sound card.** `skate-3-rust-engine` reads a
+   retail archive member, decodes it byte-exactly against an independent reference, and plays it
+   through a Bevy audio source. `skate3-audio-check` runs that path with no window, renderer or
+   assets, which is how it was verified on a checkout the game itself will not boot on:
 
-   - **It has not been heard.** The decode is verified on real data, and the Bevy glue is
-     unit-tested, but this checkout has no set-up asset pipeline so the game itself does not boot
-     here. `SKATE_AUDIO_PLAY=archive:entry:channels:rate` plays one stream at startup on a
-     checkout that does boot; nobody has run it yet.
-   - **Nothing chooses the stream.** The metadata table that maps a sound to a map or an event is
-     not decoded, so a stream is named by hand. That table is the next piece of real work on the
-     engine side.
+   | measurement | result |
+   |---|---|
+   | decode | 306,816 frames of 5 channels (6.39 s) in 0.19 s, zero deficit |
+   | recorded level, before then during | about -58 dBFS, then about -45 dBFS |
+   | cross-correlation peak | lag 1.370 s, peak-to-mean **58.8** |
+   | time-reversed control | peak-to-mean **5.7**, at a lag outside the overlap |
+
+   The lag is the recorder's head start plus the program's startup, so the sound card received
+   the audio the decoder produced. Two weaker tests failed first and are worth knowing about: an
+   envelope correlation cannot fingerprint a steady ambience bed, and a whole log-spectrum
+   correlation scores ~0.85 on *any* two audio signals.
+
+   **What is still missing is the choice of stream.** The metadata table that maps a sound to a
+   map or an event is not decoded, so a stream is named by hand
+   (`SKATE_AUDIO_PLAY=archive:entry:channels:rate`). That table is the next piece of real work on
+   the engine side.
 3. **`.mpf` sequencing**, sections 0–3. Interactive music needs segments *plus* the map that
    orders them. The `.mus` side is complete; this is the headline format gap
    (`docs/xma-transcode.md`, and the live lead in the guest image).
