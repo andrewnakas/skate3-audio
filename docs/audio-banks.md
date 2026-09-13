@@ -297,6 +297,29 @@ clean negative results bound it:
   `hash64`.
 * **No `(project_id << 16 | name_id)` pair appears as a 32-bit constant** — 0 of 473.
 
+### One more anchor for that search, 2026-09-13
+
+The bank **loader** is now located, which gives the search a second thread to pull besides the
+string pool. The sample bank's `S10A` tag is compared in **`sub_824967F8`** (`skate3_recomp.10`,
+508 lines), and that function has exactly one caller, **`sub_824965D0`**. `sub_824967F8` reads a
+type word and dispatches on it, so it is the resource loader for audio assets rather than the
+trigger itself — but whatever the loader hands the engine is what a run-time port lookup must
+later address, so it bounds where the routing table can be built.
+
+Found the same way the `.mpf` reader was: **XenonRecomp emits immediates in decimal**, so `S10A`
+appears as `lis r10,21297` and not as any hex spelling. Exactly one hit corpus-wide. For the next
+person, the decimal forms of the tags in this document are:
+
+| tag | constant | `lis` | `ori` |
+|---|---|---|---|
+| `ABKC` | `0x41424B43` | 16706 | 19267 |
+| `S10A` | `0x53313041` | 21297 | 12353 |
+| `MOIR` | `0x4D4F4952` | 19791 | 18770 |
+
+`ABKC` and `MOIR` have **no** `lis` hit, which is itself informative: those tags are not built as
+immediates, so they are compared against a word loaded from data, and a search for them has to
+anchor on something else.
+
 So the code does **not** hardcode port keys. It addresses the *object* (`c_body_slide`) and
 the message routing lives inside the bank and its project. Whoever picks this up should start
 at the string pool at `0x8224D700` and find its reader: the `addi`-from-`lis` pattern does not
