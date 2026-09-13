@@ -64,12 +64,15 @@ The native sweep is finished, so the live fronts are:
 
 ### Open
 
-- **`.mpf` sequencing semantics.** Top-level structure decoded (72-byte header, 9 sections,
-  section 7 links to the `.mus` by content hash, section 8 is 8 bytes per segment). How
-  sections 0–3 drive transitions is untouched. Interactive music needs segments *plus* a
-  usable map. The `.mus` side is now complete: its header is decoded and all 8,179
-  segments walk against the SNR table (`docs/rust-port.md`). Note the `.mus` field at
-  `0x28` is **not** the hash `.mpf` links by — that was checked and found absent.
+- ~~**`.mpf` sequencing semantics.**~~ **DECODED 2026-09-12, sections 0–3 included.** Section 0
+  indexes nodes, section 1 is the node graph whose branches `{lo, hi, next}` are chosen by where a
+  signed 5-bit track value falls — that is the transition mechanism — section 2 indexes scripts and
+  section 3 holds them. `verify_mpf` agrees on **33,227 checks** across all three files, and
+  section 8 holds exactly one record per `.mus` segment (1074/1380/5725) while section 1's segment
+  indices cover `1..=n` with no gaps. Four earlier claims are retracted in `docs/xma-transcode.md`.
+  **The lesson worth carrying:** the reader was "unfindable" only because XenonRecomp emits
+  immediates in **decimal**, so `"PFDx"` appears as `lis r11,20550` / `ori r9,r11,17528`. Still
+  open: two header bytes with no reader, a node field, and 12 of the 15 live opcodes.
 - **The low-bit flag** in the chunk length field. Constant per stream, meaning unknown.
 - **Recomp bugs.** **Bug 3** (negative buffer size) has a **guard landed on Linux**:
   `skate3_audio_buffer_size_guard`, default on, clamps a negative length to zero at the point of

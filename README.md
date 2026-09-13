@@ -120,9 +120,11 @@ In rough order of value:
    map or an event is not decoded, so a stream is named by hand
    (`SKATE_AUDIO_PLAY=archive:entry:channels:rate`). That table is the next piece of real work on
    the engine side.
-3. **`.mpf` sequencing**, sections 0–3. Interactive music needs segments *plus* the map that
-   orders them. The `.mus` side is complete; this is the headline format gap
-   (`docs/xma-transcode.md`, and the live lead in the guest image).
+3. ~~**`.mpf` sequencing**, sections 0–3.~~ **Decoded.** The node graph in section 1 is the
+   transition mechanism: each node carries branches `{lo, hi, next}` and the one whose range holds
+   a signed 5-bit track value is taken. `verify_mpf` agrees on 33,227 checks across all three
+   files. What remains is semantic rather than structural — 12 of the 15 live opcodes, two header
+   bytes with no reader anywhere, and one control-node kind.
 4. **Bug 1's ordering fix**, now that **at least fourteen** producers are known, on three measured
    threads. A corpus-wide search (`probe/screen/find_producers.py`) found thirteen append sites
    beyond the two that were read by hand, every one publishing the write offset before storing the

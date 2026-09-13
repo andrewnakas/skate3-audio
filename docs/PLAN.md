@@ -343,6 +343,13 @@ No dependency on the recomp build at all.
 rather than a shell pipeline, and `.mpf` sequencing is either decoded or explicitly
 deferred with what is still open written down.
 
+> **Phase 5 is met, 2026-09-12.** All three classes decode exactly through the crate's own
+> orchestration, and `.mpf` sequencing is **decoded**, sections 0–3 included, with what is still
+> open written down. The one thing the exit criterion asks for that is not literally true: the
+> decode still calls the `ffmpeg` binary, because XMA2 is a hardware codec with no Rust decoder
+> and this box has no `libavcodec` headers. The shell *pipeline* is gone; the external *binary*
+> is not.
+
 ### Phase 6 — Rust engine integration
 
 > **Status 2026-09-12: the first half of the exit criterion is met.** The engine reads a retail
