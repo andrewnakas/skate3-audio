@@ -106,9 +106,13 @@ args=(
   --skate3_audio_vectors_diverged_only="$DIVERGED_ONLY"
   --skate3_audio_port_census="$CENSUS"
   --audio_stats=true
-  --audio_dump_path="$RAW"
-  --audio_dump_max_frames="$FRAMES"
 )
+# AUDIO_DUMP_FRAMES=0 means no capture at all. The recomp reads a frame limit of zero as NO limit,
+# so passing the path with 0 captured the whole session: about 100 MB each, 2.1 GB across one night
+# of vector recording before the disk filled and it was noticed. Omit the path instead.
+if [ "$FRAMES" != "0" ]; then
+  args+=( "--audio_dump_path=$RAW" "--audio_dump_max_frames=$FRAMES" )
+fi
 if [ -n "$VECTORS" ]; then
   args+=( "--skate3_audio_vectors_path=$VECTORS" "--skate3_audio_vectors_max=$VECTORS_MAX" )
   [ -n "$VECTORS_ONLY" ] && args+=( "--skate3_audio_vectors_only=$VECTORS_ONLY" )
