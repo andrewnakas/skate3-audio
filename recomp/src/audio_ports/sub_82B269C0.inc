@@ -83,6 +83,11 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   spec.read(kAngleScale, 4);
   spec.read(kZeroFloat, 4);
   spec.read(kAngleBias, 4);
+  // Read by the callee sub_82B453D8, not by this body. A read span is never rewound and costs
+  // nothing against the window budget, and without these a recorded vector cannot be replayed:
+  // the replay reaches a constant the recording never captured.
+  spec.read(0x8231A844, 4);
+  spec.read(0x820ED800, 4);
   return true;
 }
 

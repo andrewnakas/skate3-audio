@@ -346,6 +346,12 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   spec.read(object + kCount, kIndex172 + kIndexWords - kCount);  // +56 .. +187
   spec.read(kAngleScale, 4);
   spec.read(kAngleStep, 4);
+  // Reached through callees rather than by this body: two doubles the float-to-integer helper
+  // sub_82F4DE80 uses, and the zero cell the sector-1 centre share is seeded from. Declared so a
+  // recorded vector carries them; reads cost nothing against the window budget.
+  spec.read(0x82010108, 8);
+  spec.read(0x820514D8, 8);
+  spec.read(0x82165A10, 4);
   return true;
 }
 

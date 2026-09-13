@@ -50,6 +50,15 @@ pub fn load_single(g: &Guest, ea: u32) -> Result<f64> {
     Ok(single_from_bits(g.u32(ea)?))
 }
 
+/// `lfd` from guest memory: eight big-endian bytes reinterpreted as a double, no rounding.
+///
+/// Only `sub_82F4DE80` needs it so far — its two pool constants are `lfd`, not `lfs`, and the
+/// second of them is `1e18`, which is not representable as a single at all.
+#[inline]
+pub fn load_double(g: &Guest, ea: u32) -> Result<f64> {
+    Ok(f64::from_bits(g.u64(ea)?))
+}
+
 /// `stfs` to guest memory.
 #[inline]
 pub fn store_single(g: &mut Guest, ea: u32, value: f64) -> Result<()> {
@@ -116,6 +125,99 @@ pub fn fmadd_single(a: f64, b: f64, c: f64) -> f64 {
 #[inline]
 pub fn nmsub_single(a: f64, b: f64, c: f64) -> f64 {
     ((-(a.mul_add(b, -c))) as f32) as f64
+}
+
+/// `fsqrts`: the double square root rounded to single.
+///
+/// `f64::sqrt` lowers to `sqrtsd`, which is what `std::sqrt(double)` compiles to in the reference,
+/// and both are correctly rounded — so the pair rounds exactly twice, in the same two places. It
+/// runs under whatever MXCSR the caller established, which is why the bodies that use it hold a
+/// [`crate::vmx::Fpscr`]: a denormal operand is flushed by the recomp and would not be here.
+#[inline]
+pub fn sqrt_single(a: f64) -> f64 {
+    (a.sqrt() as f32) as f64
+}
+
+/// `frsp`: a double rounded to single precision and kept in a double.
+///
+/// Distinct from [`single_to_bits`] in that the value stays an `f64`. It is what every call site of
+/// `sub_82F4DE80`, `sub_82F4DED0` and `sub_82F4DFB0` does to the returned `f1` before using it, so
+/// the double-precision tail of those results never reaches the arithmetic that follows.
+#[inline]
+pub fn frsp(a: f64) -> f64 {
+    (a as f32) as f64
+}
+
+/// `fmsubs`: `a*b - c`, one fused multiply-add, then rounded to single.
+///
+/// The mirror of [`nmsub_single`] without the negation. `sub_82B45788` uses it once, to take the
+/// reduced angle out of the wrapped fraction, and the fusion is visible there: the product is
+/// `fraction * 2π`, whose low bits the subtraction of the sector bound keeps.
+#[inline]
+pub fn fmsub_single(a: f64, b: f64, c: f64) -> f64 {
+    (a.mul_add(b, -c) as f32) as f64
+}
+
+/// `fabs` on the double representation: the sign bit cleared, nothing else touched.
+///
+/// Written through the bits rather than as `f64::abs` because that is what the lifted line does —
+/// `temp.u64 &= ~0x8000000000000000` — and because the two are only documented to agree on
+/// non-NaN values. A NaN keeps its payload here, and `sub_82B454B8` compares the result of this
+/// against a rodata epsilon on every call.
+#[inline]
+pub fn abs_double(value: f64) -> f64 {
+    f64::from_bits(value.to_bits() & 0x7FFF_FFFF_FFFF_FFFF)
+}
+
+/// `fneg` on the double representation: the sign bit flipped.
+#[inline]
+pub fn neg_double(value: f64) -> f64 {
+    f64::from_bits(value.to_bits() ^ 0x8000_0000_0000_0000)
+}
+
+/// `fctidz`: truncate toward zero into a 64-bit integer.
+///
+/// Written branch for branch, for the same reason [`crate::player::truncated_low_byte`] is — that
+/// one is the `f32` entry point to the same instruction and this is the `f64` one, kept separate
+/// rather than refactored together because the two lifted lines differ in their operand widths and
+/// nothing is gained by making one call the other.
+///
+/// Rust's `as i64` **saturates** and `cvttsd2si` does not. The three edges, in the lifted order:
+/// NaN yields the integer indefinite `i64::MIN`; anything strictly above `2^63` yields `i64::MAX`,
+/// because the lifted test is `x > (double)LLONG_MAX` and takes that arm; and exactly `2^63` falls
+/// through to `cvttsd2si`, which yields the indefinite — where `as i64` would give `i64::MAX`.
+/// That single input is the whole reason this is not a cast.
+#[inline]
+pub fn fctidz(value: f64) -> i64 {
+    const TWO_POW_63: f64 = 9_223_372_036_854_775_808.0;
+    if value.is_nan() {
+        i64::MIN
+    } else if value > TWO_POW_63 {
+        i64::MAX
+    } else if value >= TWO_POW_63 || value < -TWO_POW_63 {
+        i64::MIN // cvttsd2si's integer indefinite, which saturation also reaches at the low end
+    } else {
+        value as i64
+    }
+}
+
+/// `fcfid`: a 64-bit integer converted to double, round to nearest even.
+///
+/// Exact below `2^53` and correctly rounded above it, in the guest and in Rust alike.
+#[inline]
+pub fn fcfid(value: i64) -> f64 {
+    value as f64
+}
+
+/// `fsel fD,fA,fB,fC`: `fA >= 0.0 ? fB : fC`, with **NaN taking the else arm**.
+///
+/// A select, not a branch: both arms are values the caller has already computed, so reproducing it
+/// as an `if` changes nothing except that the untaken arm is not evaluated. What it does pin is the
+/// NaN direction — `>=` is false for NaN, so a NaN selector takes `c`, which is the whole of how
+/// `sub_82F4DE80` returns a NaN unchanged.
+#[inline]
+pub fn fsel(a: f64, b: f64, c: f64) -> f64 {
+    if a >= 0.0 { b } else { c }
 }
 
 /// `fctiwz f13,fX ; stfd f13,-k(r1) ; lwz rN,-k+4(r1)`: truncate toward zero into a word, spill
@@ -250,6 +352,83 @@ mod tests {
 
     fn load_single_bits_round_trip(bits: u32) -> u32 {
         single_to_bits(single_from_bits(bits))
+    }
+
+    #[test]
+    fn fctidz_disagrees_with_a_saturating_cast_at_exactly_two_to_the_63() {
+        const TWO_POW_63: f64 = 9_223_372_036_854_775_808.0;
+        // The one input that forces the branch-for-branch form, and the reason is the lifted test
+        // being `>` rather than `>=`: 2^63 itself falls through to cvttsd2si's indefinite.
+        assert_eq!(fctidz(TWO_POW_63), i64::MIN);
+        assert_eq!(TWO_POW_63 as i64, i64::MAX, "the naive cast, which would diverge");
+        // One ulp above takes the other arm.
+        assert_eq!(fctidz(TWO_POW_63 * 1.0000001), i64::MAX);
+        assert_eq!(fctidz(f64::INFINITY), i64::MAX);
+        // NaN is the indefinite, where the cast gives 0.
+        assert_eq!(fctidz(f64::NAN), i64::MIN);
+        assert_eq!(f64::NAN as i64, 0, "the naive cast again");
+        // The low end agrees with saturation, and is written out anyway.
+        assert_eq!(fctidz(-TWO_POW_63), i64::MIN);
+        assert_eq!(fctidz(f64::NEG_INFINITY), i64::MIN);
+        // Truncation toward zero, both signs.
+        assert_eq!(fctidz(2.9), 2);
+        assert_eq!(fctidz(-2.9), -2);
+        assert_eq!(fctidz(-0.5), 0);
+        // And the round trip through fcfid is exact below 2^53.
+        assert_eq!(fcfid(fctidz(-2.9)), -2.0);
+        assert_eq!(fcfid(1i64 << 52), 4_503_599_627_370_496.0);
+    }
+
+    #[test]
+    fn fsel_sends_nan_to_the_else_arm() {
+        assert_eq!(fsel(0.0, 1.0, 2.0), 1.0, "+0 is >= 0");
+        // -0.0 >= 0.0 is true in IEEE and in the hardware fsel alike.
+        assert_eq!(fsel(-0.0, 1.0, 2.0), 1.0);
+        assert_eq!(fsel(-1.0, 1.0, 2.0), 2.0);
+        assert_eq!(fsel(f64::NAN, 1.0, 2.0), 2.0, "unordered takes c");
+        assert_eq!(fsel(f64::INFINITY, 1.0, 2.0), 1.0);
+    }
+
+    #[test]
+    fn fsqrts_rounds_to_single_and_frsp_is_the_narrowing_alone() {
+        // fsqrts is a double sqrt narrowed, not an f32 sqrt: for an input whose exact root needs
+        // more than 24 bits the two agree here, and the shape is what is being pinned.
+        assert_eq!(sqrt_single(4.0), 2.0);
+        assert_eq!(sqrt_single(2.0), (2.0f64.sqrt() as f32) as f64);
+        assert_ne!(sqrt_single(2.0), 2.0f64.sqrt(), "the narrowing has to be visible");
+        assert!(sqrt_single(-1.0).is_nan());
+
+        // frsp keeps the value in a double; it is not `single_to_bits`, which yields the word.
+        assert_eq!(frsp(1.0 + 2f64.powi(-30)), 1.0);
+        assert_eq!(frsp(0.1), 0.1f32 as f64);
+        assert_ne!(frsp(0.1), 0.1, "0.1 as a double is not 0.1 as a single");
+    }
+
+    #[test]
+    fn fmsubs_is_one_fused_step() {
+        // `a*b - c` with the product needing 48 bits and `c` its f32 rounding: fused, the discarded
+        // low bits survive; unfused, the multiply throws them away and the subtraction cancels.
+        let a = (1.0f32 + f32::EPSILON) as f64;
+        let b = (1.0f32 - f32::EPSILON) as f64;
+        let c = ((a * b) as f32) as f64; // == 1.0
+        assert_ne!(fmsub_single(a, b, c), 0.0, "the fusion has to reach the subtraction");
+        assert_eq!(sub_single(mul_single(a, b), c), 0.0, "the unfused form, which cancels");
+        // Sign: fmsub is a*b - c, and fnmsub is its negation.
+        assert_eq!(fmsub_single(2.0, 3.0, 10.0), -4.0);
+        assert_eq!(nmsub_single(2.0, 3.0, 10.0), 4.0);
+    }
+
+    #[test]
+    fn fabs_and_fneg_work_on_the_bits_and_keep_nan_payloads() {
+        assert_eq!(abs_double(-2.5), 2.5);
+        assert_eq!(abs_double(2.5), 2.5);
+        assert_eq!(abs_double(-0.0).to_bits(), 0, "-0 becomes +0, bit for bit");
+        assert_eq!(neg_double(0.0).to_bits(), 0x8000_0000_0000_0000);
+        // A NaN keeps every payload bit; only the sign moves. `f64::abs` is documented the same
+        // way, and this is written through the bits because the lifted line is.
+        let nan = f64::from_bits(0xFFF8_0000_DEAD_BEEF);
+        assert_eq!(abs_double(nan).to_bits(), 0x7FF8_0000_DEAD_BEEF);
+        assert_eq!(neg_double(nan).to_bits(), 0x7FF8_0000_DEAD_BEEF);
     }
 
     #[test]

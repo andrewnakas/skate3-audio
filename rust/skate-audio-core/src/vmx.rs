@@ -144,9 +144,10 @@ pub fn set_mxcsr(v: u32) {
 ///
 /// This matters beyond bookkeeping: a translation that cleared `FZ|DAZ` for the scalar paths of
 /// [`crate::dsp::scale`] would produce denormal results where the recomp flushes them to zero.
-/// `crate::fp`'s module documentation states the opposite ("MXCSR `0x0000` … denormals preserved")
-/// and is wrong about the recomp on this point; nothing in `fp.rs` depends on it, because the ops
-/// there are called under whatever mode their caller established.
+/// [`crate::fp`]'s module documentation used to state the opposite ("MXCSR `0x0000` … denormals
+/// preserved"); it was corrected on 2026-09-12 and now agrees with this. Nothing in `fp.rs` ever
+/// depended on it either way, because the ops there are called under whatever mode their caller
+/// established — which is why every body that uses them holds an [`Fpscr`] of its own.
 ///
 /// **One deliberate divergence.** The guest's FPSCR is sticky: a lifted function leaves the mode
 /// it last set and the next one inherits it. [`Fpscr`] restores the entry MXCSR when it is dropped,

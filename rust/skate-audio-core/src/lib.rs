@@ -53,6 +53,20 @@ pub mod dsp;
 #[cfg(target_arch = "x86_64")]
 pub mod vmx;
 
+/// The spatial layer, the gain plumbing under it, and the guest math leaves they call.
+///
+/// Gated on x86_64 for the same reason [`mix`] and [`ring`] are, and it is again not SIMD: every
+/// body in these three modules is scalar float work that runs under the guest's flush mode, held
+/// through [`vmx::Fpscr`]. `sub_82B453D8` and `sub_82B45788` both take a `fsqrts` of a sum that can
+/// be denormal, and `sub_82F4DE80` subtracts two doubles whose difference can be; under Rust's
+/// default MXCSR those would keep a denormal the recomp flushes to zero.
+#[cfg(target_arch = "x86_64")]
+pub mod gains;
+#[cfg(target_arch = "x86_64")]
+pub mod mathlib;
+#[cfg(target_arch = "x86_64")]
+pub mod spatial;
+
 /// One contiguous span of guest memory.
 #[derive(Clone, Debug)]
 pub struct Segment {
@@ -138,6 +152,32 @@ impl Guest {
     pub fn set_u32(&mut self, ea: u32, value: u32) -> Result<()> {
         let (i, o) = self.locate(ea, 4)?;
         self.segments[i].bytes[o..o + 4].copy_from_slice(&value.to_be_bytes());
+        Ok(())
+    }
+
+    /// `lfd`/`ld`: eight big-endian bytes.
+    ///
+    /// Added for [`fp::load_double`], which `mathlib::floor` needs: `sub_82F4DE80` reaches its two
+    /// pool constants with `lfd`, and splitting that into two `u32` reads would invent a byte order
+    /// for the halves that the guest does not have.
+    pub fn u64(&self, ea: u32) -> Result<u64> {
+        let (i, o) = self.locate(ea, 8)?;
+        let b = &self.segments[i].bytes;
+        Ok(u64::from_be_bytes([
+            b[o],
+            b[o + 1],
+            b[o + 2],
+            b[o + 3],
+            b[o + 4],
+            b[o + 5],
+            b[o + 6],
+            b[o + 7],
+        ]))
+    }
+
+    pub fn set_u64(&mut self, ea: u32, value: u64) -> Result<()> {
+        let (i, o) = self.locate(ea, 8)?;
+        self.segments[i].bytes[o..o + 8].copy_from_slice(&value.to_be_bytes());
         Ok(())
     }
 

@@ -15,7 +15,9 @@
 //! on the command line. Deriving them from the expected bytes would be using the answer to
 //! check the answer.
 
-use skate_audio_core::{Guest, buffers, cursors, dsp, mix, player, ring, scheduler, system};
+use skate_audio_core::{
+    Guest, buffers, cursors, dsp, gains, mathlib, mix, player, ring, scheduler, spatial, system,
+};
 
 struct Vector {
     name: String,
@@ -33,6 +35,8 @@ struct Vector {
     /// argument genuinely carries 64 bits -- or whose sixth argument is `r8`, which the fixed
     /// columns omit entirely -- cannot be replayed from those alone.
     w: [u64; 6],
+    /// `f1` as the original left it, for the bodies whose result is a float and not a word.
+    ret_f1: Option<u64>,
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
     /// The write set: entry bytes, and what the original lifted body produced.
@@ -53,6 +57,7 @@ fn parse(line: &str) -> Option<Vector> {
     let mut windows = Vec::new();
     let mut fprs = [0u64; 4];
     let mut wide = [None; 6];
+    let mut ret_f1 = None;
     for tok in &f[8..] {
         let p: Vec<&str> = tok.split(':').collect();
         match (p.first(), p.len()) {
@@ -60,6 +65,11 @@ fn parse(line: &str) -> Option<Vector> {
             (Some(&"W"), 5) => windows.push((hex(p[1]), unhex(p[3]), unhex(p[4]))),
             // Vectors recorded before the float columns existed simply have none, and every
             // function that needs one fails loudly rather than replaying against a zero.
+            (Some(&"Fr"), 3) => {
+                if p[1] == "1" {
+                    ret_f1 = u64::from_str_radix(p[2], 16).ok();
+                }
+            }
             (Some(&"R64"), 3) => {
                 if let (Ok(i), Ok(bits)) = (p[1].parse::<usize>(), u64::from_str_radix(p[2], 16)) {
                     if (3..=8).contains(&i) {
@@ -77,8 +87,12 @@ fn parse(line: &str) -> Option<Vector> {
             _ => {}
         }
     }
-    if windows.is_empty() {
-        return None; // a vector with no write set compares nothing; counted as malformed
+    // A vector with no write set usually compares nothing and is malformed. The exception is a
+    // register-only body: the four-lane sine and the float-to-integer leaves write no memory at
+    // all, and their whole result is a register. Dropping those would silently exclude the
+    // functions the harness gained a result mask for in the first place.
+    if windows.is_empty() && ret_f1.is_none() {
+        return None;
     }
     // Older files have no wide columns; fall back to the zero-extended low word, which is right
     // whenever the high half was zero and wrong silently when it was not -- so the wide columns
@@ -91,6 +105,7 @@ fn parse(line: &str) -> Option<Vector> {
     Some(Vector {
         f: fprs,
         w,
+        ret_f1,
         name: f[0].to_string(),
         run: f[1].parse().unwrap_or(0),
         r3: hex(f[2]),
@@ -201,6 +216,8 @@ fn main() {
         total += 1;
         let t = by_name.entry(v.name.clone()).or_default();
         let mut g = guest_of(&v);
+        // Set by an arm whose result is a float; compared against the recorded `Fr:1` below.
+        let mut float_result: Option<u64> = None;
         // Whether this record predates the wide argument columns.
         let wide_missing = !line.contains("\tR64:");
 
@@ -307,6 +324,40 @@ fn main() {
             "sub_82B443F8" => mix::advance_and_clear(&mut g, v.r3, v.r4, v.r5, v.r6)
                 .map(|r| Some(r as u32))
                 .map_err(|e| e.to_string()),
+            // The spatial chain. place_panner and add_angular are absent on purpose: both need
+            // the guest's sine and cosine, which have no port in either language, and substituting
+            // the host's would agree to fifteen digits and disagree in the bits the caller keeps.
+            "sub_82B453D8" => spatial::clamp_to_unit_disc(
+                &mut g, v.r3, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B454B8" => {
+                spatial::pan_distance(&mut g, v.r3, v.r4, v.r6, f64::from_bits(v.f[0]))
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
+            "sub_82B45B60" => spatial::scale_gains(
+                &mut g, v.r3, v.r6, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]),
+                f64::from_bits(v.f[2]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B29AF0" => gains::apply_gain_matrix(&mut g, v.r3, v.r4, v.r5)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            // The guest returns a constant 1 here, so comparing it against the recording is a
+            // real check that this port took the path the original took.
+            "sub_82B23B50" => gains::ramp_channels(&mut g, v.r3, v.r4, v.w[2])
+                .map(|_| Some(1u32))
+                .map_err(|e| e.to_string()),
+            // A register-only leaf: its whole result is f1, so the word comparison below has
+            // nothing to check and the float comparison is the test.
+            "sub_82F4DE80" => match mathlib::floor(&g, f64::from_bits(v.f[0])) {
+                Ok(r) => {
+                    float_result = Some(r.to_bits());
+                    Ok(None)
+                }
+                Err(e) => Err(e.to_string()),
+            },
             _ => {
                 t.skipped += 1;
                 continue;
@@ -347,6 +398,17 @@ fn main() {
                     }
                     if bad.is_some() {
                         break;
+                    }
+                }
+                if bad.is_none() {
+                    // A float result is compared by bits, not by value: the point of porting
+                    // these is that the bits agree, and two different bit patterns can compare
+                    // equal as numbers.
+                    if let (Some(got), Some(want)) = (float_result, v.ret_f1) {
+                        if got != want {
+                            bad = Some(format!(
+                                "run {}: f1 returned {got:016X}, expected {want:016X}", v.run));
+                        }
                     }
                 }
                 if bad.is_none() {

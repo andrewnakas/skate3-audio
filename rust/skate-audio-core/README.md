@@ -12,7 +12,10 @@ than at a misunderstanding of the engine.
 | `system.rs` | the command ring producer, all four paths | 6,706 recorded comparisons replayed |
 | `player.rs` | the three `PacketPlayer` consumers, the FIFO, the liveness scan | 1,679 replayed |
 | `buffers.rs` | buffer-pair init | 222 replayed |
-| `fp.rs` | the guest's scalar FP idioms: `lfs`/`stfs`, `fcfid`/`frsp`, the single-rounded forms, `fctiwz`, `rlwinm` | unit-tested only |
+| `fp.rs` | the guest's scalar FP idioms: `lfs`/`lfd`/`stfs`, `fcfid`/`frsp`, the single-rounded forms, `fsqrts`, `fmsubs`, `fabs`/`fneg`, `fsel`, `fctiwz`, `fctidz`, `rlwinm` | unit-tested only |
+| `spatial.rs` | `sub_82B453D8`, `sub_82B269C0`, `sub_82B454B8`, `sub_82B45788`, `sub_82B45B60`: a source's position becoming a gain per speaker — the unit-disc clamp, the panner placement, distance panning, the seven-sector angular pass, and the power-normalised scale | verified C++ reference; unit-tested only |
+| `gains.rs` | `sub_82B29AF0` and `sub_82B23B50`: the channel gain matrix and the per-channel gain ramp, both driving `dsp/` kernels over a `+4`/`+14` channel descriptor | verified C++ reference; unit-tested only |
+| `mathlib.rs` | `sub_82F4DE80` (`floor`, 2.87 M calls a boot — the hottest body ported anywhere in this project), and the `Trig` hole where the image's sine and cosine are not portable | verified C++ reference; unit-tested only |
 | `counter.rs` | `sub_82B1F360`, the six-word cascading counter the evaluator draws from | verified C++ reference; unit-tested only |
 | `eval/` | the expression evaluator's 40-slot opcode table at guest `0x82FD3600` — **31 slots**, every one that has a verified C++ body | verified C++ reference; unit-tested only |
 | `scheduler.rs` | `sub_82B489D0` and `sub_82B39690`: an instance detaching itself from the scheduler, and the bucket list mechanic that removal runs on | **4 replayed** — two calls each, read the count before quoting it |
@@ -27,7 +30,7 @@ than at a misunderstanding of the engine.
 | `mix.rs` | `sub_82B34E08`, `sub_82B3C668`, `sub_82B443F8`: flush the mix accumulator, fold the pending deltas into the rows, advance a fill position and clear ahead of it | verified C++ reference; unit-tested only |
 | `mem.rs` | the write-set contract of `sub_82EDF460` (memcpy) and `sub_82EE5E80` (memset), which six of the bodies above call | not a port; see its module note |
 
-`cargo test` runs 226 unit tests. **Read the next two sections before reading that as one number:
+`cargo test` runs 275 unit tests. **Read the next two sections before reading that as one number:
 the modules are checked in different ways, and only the ones whose table row gives a replay figure
 have one.**
 
@@ -112,8 +115,9 @@ composed in the right order. It also leaves seven primitives uncovered — `vrfi
 of which has a unit test against a hand-written model instead, which is weaker. `vmx`'s module
 documentation carries the table.
 
-**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, all of `dsp/`, and
-`cursors::advance_ring_cursor`. The C++ body each of these was translated from was compared
+**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, all of `dsp/`,
+`spatial.rs`, `gains.rs`, `mathlib.rs`, and `cursors::advance_ring_cursor`. The C++ body each of
+these was translated from was compared
 call-for-call against the original under the harness, on real inputs, at zero divergence. The Rust
 has no vectors of its own, for one of three reasons. For `fp.rs`, `counter.rs` and `eval/` there is
 no direct call site in the lifted tree at all (the evaluator reaches all 40 slots through one
@@ -130,7 +134,7 @@ being transcribed is right, and say nothing about the transcription. Do not quot
 were this crate's.
 
 The unit tests are held to the standard the vector work is: each was checked by breaking the
-function it covers and confirming the test fails. **175 negative controls** have been run:
+function it covers and confirming the test fails. **224 negative controls** have been run:
 
 - 28 across `fp.rs`, `counter.rs` and `eval/`; 25 now fail correctly, 21 of them on the first
   attempt;
@@ -140,10 +144,29 @@ function it covers and confirming the test fails. **175 negative controls** have
   The one that does not is arithmetic rather than a weak test and is described below;
 - 71 across `mem.rs`, `ring.rs`, `mix.rs`, `dsp/biquad.rs`, `dsp/resample.rs` and `fp.rs`'s new
   `nmsub_single` — one per test — all 71 failing correctly, with each break restored and the whole
-  suite re-run afterwards. One of them passed on the first attempt and is described below.
+  suite re-run afterwards. One of them passed on the first attempt and is described below;
+- 49 across `spatial.rs`, `gains.rs`, `mathlib.rs` and `fp.rs`'s six new idioms — one per test — all
+  49 now failing correctly. **Four passed on the first attempt and three of them were weak tests**,
+  described below.
 
-Five passed at first. Four were fixed by writing sharper tests, not by lowering the claim; the
-fifth was two tests that could not fail at all and were replaced.
+**The spatial batch's four first-attempt passes, since three of them are the same mistake.** A test
+that names a boundary has to land on it, and a test that watches a word has to make that word move:
+
+- `a_length_inside_the_snap_window_reports_one_and_keeps_the_position` claimed to check the snap
+  test at exactly the 0.999 cell, and reached it by squaring the single-rounded square root of
+  0.999 — which misses by an ulp either way, so `>` and `>=` agree there. It now patches the cell to
+  0.25 and squares 0.5, which lands on it exactly. (Patching is legitimate here and everywhere else
+  in these tests: the bodies read every constant live, which is the whole point of doing so.)
+- `the_count_is_reloaded_before_sector_ones_centre_store` skipped a store whose value was `old + 0`,
+  so the skip was invisible. It now arranges a non-zero centre share alongside the zero that
+  clobbers the count — both at once, which takes `f1 = 1.0` and `left < right`.
+- `a_zero_destination_count_writes_nothing_at_all` left the gain matrix at zero except for one cell,
+  so a stray accumulating pass added nothing. The matrix is now poisoned throughout.
+- The fourth was the control, not the test: a "hoist the count" break that inserted an unused
+  variable and left the live read in place, so it patched nothing.
+
+Five passed at first in the earlier batches. Four were fixed by writing sharper tests, not by
+lowering the claim; the fifth was two tests that could not fail at all and were replaced.
 `op_round_product`'s multiply order needed inputs where an intermediate product actually rounds —
 over small primes a reversed quad gives the identical answer. `op_curve`'s upper-neighbour clamp
 needed a non-zero interpolation fraction. `op_curve`'s nearest-mode test needed a scale *above*
@@ -259,6 +282,45 @@ unreplayable.
 Until the recorder is fixed, **the `I:` columns of a vector file cannot be read on their own** as
 the state a function saw. Reading them that way is what first made these ports look wrong.
 
+### Reads no `Windows()` declares, and what they cost
+
+A read the C++ `Windows()` does not declare is not in the recorded read set, so a vector that
+reaches it is **unreplayable**: the replay cannot invent the bytes, and feeding fabricated ones would
+turn a failure into a meaningless pass. The spatial batch found five such cells, across three
+functions. Every one is a *rodata constant* reached through a callee, so the fix is one `spec.read`
+line in the `.inc` and costs nothing against the window budget:
+
+| port | undeclared read | why it is reached |
+|---|---|---|
+| `sub_82B269C0` | `0x8231A844` (1.0), `0x820ED800` (0.999) | its callee `sub_82B453D8` reads both |
+| `sub_82B45788` | `0x82010108`, `0x820514D8` (8 bytes each) | its callee `sub_82F4DE80` reads both |
+| `sub_82B45788` | `0x82165A10` (0.0) | sector 1's initial centre share — see below |
+| `sub_82B23B50` | the thirteen cells `dsp::gain_ramp` names | its callee `sub_82B3C098` reads all of them |
+
+The `0x82165A10` row is a difference from the C++ rather than from the original: `sub_82B45788`'s
+port writes `double centre = 0.0;` with the lifted `lfs f12,23056(r11)` in the comment beside it.
+The original loads the cell, so `spatial::add_angular` loads it too, per this crate's rule that
+guest constants are read live. On the measured image the cell is `0.0` and the two agree exactly.
+
+### What the spatial constants turned out to be
+
+Nine rodata cells were read out of the validated image dump while writing `spatial.rs` and
+`mathlib.rs`. Four of them settle what the code *means*, not merely that the addresses are right:
+
+| cell | measured | consequence |
+|---|---|---|
+| `0x822F8904` | 0.15915494 = **1/2π** | `sub_82B45788`'s reduction is an angle **wrapped into one turn** |
+| `0x820B411C` | 6.2831855 = **2π** | the same wrap, and the base the two reflected sector bounds subtract from |
+| `0x822F8A6C` | −0.017453292 = **−π/180** | `sub_82B269C0`'s `f1` is an angle in **degrees** |
+| `0x82060C44` | 3.1415927 = **π** | its non-positive-depth path is a reflection through the origin |
+| `0x822F87E0` | 0.015625 = **1/64** | `sub_82B23B50`'s ramp spans 64 samples, matching `dsp::gain_ramp`'s own 64.0 cell |
+
+And one correction. `probe/ports/notes/sub_82F4DE80.md` records its second pool double as
+"by shape … 2^52", not measured. It is **1e18** (`0x43ABC16D674EC800`). The port is unaffected
+because it reads the cell live, and 1e18 is the better constant for what the code does with it: it
+is the largest round decimal magnitude comfortably below `2^63`, which is the bound `fctidz` needs
+in order not to return its integer indefinite.
+
 ### Limits carried over from the harness
 
 From `docs/shadow-harness.md`:
@@ -345,8 +407,26 @@ reasons above.
 
 `dsp/` is **started, not finished**: six kernels. What is there is the families that carry the most
 calls — the sine helper, the buffer multiplies, the gain ramp, the biquad and the resampler — and
-what is not is the rest of the gain plumbing and the heavier vector kernels. Every one of them has a
-vector layer to stand on, so each is transcription too.
+what is not is the heavier vector kernels. The gain plumbing above them is now in `gains.rs`.
+
+Two of the ten functions screened for the spatial batch were **left out on grouping, not on status**:
+`sub_82B34268` (store a `u16` at `+460`, return 0; verified, 202,510 calls a boot) and `sub_82B463A8`
+(a command-ring handler that stamps `{0x7FF7FFF1, float}` into a slot and returns 16; verified,
+761,054 calls). Both are trivial and both belong with the command-queue layer — `sub_82B463A8` is
+never called by a `bl` at all, only through a record's `+0` handler pointer — so they want a
+`commands.rs` holding the handler table that `system.rs` produces records for, not a corner of the
+spatial module.
+
+**The image's sine and cosine have no port in either language.** `sub_82F4DED0` and `sub_82F4DFB0`
+are outside the 216 audio-thread functions the sweep covered, so there is no `.inc` for either — the
+same position `sub_82B43978` is in. `spatial::place_panner` and `spatial::add_angular` therefore take
+a `mathlib::Trig` parameter, whose default `Unported` returns an `Err` naming the guest address.
+Until those two are ported, **neither function can be replayed against a recorded vector at all**:
+their results feed every value both bodies store, and substituting `f64::sin` would produce a number
+right to fifteen digits and wrong in the bits the callers' `frsp` keeps. Note also that
+`add_angular`'s own `stwu r1,-160(r1)` is not reproduced *because* the trigonometry is a parameter:
+the frame exists only so those two helpers' red-zone spills land where the original put them, and
+porting them as guest bodies would make it load-bearing again.
 
 Two neighbours of the new modules were **considered and left out on their dependencies**, not on
 their status:

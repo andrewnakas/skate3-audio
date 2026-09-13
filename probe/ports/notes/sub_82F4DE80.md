@@ -17,7 +17,10 @@ or use f1 directly right after the `bl`; the scratch f0/f10-f13/r10/r11 are not 
 
 Gates: 1 pass (leaf), 2 pass (no writes), 3 pass (no timebase), 4 pass (f1 named).
 
-Unsure: the two pool values are not verified from the image -- by shape they are 1.0 and 2^52,
-but the body loads them so the port is correct either way. `fctidz` edge handling copies the
+Measured 2026-09-13, replacing an unverified guess: the two pool values are **1.0 and 1e18**
+(`0x43ABC16D674EC800`), read out of the image. The note used to say "by shape they are 1.0 and
+2^52", which was wrong and unmeasured. 1e18 is the better constant for the job -- the largest
+round decimal magnitude below 2^63, which is the bound `fctidz` needs. The port is unaffected
+either way, because the body loads the cells live rather than folding them in. `fctidz` edge handling copies the
 lifted line verbatim (NaN, > 2^63, cvttsd2si indefinite); those inputs are unlikely on this
 path and would only be exercised if a caller ever passes them.
