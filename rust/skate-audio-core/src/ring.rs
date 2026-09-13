@@ -1,22 +1,34 @@
-//! The output read-out: cutting one block of samples out of the wrapping decode ring.
+//! The decode ring: cutting one block of samples out of it, and writing one block back into it.
 //!
-//! Three verified bodies that sit directly on top of one another. `sub_82B3DD90` — which is
+//! Four verified bodies that sit directly on top of one another. `sub_82B3DD90` — which is
 //! **not** here, see below — builds a 16-byte ring window on its frame and a one- or two-entry
 //! segment array, hands both to [`fill_segments`], and then calls [`fill_tail`] to pad whatever
 //! the ring could not supply. [`fill_segments`] in turn calls [`copy_from_ring`] once per segment.
+//! [`write_into_ring`] is the other direction: the producer side, which places a finished block back
+//! into the same wrapping ring.
 //!
 //! | function | guest | `docs/ports.md` | lifted lines | calls/boot | calls/play |
 //! |---|---|---|---|---|---|
 //! | [`copy_from_ring`] | `sub_82B3DB90` | verified | 109 | 940,743 | 1,306,629 |
 //! | [`fill_segments`] | `sub_82B3DC48` | verified | 184 | 533,208 | 759,184 |
 //! | [`fill_tail`] | `sub_82B3DF90` | verified | 242 | 533,208 | 759,184 |
+//! | [`write_into_ring`] | `sub_82B3DEA8` | verified | 132 | 266,604 | 379,592 |
 //!
 //! They share a module because they share a structure and a call edge, not because they do similar
-//! things: all three take the same stream object in `r3`, and the object's `+20`/`+24` pair is
-//! `copy_from_ring`'s wrap span, `fill_segments`'s `kObjSpanHigh`/`kObjSpanLow` and `fill_tail`'s
-//! `kEnd`. Porting them apart would have meant naming those cells three times and hoping the three
-//! readings agreed. Porting them together makes `fill_segments`'s call to `copy_from_ring` a real
-//! call rather than a stub, which is the only part of that body a test can actually drive.
+//! things: all four take the same stream object in `r3`, and the object's `+20`/`+24` pair is
+//! `copy_from_ring`'s wrap span, `fill_segments`'s `kObjSpanHigh`/`kObjSpanLow`, `fill_tail`'s
+//! `kEnd` and `write_into_ring`'s divisor and lag. Porting them apart would have meant naming those
+//! cells four times and hoping the four readings agreed. Porting them together makes
+//! `fill_segments`'s call to `copy_from_ring` a real call rather than a stub, which is the only part
+//! of that body a test can actually drive.
+//!
+//! **[`copy_from_ring`] and [`write_into_ring`] are twins that do not share one line of code**, and
+//! that is deliberate. Both end in two `memcpy`s, one reaching the ring's end and one from its base,
+//! and both wrap a cursor by the object's `(high - low)` words. But the read side measures its source
+//! *backwards* from a cursor held in the ring descriptor, and the write side computes its cursor
+//! *forwards* from a word position held in the object at `+52` through a `divw`. The two derivations
+//! share no intermediate, so factoring them would have meant inventing a common form neither
+//! original has.
 //!
 //! **`sub_82B3DD90`, their caller, is deliberately absent.** `docs/ports.md` records it
 //! `gate-2`: `sub_82B3DF90`'s store bases are the segment output pointers `sub_82B3DC48` produces
@@ -82,6 +94,9 @@ pub const OBJ_CURSOR: u32 = 36;
 pub const OBJ_LIMIT0: u32 = 40;
 /// Buffer 1's fill length counts up to here.
 pub const OBJ_LIMIT1: u32 = 44;
+/// The running **word position** a written block is placed from. `lwz r7,52(r3)`, read by
+/// [`write_into_ring`] only; it is that body's `divw` dividend and the source of its lag.
+pub const OBJ_POSITION: u32 = 52;
 
 /// `sub_82B3DF90`'s `kEnd` and `sub_82B3DB90`'s `kSpanHigh` are the same word, read for two
 /// different purposes by two functions that take the same object.
@@ -537,6 +552,193 @@ pub fn fill_tail(g: &mut Guest, object: u32, consumed: u32, buffers: u32) -> Res
     let n1 = count1(limit1, cursor1, block1, consumed);
 
     fill(g, &mut fpscr, buffers.wrapping_add(BUFFER1), n1, value)
+}
+
+// ------------------------------------------------------------- sub_82B3DEA8: the write side
+
+/// `sub_82B3DEA8`'s output record, in `r6`: `+16` is one past the last word the caller produced.
+///
+/// The block written is counted **back** from it by `4 * count` bytes, so the record holds an end
+/// pointer and never a base. `sub_82B3DD90` writes this word from [`fill_segments`]'s return and the
+/// caller advances it block by block.
+pub const OUT_END: u32 = 16;
+
+/// The object's `+0`: the float ring's byte base, `lwz r9,0(r11)`.
+///
+/// The same offset [`RING_BASE`] names on the *descriptor* [`copy_from_ring`] takes in `r4`, and the
+/// coincidence is worth a name of its own rather than reusing that constant: here it is read off the
+/// stream object in `r3`, which is a different structure that happens to keep its ring base at the
+/// same offset.
+pub const OBJ_RING: u32 = 0;
+const _: () = assert!(OBJ_RING == RING_BASE, "both structures keep a ring base at +0");
+
+/// Everything both copies need, all of it fixed at entry.
+///
+/// Split out for the same reason [`Plan`] is: in the C++ the body and the harness's window builder
+/// both have to compute it, and a second copy of this arithmetic is a second thing to get wrong.
+/// Every load the original makes happens before its first `memcpy`, and the second copy's arguments
+/// come out of non-volatile registers rather than a reload — so nothing here has to be recomputed
+/// between the two.
+#[derive(Clone, Copy, Debug, Default)]
+struct WritePlan {
+    /// `r3` at the `twllei` — `LOAD(obj + 20)`, the `divw` divisor.
+    span: u64,
+    /// `r8` at the `twlgei`.
+    guard: u64,
+    /// `r3` at the branch: where the first run is written, with the wrap applied.
+    cursor: u64,
+    /// `r31` — the base of this channel's window in the ring, and where the wrapped run is written.
+    ring_start: u64,
+    /// `r27` — the block, counted back from the output record's end.
+    source: u64,
+    /// False on the `bge`: the call writes nothing at all.
+    copies: bool,
+    /// `r29` at the first copy.
+    first_bytes: u64,
+    /// `r5` at the second copy.
+    rest_bytes: u64,
+}
+
+/// `divw rD,rA,rB` as RexGlue lowers it: zero for a zero divisor and for the one overflowing case.
+///
+/// PowerPC leaves `rD` undefined there and RexGlue picks zero, so the quotient of a zero span is
+/// **0** and the body carries on with it. That is observable — `whole` becomes zero and the
+/// remainder is the whole position — which is why it is written out rather than made an error.
+fn divw(dividend: u32, divisor: u32) -> u32 {
+    let (a, b) = (dividend as i32, divisor as i32);
+    if b == 0 || (a == i32::MIN && b == -1) {
+        return 0;
+    }
+    (a / b) as u32
+}
+
+/// `sub_82B3DEA8` — write one block of `count` words into the stream's wrapping ring, in two runs.
+///
+/// Arguments, by register: `object` is `r3`, `channel` is `r4`, `count` is `r5` (words) and `record`
+/// is `r6`. All four arrive as full 64-bit registers because the arithmetic below keeps 64-bit
+/// intermediates: `object` and `record` are addressed through their low words (`mr r11,r3`,
+/// `lwz r6,16(r6)`), `channel` reaches a `mullw` as a **sign-extended** low word, and `count`'s low
+/// word drives both lengths while its full value is subtracted from the record's end pointer.
+///
+/// The ring is divided into one window per channel, the window length in words being the object's
+/// `+20`: `ring_start = ring + 4·(+20)·channel` and the window ends `4·(+20)` bytes later. Inside it,
+/// the `+52` word position is reduced modulo `+20` by an explicit `divw`/`mullw`/`subf`, `+24` is
+/// added, and the result is the cursor the block is placed at — advanced by `(+20) - (+24)` words
+/// when it falls outside the window.
+///
+/// **That wrap is written as the original writes it and no semantics is claimed for it.** `+20` and
+/// `+24` are the same `high`/`low` pair [`copy_from_ring`] reads, and here `+20` is doing double duty
+/// as the `divw` divisor *and* the window length while `+24` is doing double duty as a lag added to
+/// the cursor *and* the subtrahend in the wrap distance. The consequence, stated because a reader
+/// will otherwise assume the tidy version: the wrap brings a cursor **below** the window's start back
+/// into it, and a cursor at or past the window's **end** is pushed further out unless `+24` exceeds
+/// `+20`. Both compares are emitted by the original and both are written out here; no test in this
+/// crate establishes which of the two the game actually reaches.
+///
+/// **Writes** the two runs and nothing else: `[cursor, cursor + first_bytes)` and
+/// `[ring_start, ring_start + rest_bytes)`, both performed by `sub_82EDF460` (see [`crate::mem`]).
+/// This function has no stores of its own. Reads the object's `+0`, `+20`, `+24` and `+52`, the
+/// record's `+16`, and the block at `source`.
+///
+/// **Returns the guest's full `r3`**, which is not one value on both paths and is worth reading
+/// twice. On the `bge` path — a block at least as long as the channel window — it is the wrapped
+/// `cursor`. On the copy path there is no `mr r3,…` after the second `memcpy`, so it is whatever
+/// `sub_82EDF460` left: its own destination, `ring_start`. That is a claim about the guest routine of
+/// the same kind [`crate::mem`] documents, not something this body computes.
+///
+/// **Two `tw` traps are not represented here.** `twllei r3,0` fires on a zero span and
+/// `twlgei r8,-1` on the `divw` overflow guard; RexGlue's `ppc_trap` for type 0 only warns and
+/// returns, so in both cases the original carries straight on with [`divw`]'s zero quotient. There is
+/// no guest state to reproduce, which is why they appear as this paragraph rather than as an `Err`:
+/// turning a warning into a refusal would be a divergence, and inventing a flag would be API no
+/// recorded vector can check.
+pub fn write_into_ring(
+    g: &mut Guest,
+    object: u64,
+    channel: u64,
+    count: u64,
+    record: u64,
+) -> Result<u64> {
+    let plan = make_write_plan(g, object as u32, channel, count, record as u32)?;
+    if !plan.copies {
+        // bge cr6,0x82b3df88 — straight to the epilogue with the cursor still in r3.
+        return Ok(plan.cursor);
+    }
+    // bl 0x82edf460 — the run that reaches this channel window's end.
+    mem::memcpy(g, plan.cursor as u32, plan.source as u32, plan.first_bytes)?;
+    // add r4,r29,r27 — 64-bit on two zero-extended words, so a carry into bit 32 is kept.
+    let wrapped_source = plan.first_bytes.wrapping_add(plan.source);
+    // bl 0x82edf460 — the remainder, from the window's start. Length zero when the first run took
+    // the whole block; the guest routine still returns its own r3, which is what this call leaves.
+    mem::memcpy(g, plan.ring_start as u32, wrapped_source as u32, plan.rest_bytes)?;
+    Ok(plan.ring_start)
+}
+
+fn make_write_plan(
+    g: &Guest,
+    object: u32,
+    channel: u64,
+    count: u64,
+    record: u32,
+) -> Result<WritePlan> {
+    let mut plan = WritePlan::default();
+
+    let position = g.u32(object.wrapping_add(OBJ_POSITION))? as u64; // lwz r7,52(r3)
+    let span = g.u32(object.wrapping_add(OBJ_SPAN_HIGH))? as u64; // lwz r3,20(r3)
+    // rotlwi r10,r7,1 — the position doubled, on the low word only, so bit 31 rotates into bit 0.
+    let doubled = (position as u32).rotate_left(1) as u64;
+    let source_end = g.u32(record.wrapping_add(OUT_END))? as u64; // lwz r6,16(r6)
+    // mullw r4,r3,r4 — the full 64-bit product of the two sign-extended low words, so a carry into
+    // bit 32 survives into the address arithmetic below.
+    let block = ((span as u32 as i32 as i64).wrapping_mul(channel as u32 as i32 as i64)) as u64;
+    let ring = g.u32(object.wrapping_add(OBJ_RING))? as u64; // lwz r9,0(r11)
+    let lag = g.u32(object.wrapping_add(OBJ_SPAN_LOW))? as u64; // lwz r8,24(r11)
+    let quotient = divw(position as u32, span as u32) as u64; // divw r31,r7,r3
+    let doubled_less_one = (doubled as i64).wrapping_sub(1) as u64; // addi r29,r10,-1
+    let block_bytes = words_to_bytes(block); // rlwinm r10,r4,2,0,29
+    // mullw r4,r31,r3 — again 64-bit; the remainder below is a 64-bit subtraction of it.
+    let whole =
+        ((quotient as u32 as i32 as i64).wrapping_mul(span as u32 as i32 as i64)) as u64;
+    plan.ring_start = block_bytes.wrapping_add(ring); // add r31,r10,r9
+    let remainder = position.wrapping_sub(whole); // subf r10,r4,r7
+    let span_bytes = words_to_bytes(span); // rlwinm r9,r3,2,0,29
+    let offset = remainder.wrapping_add(lag); // add r10,r10,r8
+    plan.guard = span & !doubled_less_one; // andc r8,r3,r29
+    let offset_bytes = words_to_bytes(offset); // rlwinm r10,r10,2,0,29
+    let count_bytes = words_to_bytes(count); // rlwinm r5,r5,2,0,29
+    let cursor = offset_bytes.wrapping_add(plan.ring_start); // add r10,r10,r31
+    plan.span = span; // the twllei r3,0 operand
+    plan.source = source_end.wrapping_sub(count_bytes); // subf r27,r5,r6
+    let ring_end = span_bytes.wrapping_add(plan.ring_start); // add r9,r9,r31
+    plan.cursor = cursor; // mr r3,r10
+
+    // cmplw cr6,r10,r31 ; blt cr6 ; cmplw cr6,r9,r10 ; bgt cr6 — a cursor below the window's start,
+    // or at or past its end, is outside it and gets the wrap span added. Both compares are unsigned
+    // on the low words.
+    if (cursor as u32) < (plan.ring_start as u32) || !((ring_end as u32) > (cursor as u32)) {
+        let high = g.u32(object.wrapping_add(OBJ_SPAN_HIGH))? as u64; // lwz r8,20(r11) — re-read
+        let low = g.u32(object.wrapping_add(OBJ_SPAN_LOW))? as u64; // lwz r7,24(r11)
+        // subf r6,r7,r8 ; rlwinm r11,r6,2,0,29 ; add r3,r11,r10
+        plan.cursor = words_to_bytes(high.wrapping_sub(low)).wrapping_add(cursor);
+    }
+
+    // subf r11,r31,r9 ; srawi r10,r11,2 ; cmpw cr6,r30,r10 ; bge cr6 — a block at least as long as
+    // the channel window itself writes nothing.
+    let window_words = ((ring_end.wrapping_sub(plan.ring_start)) as u32 as i32) >> 2;
+    if (count as u32 as i32) >= window_words {
+        return Ok(plan);
+    }
+    plan.copies = true;
+
+    // subf r11,r3,r9 ; srawi r28,r11,2 ; cmpw cr6,r30,r28 ; blt cr6 ; mr r28,r30 — the first run
+    // reaches the window's end, clamped to the block.
+    let mut run = ((((ring_end.wrapping_sub(plan.cursor)) as u32 as i32) >> 2) as i64) as u64;
+    if (count as u32 as i32) < (run as u32 as i32) {
+        run = count;
+    }
+    plan.first_bytes = words_to_bytes(run); // rlwinm r29,r28,2,0,29
+    plan.rest_bytes = words_to_bytes(count.wrapping_sub(run)); // subf r11,r28,r30 ; rlwinm r5
+    Ok(plan)
 }
 
 #[cfg(test)]
@@ -1002,5 +1204,221 @@ mod tests {
         assert_eq!(round_up_32(33), 64);
         // The add wraps at 32 bits, so a word near the top rounds to zero rather than to 2^32.
         assert_eq!(round_up_32(0xFFFF_FFFF), 0);
+    }
+
+    // ------------------------------------------------------------------ sub_82B3DEA8
+
+    /// One past the last word the caller produced, stored at `RECORD + 16`.
+    const SRC_END: u32 = BASE + 0x2900;
+
+    /// The four object cells `write_into_ring` reads, and a poisoned ring.
+    ///
+    /// The ring is poisoned rather than zeroed so that "nothing was written here" is a real
+    /// assertion: a zero-filled ring cannot tell an untouched word from one the call wrote zero to.
+    fn write_object(g: &mut Guest, span: u32, lag: u32, position: u32) {
+        g.set_u32(OBJECT + OBJ_RING, RING).unwrap();
+        g.set_u32(OBJECT + OBJ_SPAN_HIGH, span).unwrap();
+        g.set_u32(OBJECT + OBJ_SPAN_LOW, lag).unwrap();
+        g.set_u32(OBJECT + OBJ_POSITION, position).unwrap();
+        g.set_u32(RECORD + OUT_END, SRC_END).unwrap();
+        for i in 0..0x300 / 4 {
+            g.set_u32(RING + 4 * i, 0x7F7F_7F7F).unwrap();
+        }
+    }
+
+    /// `n` words of ramp ending at [`SRC_END`], which is where the block the call reads lives.
+    fn block(g: &mut Guest, n: u32) {
+        for i in 0..n {
+            g.set_u32(SRC_END - 4 * n + 4 * i, 0x2000 + i).unwrap();
+        }
+    }
+
+    fn ramp(n: u32) -> Vec<u32> {
+        (0..n).map(|i| 0x2000 + i).collect()
+    }
+
+    #[test]
+    fn a_block_inside_the_channel_window_is_written_as_one_run() {
+        // span 64 words, position 16 in, no lag: the cursor is 64 bytes into the window and the
+        // whole block fits before its end, so the second copy has length zero.
+        let mut g = guest();
+        write_object(&mut g, 64, 0, 16);
+        block(&mut g, 8);
+
+        let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+
+        assert_eq!(words(&g, RING + 64, 8), ramp(8));
+        assert_eq!(g.u32(RING + 60).unwrap(), 0x7F7F_7F7F, "one word below the cursor");
+        assert_eq!(g.u32(RING + 96).unwrap(), 0x7F7F_7F7F, "one word above the run");
+        assert_eq!(g.u32(RING).unwrap(), 0x7F7F_7F7F, "the second copy wrote nothing");
+        // No `mr r3` follows the second memcpy, so the return is that call's own destination.
+        assert_eq!(got, RING as u64);
+    }
+
+    #[test]
+    fn a_block_that_reaches_the_window_end_is_split_at_it() {
+        // Position 60 of 64 leaves four words before the end; the other four go to the window's
+        // start, out of the *later* half of the block — which is what pins `first_bytes + source`.
+        let mut g = guest();
+        write_object(&mut g, 64, 0, 60);
+        block(&mut g, 8);
+
+        let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+
+        assert_eq!(words(&g, RING + 240, 4), ramp(4), "the run to the window end");
+        assert_eq!(
+            words(&g, RING, 4),
+            vec![0x2004, 0x2005, 0x2006, 0x2007],
+            "and the remainder from its start"
+        );
+        assert_eq!(g.u32(RING + 16).unwrap(), 0x7F7F_7F7F, "nothing past the wrapped run");
+        assert_eq!(got, RING as u64);
+    }
+
+    #[test]
+    fn the_position_is_reduced_modulo_the_window_by_the_divide() {
+        // `divw`/`mullw`/`subf` is a modulo written out longhand. Positions 16, 80 and 208 differ by
+        // whole spans of 64 and must place the block identically; without the reduction the second
+        // and third would run off the window and take the wrap branch.
+        let place = |position: u32| {
+            let mut g = guest();
+            write_object(&mut g, 64, 0, position);
+            block(&mut g, 8);
+            let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+            (got, words(&g, RING, 64))
+        };
+        let base = place(16);
+        assert_eq!(place(80), base, "one whole span further on");
+        assert_eq!(place(3 * 64 + 16), base, "three spans further on");
+        // And the reduction is not the identity: a position inside the first span places elsewhere.
+        assert_ne!(place(20), base);
+    }
+
+    #[test]
+    fn a_zero_span_divides_to_zero_and_the_body_carries_on() {
+        // `twllei r3,0` warns and returns in RexGlue, so a zero span is not a refusal. What it is
+        // not is a test of the quotient: `whole = quotient * span` multiplies by that same zero, so
+        // RexGlue's choice of 0 for `divw`'s undefined case is **invisible** here and this test
+        // does not pretend to pin it. What it does pin is that the call completes and that the
+        // position reaches the cursor unreduced — window length zero puts the cursor at or past the
+        // end, the wrap adds `0 - lag` words, and the two lags cancel.
+        let mut g = guest();
+        write_object(&mut g, 0, 7, 9);
+        block(&mut g, 8);
+
+        let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+
+        // window_words is 0, so `count >= 0` takes the bge path: nothing is written at all.
+        assert_eq!(words(&g, RING, 16), vec![0x7F7F_7F7F; 16]);
+        // The wrap distance is `0 - 7` words, which reaches the final `add r3,r11,r10` as the
+        // zero-extended `0xFFFFFFE4` rather than as a negative number — so the 64-bit sum carries
+        // into bit 32 and the returned `r3` is *not* a 32-bit address. Only the low word is the
+        // cursor. Truncating this chain would leave every written byte identical and this register
+        // wrong, which is the whole of `CLAUDE.md`'s 64-bit-intermediates rule in one value.
+        assert_eq!(got, 0x1_0000_0000 + (RING + 4 * 9) as u64, "position 9 words on, lags cancelled");
+        assert_eq!(got as u32, RING + 4 * 9);
+    }
+
+    #[test]
+    fn the_channel_index_selects_a_window_of_its_own() {
+        // r4 scales the window length: channel 1 starts one whole span into the ring. The first
+        // window has to come out untouched, which is the half a dropped `mullw` would break.
+        let mut g = guest();
+        write_object(&mut g, 64, 0, 16);
+        block(&mut g, 8);
+
+        let got = write_into_ring(&mut g, OBJECT as u64, 1, 8, RECORD as u64).unwrap();
+
+        assert_eq!(words(&g, RING + 256 + 64, 8), ramp(8));
+        assert_eq!(words(&g, RING, 64), vec![0x7F7F_7F7F; 64], "channel 0's window is untouched");
+        assert_eq!(got, (RING + 256) as u64);
+    }
+
+    #[test]
+    fn a_cursor_below_the_window_start_is_wrapped_by_high_minus_low() {
+        // Lag -4 with position 0 puts the cursor 16 bytes *below* the window, which takes the first
+        // of the two wrap compares. The distance added is `(high - low) = 64 - (-4) = 68` words, so
+        // the cursor lands exactly on the window's end: the first run is empty and the whole block
+        // goes to the start through the second copy.
+        //
+        // Without the wrap the cursor stays at RING - 16 and the block is written there instead,
+        // which is what the two "untouched" assertions below detect.
+        let mut g = guest();
+        write_object(&mut g, 64, (-4i32) as u32, 0);
+        block(&mut g, 8);
+        for i in 0..4u32 {
+            g.set_u32(RING - 16 + 4 * i, 0x0BAD_0BAD).unwrap();
+        }
+
+        let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+
+        assert_eq!(words(&g, RING, 8), ramp(8), "the whole block, at the window's start");
+        for i in 0..4u32 {
+            assert_eq!(g.u32(RING - 16 + 4 * i).unwrap(), 0x0BAD_0BAD, "below the window");
+        }
+        assert_eq!(g.u32(RING + 256).unwrap(), 0x7F7F_7F7F, "and nothing at the end it wrapped to");
+        assert_eq!(got, RING as u64);
+    }
+
+    #[test]
+    fn a_block_as_long_as_the_window_writes_nothing_and_returns_the_cursor() {
+        // `cmpw cr6,r30,r10 ; bge cr6` — signed, on the word counts. Eight words into an eight-word
+        // window writes nothing; seven into the same window writes.
+        let mut g = guest();
+        write_object(&mut g, 8, 0, 0);
+        block(&mut g, 8);
+        let got = write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+        assert_eq!(words(&g, RING, 8), vec![0x7F7F_7F7F; 8], "not one word");
+        assert_eq!(got, RING as u64, "the cursor, not a copy's destination");
+
+        let mut h = guest();
+        write_object(&mut h, 8, 0, 0);
+        block(&mut h, 7);
+        write_into_ring(&mut h, OBJECT as u64, 0, 7, RECORD as u64).unwrap();
+        assert_eq!(words(&h, RING, 7), ramp(7), "one word short of the window does write");
+    }
+
+    #[test]
+    fn the_source_is_counted_back_from_the_records_end_pointer() {
+        // `subf r27,r5,r6` — the block is `[end - 4*count, end)`, so moving the record's end word
+        // by one slides which words are copied. A port that read a *base* pointer there would be
+        // insensitive to this.
+        let mut g = guest();
+        write_object(&mut g, 64, 0, 16);
+        for i in 0..12u32 {
+            g.set_u32(SRC_END - 48 + 4 * i, 0x3000 + i).unwrap();
+        }
+        g.set_u32(RECORD + OUT_END, SRC_END - 16).unwrap();
+
+        write_into_ring(&mut g, OBJECT as u64, 0, 8, RECORD as u64).unwrap();
+
+        // end - 16 means words 0..7 of the twelve, not 4..11.
+        assert_eq!(words(&g, RING + 64, 8), (0..8).map(|i| 0x3000 + i).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn the_window_base_keeps_a_carry_into_bit_32() {
+        // `add r31,r10,r9` is 64-bit on two zero-extended words and the result is the value this
+        // function *returns*. With the ring near the top of the map and sixteen windows of eight
+        // words below the cursor, `ring + 4*span*channel` passes 2^32: the copy still lands at the
+        // truncated address, and the return carries bit 32. Truncating the chain to 32 bits leaves
+        // guest memory byte-identical and the returned register wrong — the failure `CLAUDE.md`
+        // records surfacing on the 120th call of another function.
+        let mut g = Guest::from_segments(vec![
+            crate::Segment { base: 0x0000_0000, bytes: vec![0x7Fu8; 0x200] },
+            crate::Segment { base: BASE, bytes: vec![0u8; 0x4000] },
+        ]);
+        g.set_u32(OBJECT + OBJ_RING, 0xFFFF_FF00).unwrap();
+        g.set_u32(OBJECT + OBJ_SPAN_HIGH, 8).unwrap();
+        g.set_u32(OBJECT + OBJ_SPAN_LOW, 0).unwrap();
+        g.set_u32(OBJECT + OBJ_POSITION, 0).unwrap();
+        g.set_u32(RECORD + OUT_END, SRC_END).unwrap();
+        block(&mut g, 4);
+
+        // channel 16 of 8-word windows: block_bytes = 4*8*16 = 0x200, so ring_start = 0x100000100.
+        let got = write_into_ring(&mut g, OBJECT as u64, 16, 4, RECORD as u64).unwrap();
+
+        assert_eq!(got, 0x1_0000_0100, "bit 32 survives into the returned r3");
+        assert_eq!(words(&g, 0x100, 4), ramp(4), "and the copy lands at the truncated address");
     }
 }

@@ -1,9 +1,10 @@
-//! The two XDK block routines the ported bodies call out to, as guest functions.
+//! The XDK block routines the ported bodies call out to, as guest functions.
 //!
-//! `sub_82EDF460` (memcpy) and `sub_82EE5E80` (memset) are not audio functions, have no `.inc` of
-//! their own, and are not ported here as instruction streams. What every verified port that calls
-//! one of them relies on — and states in its `Windows()` comment — is a claim about their **write
-//! set**, established by reading their lifted bodies through rather than assumed:
+//! `sub_82EDF460` (memcpy), `sub_82EE5E80` (memset) and `sub_82F52040` (a **second** memset entry
+//! point) are not audio functions, have no `.inc` of their own, and are not ported here as
+//! instruction streams. What every verified port that calls one of them relies on — and states in its
+//! `Windows()` comment — is a claim about their **write set**, established by reading their lifted
+//! bodies through rather than assumed:
 //!
 //! > each writes exactly `[dst, dst + n)` and nothing else, on every path — the `dcbz`/`stvlx`/
 //! > `stvrx` forms round into that interval and are then fully overwritten, and their spills go
@@ -64,6 +65,24 @@ pub fn memset(g: &mut Guest, dst: u32, byte: u8, len: u64) -> Result<()> {
         return Err(crate::Error::new(dst, "fill length does not fit a guest span"));
     }
     g.fill(dst, byte, len as u32)
+}
+
+/// `sub_82F52040` — a **second** guest `memset`, at a different address, with the same contract.
+///
+/// A separate function rather than a call to [`memset`] spelled differently, so that a call site
+/// naming this address is visibly naming *this* routine: the two are distinct guest bodies and nothing
+/// in this project has established that they are the same code. What has been established is the write
+/// set, and it is the only thing the callers depend on. `sub_82B38B68`'s `.inc` records it directly —
+///
+/// > `sub_82F52040` is memset (`skate3_recomp.106.cpp:64780`): it writes exactly `[r3, r3 + r5)`,
+/// > nothing else, and `r5 == 0` writes nothing.
+///
+/// — and `sub_82B39FA0`'s `Windows()` adds the derivation: a byte-align prologue, then 16-byte blocks,
+/// then `(len>>2)&3` words, then `len&3` bytes, which sums to exactly `len`.
+///
+/// Callers in this crate: [`crate::stage::run_stage`].
+pub fn memset_82f52040(g: &mut Guest, dst: u32, byte: u8, len: u64) -> Result<()> {
+    memset(g, dst, byte, len)
 }
 
 #[cfg(test)]

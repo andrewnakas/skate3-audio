@@ -64,8 +64,20 @@ pub mod vmx;
 pub mod gains;
 #[cfg(target_arch = "x86_64")]
 pub mod mathlib;
+/// The per-channel filter stages, which stand on [`dsp::biquad`] and [`mathlib::Trig`].
+///
+/// Gated with the rest for the same reason: both bodies normalise a cutoff with `fdivs`/`fmuls` and
+/// clear their history with a rodata single, all under the guest's flush mode held through
+/// [`vmx::Fpscr`], and the kernel they call adds a denormal-avoidance bias for that exact reason.
+#[cfg(target_arch = "x86_64")]
+pub mod filters;
 #[cfg(target_arch = "x86_64")]
 pub mod spatial;
+/// The one-pole filter stage and the dispatcher that runs it over a descriptor.
+///
+/// Gated with the rest: the stage is VMX128 work under the guest's flush mode.
+#[cfg(target_arch = "x86_64")]
+pub mod stage;
 
 /// One contiguous span of guest memory.
 #[derive(Clone, Debug)]

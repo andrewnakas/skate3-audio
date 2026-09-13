@@ -9,41 +9,47 @@ than at a misunderstanding of the engine.
 
 | module | what it covers | verification |
 |---|---|---|
-| `system.rs` | the command ring producer, all four paths | 6,706 recorded comparisons replayed |
-| `player.rs` | the three `PacketPlayer` consumers, the FIFO, the liveness scan | 1,679 replayed |
-| `buffers.rs` | buffer-pair init | 222 replayed |
+| `system.rs` | the command ring producer, all four paths | **6,710 replayed** |
+| `player.rs` | the three `PacketPlayer` consumers, the FIFO, the liveness scan | **1,679 replayed** |
+| `buffers.rs` | buffer-pair init | **214 replayed** |
 | `fp.rs` | the guest's scalar FP idioms: `lfs`/`lfd`/`stfs`, `fcfid`/`frsp`, the single-rounded forms, `fsqrts`, `fmsubs`, `fabs`/`fneg`, `fsel`, `fctiwz`, `fctidz`, `rlwinm` | unit-tested only |
-| `spatial.rs` | `sub_82B453D8`, `sub_82B269C0`, `sub_82B454B8`, `sub_82B45788`, `sub_82B45B60`: a source's position becoming a gain per speaker — the unit-disc clamp, the panner placement, distance panning, the seven-sector angular pass, and the power-normalised scale | verified C++ reference; unit-tested only |
-| `gains.rs` | `sub_82B29AF0` and `sub_82B23B50`: the channel gain matrix and the per-channel gain ramp, both driving `dsp/` kernels over a `+4`/`+14` channel descriptor | verified C++ reference; unit-tested only |
-| `mathlib.rs` | `sub_82F4DE80` (`floor`, 2.87 M calls a boot — the hottest body ported anywhere in this project), and the `Trig` hole where the image's sine and cosine are not portable | verified C++ reference; unit-tested only |
+| `spatial.rs` | `sub_82B453D8`, `sub_82B269C0`, `sub_82B454B8`, `sub_82B45788`, `sub_82B45B60`: a source's position becoming a gain per speaker — the unit-disc clamp, the panner placement, distance panning, the seven-sector angular pass, and the power-normalised scale | **1,420 replayed** for three of the five (474 + 473 + 473); `sub_82B269C0` and `sub_82B45788` cannot be replayed until the image's sine and cosine are ported |
+| `gains.rs` | `sub_82B29AF0` and `sub_82B23B50`: the channel gain matrix and the per-channel gain ramp, both driving `dsp/` kernels over a `+4`/`+14` channel descriptor | **980 replayed** (795 + 185) |
+| `mathlib.rs` | `sub_82F4DE80` (`floor`, 2.87 M calls a boot — the hottest body ported anywhere in this project), and the `Trig` hole where the image's sine and cosine are not portable | **2,000 replayed**, compared by the bits of the returned `f1` |
 | `counter.rs` | `sub_82B1F360`, the six-word cascading counter the evaluator draws from | verified C++ reference; unit-tested only |
 | `eval/` | the expression evaluator's 40-slot opcode table at guest `0x82FD3600` — **31 slots**, every one that has a verified C++ body | verified C++ reference; unit-tested only |
 | `scheduler.rs` | `sub_82B489D0` and `sub_82B39690`: an instance detaching itself from the scheduler, and the bucket list mechanic that removal runs on | **4 replayed** — two calls each, read the count before quoting it |
-| `cursors.rs` | `sub_82B32550`, `sub_82B349A8`, `sub_82B3C9D8`: the three verified cursor advances — which ring slot, which entry, which segment comes next | **2,496 replayed** (2,462 + 34; `sub_82B349A8` recorded none) |
+| `cursors.rs` | `sub_82B32550`, `sub_82B349A8`, `sub_82B3C9D8`: the three verified cursor advances — which ring slot, which entry, which segment comes next | **3,210 replayed** (2,462 + 714 + 34) |
 | `vmx.rs` | the VMX128 layer: RexGlue's lowerings, the flush-mode control, and the guest-memory vector accesses | **45 ops replayed** against `probe/vmx128`'s recorded C++; the rest unit-tested only |
 | `dsp/sine.rs` | `sub_824531C8`, four-lane sine by range reduction and an 11-term odd polynomial | verified C++ reference; unit-tested only |
-| `dsp/scale.rs` | `sub_82B3BED8` and `sub_82B44B20`: `dst[i] = src[i]*k` and `dst[i] += src[i]*k`, each on a vector and a scalar path | verified C++ reference; unit-tested only |
-| `dsp/gain_ramp.rs` | `sub_82B3C098`, a gain-ramped copy of a fixed 256-single block | verified C++ reference; unit-tested only |
-| `dsp/biquad.rs` | `sub_82B43AF8`, a biquad over a run of singles, eight a pass | verified C++ reference; unit-tested only |
-| `dsp/resample.rs` | `sub_82B43FB8`, linear interpolation walked by a 16.16 phase | verified C++ reference; unit-tested only |
-| `ring.rs` | `sub_82B3DB90`, `sub_82B3DC48`, `sub_82B3DF90`: the output read-out — copy out of the wrapping decode ring, rank and fill the segments, pad the tail with a rodata constant | verified C++ reference; unit-tested only |
-| `mix.rs` | `sub_82B34E08`, `sub_82B3C668`, `sub_82B443F8`: flush the mix accumulator, fold the pending deltas into the rows, advance a fill position and clear ahead of it | verified C++ reference; unit-tested only |
+| `dsp/scale.rs` | `sub_82B3BED8` and `sub_82B44B20`: `dst[i] = src[i]*k` and `dst[i] += src[i]*k`, each on a vector and a scalar path | **734 replayed** (548 + 186) |
+| `dsp/gain_ramp.rs` | `sub_82B3C098`, a gain-ramped copy of a fixed 256-single block | **166 replayed** |
+| `dsp/scale_add.rs` | `sub_82B3CF58`, `z[i] = x[i]·gain + y[i]` alongside a parallel copy `w[i] = x[i]` | **642 replayed** |
+| `dsp/biquad.rs` | `sub_82B43AF8`, a biquad over a run of singles, eight a pass | verified C++ reference; unit-tested only — no call has been recorded for it yet |
+| `dsp/resample.rs` | `sub_82B43FB8`, linear interpolation walked by a 16.16 phase | **530 replayed** |
+| `ring.rs` | `sub_82B3DB90`, `sub_82B3DC48`, `sub_82B3DF90`, `sub_82B3DEA8`: copy out of the wrapping decode ring, rank and fill the segments, pad the tail with a rodata constant, and write a block back in | **3,943 replayed** (1,200 + 1,052 + 1,046 + 645) |
+| `mix.rs` | `sub_82B34E08`, `sub_82B3C668`, `sub_82B443F8`: flush the mix accumulator, fold the pending deltas into the rows, advance a fill position and clear ahead of it | **1,351 replayed** (1,086 + 265); `sub_82B3C668` has no recorded call yet |
+| `stage.rs` | `sub_82B399D0` and `sub_82B39FA0`: the one-pole filter stage over a block, and the dispatcher that runs it through a descriptor or clears the buffer instead | **706 replayed** (353 each), the stage's result compared by the bits of `f1` |
+| `filters.rs` | `sub_82B27E20` and `sub_82B26568`: the per-channel low-pass and high-pass stages | verified C++ reference; unit-tested only — both need the image's sine and cosine |
 | `mem.rs` | the write-set contract of `sub_82EDF460` (memcpy) and `sub_82EE5E80` (memset), which six of the bodies above call | not a port; see its module note |
 
-`cargo test` runs 275 unit tests. **Read the next two sections before reading that as one number:
+`cargo test` runs 335 unit tests. **Read the next two sections before reading that as one number:
 the modules are checked in different ways, and only the ones whose table row gives a replay figure
 have one.**
 
 ### The two kinds of green in this crate
 
-**Replayed against recorded vectors** — `system.rs`, `player.rs`, `buffers.rs`, `cursors.rs`,
-`scheduler.rs`, and the three DSP kernels. Tier 1 is met:
+**Replayed against recorded vectors** — every module whose table row above gives a replay
+figure. Tier 1 is met for all of them:
 
 | module group | vectors | result |
 |---|---|---|
 | the queue path | 8,603 | all pass, 0 unreplayable |
-| scheduler and cursors | 2,500 | all pass, 0 unreplayable |
-| DSP kernels | 900 | all pass, 0 unreplayable |
+| scheduler and cursors | 3,214 | all pass, 0 unreplayable |
+| ring and mix | 5,294 | all pass, 0 unreplayable |
+| spatial, gains and floor | 4,400 | all pass, 0 unreplayable |
+| DSP kernels and the filter stage | 2,778 | all pass, 0 unreplayable |
+| **total** | **24,289** | **all pass** |
 
 **These are re-recorded numbers, and the reason matters.** The figure here used to read 8,607,
 recorded before a defect in the recorder was found: it snapshotted the read set *after* the
@@ -55,8 +61,8 @@ identical call counts.
 
 **Read the scheduler and cursor counts per function, never as one total.** They are
 `sub_82B3C9D8` 2,462, `sub_82B32550` 34, `sub_82B489D0` 2, `sub_82B39690` 2, and `sub_82B349A8`
-**zero** — that last one has a Rust body and unit tests but no recorded call at all, so nothing in
-the 2,500 touches it. Two calls is a real comparison and a thin one; `sub_82B39690`'s two both
+714. That last one once read **zero**: it ran 881 times in the session, but a hotter function in the
+same recording spent the vector cap first, so it was recorded on its own afterwards. Two calls is a real comparison and a thin one; `sub_82B39690`'s two both
 arrive with the same `which` byte and with the node naming neither list head, so
 `the_which_byte_decides_which_head_can_name_the_node` is carried by its unit test alone. Measured,
 not assumed: breaking the head selection leaves all 2,500 vectors passing.
@@ -69,22 +75,23 @@ listed below, one is the equality-versus-threshold end test (every recorded call
 a segment end, so `<` and `!=` agree on all 2,462), and one is a limit of the recording — see
 below.
 
-**What the recording cannot exercise: `detach_instance`'s 64-bit `r3`.** The vector format stores
-`r3` as 32 bits, and the replay therefore calls with `u64::from(v.r3)`, so the high half is always
-zero. Truncating the port's `(r3 + 112)` chain to 32 bits passes all 2,500 vectors. That chain is
-not decoration — it is what carries the high half into the returned manager address — so it is
-covered by a unit test only, and it stays that way until the recorder stores the full register.
+**`detach_instance`'s 64-bit `r3` is now fed in full, and still not exercised.** The recorder
+stores entry `r3`..`r10` at full width and the replay passes the wide value, so the 64-bit
+`(r3 + 112)` chain that carries the high half into the returned manager address is no longer cut
+off by the harness. But both recorded calls arrived with a high half of zero, so a port that
+truncated the chain to 32 bits would still pass them. Until a session records a call whose `r3`
+has a non-zero high half, that chain rests on its unit test alone.
 
 ```
 cargo run --example replay_vectors -- VECTORS.tsv 00000000 3F800000
 ```
 
-**One new port cannot be replayed as the vector format stands.** `dsp::resample`
-(`sub_82B43FB8`) takes its 16.16 phase increment in **`r8`**, and the recorded vector carries
-`r3`…`r7` only. That increment determines every address the call reads, so feeding it a zero would
-turn a failure into a meaningless pass; the honest outcome is *unreplayable* until the recorder
-stores `r8`. Note also that `r3` is this function's **output sample count**, an input — a
-dispatcher that compared the recorded return against `r3` would be comparing the count with itself.
+**`dsp::resample` replays now that the recorder stores `r8`.** It takes its 16.16 phase increment
+in `r8`, which the recording's fixed columns omit, and that increment determines every address the
+call reads, so a zero in its place would have turned a failure into a meaningless pass. The
+recorder's wide columns carry it, and all 530 recorded calls replay. One trap survives into any
+future dispatcher: `r3` is this function's **output sample count**, an input, so comparing the
+recorded return against `r3` would compare the count with itself.
 
 The vectors are recorded by the harness itself (`skate3_audio_vectors_path`) — real inputs the
 game generated, not synthetic ones. An address the port reaches that was not recorded makes the
@@ -115,23 +122,26 @@ composed in the right order. It also leaves seven primitives uncovered — `vrfi
 of which has a unit test against a hand-written model instead, which is weaker. `vmx`'s module
 documentation carries the table.
 
-**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, all of `dsp/`,
-`spatial.rs`, `gains.rs`, `mathlib.rs`, and `cursors::advance_ring_cursor`. The C++ body each of
-these was translated from was compared
-call-for-call against the original under the harness, on real inputs, at zero divergence. The Rust
-has no vectors of its own, for one of three reasons. For `fp.rs`, `counter.rs` and `eval/` there is
+**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, `dsp/sine.rs`,
+`dsp/biquad.rs`, `filters.rs`, two of the five `spatial.rs` bodies (`sub_82B269C0` and
+`sub_82B45788`), and `mix`'s `sub_82B3C668`. The C++ body each of these was translated from was
+compared call-for-call against the original under the harness, on real inputs, at zero divergence.
+The Rust has no vectors of its own, for one of four reasons. `fp.rs`, `counter.rs` and `eval/` have
 no direct call site in the lifted tree at all (the evaluator reaches all 40 slots through one
-`bctrl` on a data word), so the harness never bracketed them individually. For `dsp/` the harness
-does bracket the functions — that is how they were verified, over 6,994,118 calls for `dsp::sine`
-alone — but it records no per-call inputs for them. And `cursors::advance_ring_cursor`
-(`sub_82B349A8`) is bracketed *and* recordable, but the session that recorded the rest caught none
-of its 865-per-boot calls. Either way what this buys is a much smaller search space — a fault here
-is a transcription error, not a misreading of the engine — and what it does not buy is a number.
+`bctrl` on a data word), so the harness never bracketed them individually. `filters.rs` and the two
+`spatial.rs` bodies call the image's sine and cosine, which have no verified body in either
+language, and substituting the host's would agree to fifteen digits and differ in the bits the
+caller keeps. `dsp/biquad.rs` and `sub_82B3C668` are recordable, but no session has recorded a call
+yet, because hotter functions spent the vector cap first. And `dsp::sine` is a register-only kernel
+the harness verified over 6,994,118 calls without ever writing it a vector. Either way what this
+buys is a much smaller search space — a fault here is a transcription error, not a misreading of
+the engine — and what it does not buy is a number.
 
-**The call counts in `dsp/` are the C++'s evidence, not the Rust's.** `sub_824531C8` is verified
-over 6,994,118 calls and `sub_82B3BED8` over 1,057,635 with `skipped=0`; those numbers say the body
-being transcribed is right, and say nothing about the transcription. Do not quote them as if they
-were this crate's.
+**A shadow call count is the C++'s evidence, not the Rust's.** `sub_824531C8` is verified over
+6,994,118 calls and `sub_82B3BED8` over 1,057,635 with `skipped=0`; those numbers say the body
+being transcribed is right, and say nothing about the transcription. The crate's own evidence is
+the replay figure in the table: 186 for `sub_82B3BED8`, and none yet for `sub_824531C8`. Do not
+quote the first kind as if it were the second.
 
 The unit tests are held to the standard the vector work is: each was checked by breaking the
 function it covers and confirming the test fails. **224 negative controls** have been run:

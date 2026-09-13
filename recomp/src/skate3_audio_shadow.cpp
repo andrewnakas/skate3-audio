@@ -302,8 +302,8 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
       } else {
         std::fprintf(g_vector_file,
                      "# skate3 shadow vectors: name run r3 r4 r5 r6 r7 ret_r3 then spans.\n"
-                     "# F:n:bits              = entry f1..f4 as raw 64-bit patterns\n"
-                     "# R64:n:bits            = entry r3..r8, full 64 bits\n"
+                     "# F:n:bits              = entry f1..f8 as raw 64-bit patterns\n"
+                     "# R64:n:bits            = entry r1 and r3..r10, full 64 bits\n"
                      "# Fr:1:bits             = f1 as the ORIGINAL left it\n"
                      "# I:addr:len:bytes      = read set, the memory the function saw\n"
                      "# W:addr:len:entry:exp  = write set, entry bytes and what the ORIGINAL "
@@ -370,10 +370,15 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
   // f1 -- which is most of the DSP surface -- records its memory and its integer registers and is
   // still unreplayable, because the one value that decides its output is missing. `Fr:1` is what
   // the ORIGINAL left in f1, for the bodies that return a float.
-  for (int i = 0; i < 4; ++i) {
-    const PPCRegister* const fprs[4] = {&entry.f1, &entry.f2, &entry.f3, &entry.f4};
-    std::fprintf(g_vector_file, "\tF:%d:%016llX", i + 1,
-                 static_cast<unsigned long long>(fprs[i]->u64));
+  // f1..f8. Most bodies take at most four, but the one-pole filter stage takes its recursion
+  // state in f5, and a missing float argument cannot be told apart from a zero one on replay.
+  {
+    const PPCRegister* const fprs[8] = {&entry.f1, &entry.f2, &entry.f3, &entry.f4,
+                                        &entry.f5, &entry.f6, &entry.f7, &entry.f8};
+    for (int i = 0; i < 8; ++i) {
+      std::fprintf(g_vector_file, "\tF:%d:%016llX", i + 1,
+                   static_cast<unsigned long long>(fprs[i]->u64));
+    }
   }
   std::fprintf(g_vector_file, "\tFr:1:%016llX",
                static_cast<unsigned long long>(after.f1.u64));
@@ -393,6 +398,13 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
       std::fprintf(g_vector_file, "\tR64:%d:%016llX", i + 3,
                    static_cast<unsigned long long>(gprs[i]->u64));
     }
+    // r9 and r10 carry the seventh and eighth integer arguments, and r1 is the caller's stack
+    // pointer: a body that reads arguments nine and up off the caller's frame, as the filter
+    // stage does at 84..103(r1), cannot be replayed without it.
+    std::fprintf(g_vector_file, "\tR64:9:%016llX\tR64:10:%016llX\tR64:1:%016llX",
+                 static_cast<unsigned long long>(entry.r9.u64),
+                 static_cast<unsigned long long>(entry.r10.u64),
+                 static_cast<unsigned long long>(entry.r1.u64));
   }
   // The read set, from a snapshot taken BEFORE the lifted body ran.
   //

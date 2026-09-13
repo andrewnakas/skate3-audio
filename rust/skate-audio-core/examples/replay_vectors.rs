@@ -16,7 +16,8 @@
 //! check the answer.
 
 use skate_audio_core::{
-    Guest, buffers, cursors, dsp, gains, mathlib, mix, player, ring, scheduler, spatial, system,
+    Guest, buffers, cursors, dsp, gains, mathlib, mix, player, ring, scheduler, spatial, stage,
+    system,
 };
 
 struct Vector {
@@ -28,15 +29,20 @@ struct Vector {
     r6: u32,
     r7: u32,
     ret_r3: u32,
-    /// Entry `f1`..`f4` as raw bit patterns. A DSP kernel's scale factor arrives in `f1`, so
-    /// without these its memory and integer registers record a call that cannot be replayed.
-    f: [u64; 4],
+    /// Entry `f1`..`f8` as raw bit patterns. A DSP kernel's scale factor arrives in `f1`, and the
+    /// one-pole stage's recursion state in `f5`, so without these a call cannot be replayed.
+    f: [u64; 8],
     /// Entry `r3`..`r8`, full width. The fixed columns keep only the low word, and a port whose
     /// argument genuinely carries 64 bits -- or whose sixth argument is `r8`, which the fixed
     /// columns omit entirely -- cannot be replayed from those alone.
     w: [u64; 6],
     /// `f1` as the original left it, for the bodies whose result is a float and not a word.
     ret_f1: Option<u64>,
+    /// Entry r1, r9 and r10. None when the recording predates them, which is different from zero:
+    /// a body that reads its ninth argument off the caller's frame cannot be replayed without r1.
+    r1: Option<u64>,
+    r9: Option<u64>,
+    r10: Option<u64>,
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
     /// The write set: entry bytes, and what the original lifted body produced.
@@ -55,7 +61,8 @@ fn parse(line: &str) -> Option<Vector> {
     let hex = |s: &str| u32::from_str_radix(s, 16).unwrap_or(0);
     let mut inputs = Vec::new();
     let mut windows = Vec::new();
-    let mut fprs = [0u64; 4];
+    let mut fprs = [0u64; 8];
+    let (mut r1, mut r9, mut r10) = (None, None, None);
     let mut wide = [None; 6];
     let mut ret_f1 = None;
     for tok in &f[8..] {
@@ -75,11 +82,17 @@ fn parse(line: &str) -> Option<Vector> {
                     if (3..=8).contains(&i) {
                         wide[i - 3] = Some(bits);
                     }
+                    match i {
+                        1 => r1 = Some(bits),
+                        9 => r9 = Some(bits),
+                        10 => r10 = Some(bits),
+                        _ => {}
+                    }
                 }
             }
             (Some(&"F"), 3) => {
                 if let (Ok(i), Ok(bits)) = (p[1].parse::<usize>(), u64::from_str_radix(p[2], 16)) {
-                    if (1..=4).contains(&i) {
+                    if (1..=8).contains(&i) {
                         fprs[i - 1] = bits;
                     }
                 }
@@ -106,6 +119,9 @@ fn parse(line: &str) -> Option<Vector> {
         f: fprs,
         w,
         ret_f1,
+        r1,
+        r9,
+        r10,
         name: f[0].to_string(),
         run: f[1].parse().unwrap_or(0),
         r3: hex(f[2]),
@@ -128,12 +144,13 @@ fn parse(line: &str) -> Option<Vector> {
 /// Two things this has to get right, both found by replaying the scheduler and cursor vectors:
 ///
 /// **The `W:` entry bytes are authoritative wherever they overlap an `I:` span.** The recorder
-/// snapshots the read set *after* the original body has run, so any cell that is both read and
-/// written is recorded holding the post-call value. That is not a guess: across
-/// `sched_cursors.tsv` there are 4,454 bytes covered by both an `I:` span and a `W:` span whose
-/// entry and expected bytes differ, and in **4,454 of 4,454** the `I:` byte equals the
-/// *expected* byte and in none of them the *entry* byte. The `W:` entry column is the only
-/// record of true entry state for those cells, so it is laid down last and wins.
+/// used to snapshot the read set *after* the original body had run, so any cell both read and
+/// written was recorded holding the post-call value: across `sched_cursors.tsv`, 4,454 bytes sit
+/// under both an `I:` and a `W:` span with differing entry and expected bytes, and in **4,454 of
+/// 4,454** the `I:` byte is the *expected* one. That is fixed at the recorder, and a file made
+/// since shows the reverse, 4,454 of 4,454 holding the entry byte. Laying the `W:` entry bytes
+/// down last keeps files made before the fix replaying correctly and costs nothing on newer ones,
+/// where the two agree.
 ///
 /// **Spans are merged byte-wise, not stored one segment each.** Overlap is common — a window
 /// often sits inside a larger read span, and sometimes shares its base — and a whole-segment
@@ -267,7 +284,7 @@ fn main() {
             "sub_82B39690" => scheduler::recycle_node(&mut g, v.r3, v.r4)
                 .map(|_| None)
                 .map_err(|e| e.to_string()),
-            "sub_82B489D0" => scheduler::detach_instance(&mut g, u64::from(v.r3), v.r4)
+            "sub_82B489D0" => scheduler::detach_instance(&mut g, v.w[0], v.r4)
                 .map(|r| Some(r as u32))
                 .map_err(|e| e.to_string()),
             // The DSP kernels. `count` is r6, not r5, and the scale arrives in f1 -- both
@@ -358,6 +375,55 @@ fn main() {
                 }
                 Err(e) => Err(e.to_string()),
             },
+            // n is r3, the addend r5, the source r6, and the two outputs r7 and r8.
+            "sub_82B3CF58" => dsp::scale_add::scale_add_with_copy(
+                &mut g, v.r3, v.r5, v.r6, v.r7, v.w[5] as u32, f64::from_bits(v.f[0]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B3DEA8" => ring::write_into_ring(&mut g, v.w[0], v.w[1], v.w[2], v.w[3])
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            // The two stage functions need r1, r9 and r10, which older recordings lack. Refused
+            // rather than fed zeros: a zero stack pointer or source makes every address wrong.
+            "sub_82B399D0" | "sub_82B39FA0" if v.r1.is_none() || v.r10.is_none() => {
+                t.unreplayable += 1;
+                if t.first_gap.is_none() {
+                    t.first_gap = Some(format!("run {}: needs r1/r9/r10, predates them", v.run));
+                }
+                continue;
+            }
+            "sub_82B399D0" => match stage::one_pole_stage(
+                &mut g,
+                v.w[0],
+                v.r9.unwrap_or(0),
+                v.r10.unwrap_or(0),
+                v.r1.unwrap_or(0) as u32,
+                f64::from_bits(v.f[0]),
+                f64::from_bits(v.f[1]),
+                f64::from_bits(v.f[2]),
+                f64::from_bits(v.f[3]),
+                f64::from_bits(v.f[4]),
+            ) {
+                Ok(r) => {
+                    float_result = Some(r.to_bits());
+                    Ok(None)
+                }
+                Err(e) => Err(e.to_string()),
+            },
+            // The dispatcher opens a 128-byte frame below r1 and passes the kernel three arguments
+            // through it. Its window builder leaves that frame undeclared on purpose -- it is the
+            // call's own stack, which the harness never rewinds -- so no recording holds it, and
+            // every vector used to stop at the frame's base as unreplayable. Seeding it with zeroes
+            // is sound rather than invented input: the port writes the back chain and all three
+            // argument slots before the kernel reads any of them, and the kernel loads only those
+            // three words out of its 20-byte span, so no seeded byte can reach the result.
+            "sub_82B39FA0" => {
+                let sp = v.r1.unwrap_or(0) as u32;
+                g.put(sp.wrapping_sub(stage::FRAME_BYTES), vec![0u8; stage::FRAME_BYTES as usize]);
+                stage::run_stage(&mut g, v.r3, v.w[1], v.w[2], v.r7, sp)
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
             _ => {
                 t.skipped += 1;
                 continue;
