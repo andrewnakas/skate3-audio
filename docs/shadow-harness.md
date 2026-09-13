@@ -565,3 +565,11 @@ held 187.5/s throughout with zero silence chunks, and **sounded fine by ear**.
 
 So never judge the game's audio, or a port, by listening to a shadow session. Judge it by the
 `Audio stats` line — `silence_chunks=0` at `187.5/s` — or by a harness-off session.
+
+### Recording hot and rare functions in one session
+
+`skate3_audio_vectors_max` is one global cap, so a filter naming both `sub_82B31838` (about 5,700
+calls a second) and `sub_82B2FEA8` (eight a session) fills with the hot one before the rare one is
+reached. `skate3_audio_vectors_per_function` (`AUDIO_VECTORS_PER_FN` in `run_session.sh`, added
+2026-09-13) caps each function separately; set it, and raise the global cap to cover the sum.
+

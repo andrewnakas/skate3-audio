@@ -34,6 +34,8 @@ VECTORS_MAX=${AUDIO_VECTORS_MAX:-4096}
 # AUDIO_VECTORS_ONLY names the functions to record, so the cap is not spent on whichever port
 # happens to run millions of times. Empty records every comparing port.
 VECTORS_ONLY=${AUDIO_VECTORS_ONLY:-}
+# AUDIO_VECTORS_PER_FN caps each named function's vectors, so hot and rare ones share one session.
+VECTORS_PER_FN=${AUDIO_VECTORS_PER_FN:-0}
 DIVERGED_ONLY=${SHADOW_DIVERGED_ONLY:-false}
 # PORT_CENSUS counts every hooked audio function and logs the first four calls' registers.
 CENSUS=${PORT_CENSUS:-false}
@@ -116,6 +118,7 @@ fi
 if [ -n "$VECTORS" ]; then
   args+=( "--skate3_audio_vectors_path=$VECTORS" "--skate3_audio_vectors_max=$VECTORS_MAX" )
   [ -n "$VECTORS_ONLY" ] && args+=( "--skate3_audio_vectors_only=$VECTORS_ONLY" )
+  [ "$VECTORS_PER_FN" != "0" ] && args+=( "--skate3_audio_vectors_per_function=$VECTORS_PER_FN" )
 fi
 if [ -n "$SCRIPT" ]; then
   args+=( "--skate3_input_script=$SCRIPT" "--skate3_input_script_settle_ms=$SETTLE_MS" )

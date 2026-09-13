@@ -7,6 +7,7 @@
  */
 #include "skate3_audio_shadow.h"
 
+#include <unordered_map>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -51,6 +52,12 @@ REXCVAR_DEFINE_STRING(
     "Without this the cap is spent on whichever functions run most -- one four-lane sine kernel "
     "runs millions of times a session -- so a rarely called function gets no vectors at all and "
     "cannot be replayed against its Rust translation.");
+
+REXCVAR_DEFINE_INT32(
+    skate3_audio_vectors_per_function, 0, "Skate 3",
+    "Stop recording one function's vectors after this many; 0 sets no per-function limit. With "
+    "it, one session can record a kernel called 5,000 times a second and one called four times "
+    "side by side, instead of the global cap filling with the hot one first.");
 
 REXCVAR_DEFINE_BOOL(
     skate3_audio_vectors_diverged_only, false, "Skate 3",
@@ -354,6 +361,16 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
       return;
     }
   }
+  // The per-function cap, counted under the same lock as the file.
+  static std::unordered_map<std::string, uint64_t> s_per_function;
+  uint64_t* recorded_here = nullptr;
+  const int32_t per_function = REXCVAR_GET(skate3_audio_vectors_per_function);
+  if (per_function > 0) {
+    recorded_here = &s_per_function[std::string(name)];
+    if (*recorded_here >= static_cast<uint64_t>(per_function)) {
+      return;
+    }
+  }
   if (g_vector_count >= static_cast<uint64_t>(REXCVAR_GET(skate3_audio_vectors_max))) {
     if (g_vector_count == static_cast<uint64_t>(REXCVAR_GET(skate3_audio_vectors_max))) {
       g_vector_count++;
@@ -363,6 +380,9 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
     return;
   }
   g_vector_count++;
+  if (recorded_here != nullptr) {
+    (*recorded_here)++;
+  }
 
   std::fprintf(g_vector_file, "%s\t%llu\t%08X\t%08X\t%08X\t%08X\t%08X\t%08X", name,
                static_cast<unsigned long long>(run), entry.r3.u32, entry.r4.u32, entry.r5.u32,
