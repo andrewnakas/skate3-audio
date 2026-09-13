@@ -11,7 +11,7 @@
 
 Record fields: name, tu, line, lines, vec, tier, status, gate, batch, attempts, calls{boot,play,map},
 thread, agg, legacy, note, last_divergence.
-status: pending | written | armed | verified | partial | promoted | divergent | uncalled | gate1 | gate2 | gate3 | gate4
+status: pending | written | armed | verified | thin | partial | promoted | divergent | uncalled | gate1 | gate2 | gate3 | gate4
 """
 import argparse, collections, json, os, sys
 
@@ -27,7 +27,7 @@ LEGACY = {
     "82B48B28": "skate3_audio_native.cpp", "82B7F828": "skate3_audio_native.cpp",
     "82B4FD40": "skate3_audio_probe.cpp",
 }
-STATUSES = ("pending", "written", "armed", "verified", "partial", "promoted", "divergent", "uncalled",
+STATUSES = ("pending", "written", "armed", "verified", "thin", "partial", "promoted", "divergent", "uncalled",
             "gate1", "gate2", "gate3", "gate4")
 PROFILES = ("boot", "play", "map")
 
@@ -237,8 +237,12 @@ def cmd_sync_status(a):
         if not header:
             continue
         word = header.split()[0].lower().rstrip(":,")
+        # A thin port's header still opens with "verified", because it IS verified -- what it
+        # lacks is enough calls for its size to carry promotion (docs/promotion.md).
+        if "but THIN" in header:
+            word = "thin"
         mapped = {"verified": "verified", "promoted": "promoted", "divergent": "divergent",
-                  "partial": "partial",
+                  "partial": "partial", "thin": "thin",
                   "uncalled": "uncalled", "gate-1": "gate1", "gate-2": "gate2",
                   "gate-3": "gate3", "gate-4": "gate4", "pending": "written"}.get(word)
         if mapped is None:
