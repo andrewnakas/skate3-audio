@@ -31,6 +31,9 @@ MOVIES=${PLAY_MOVIES:-true}
 # ones that diverged, which is what a port fix needs.
 VECTORS=${AUDIO_VECTORS_PATH:-}
 VECTORS_MAX=${AUDIO_VECTORS_MAX:-4096}
+# AUDIO_VECTORS_ONLY names the functions to record, so the cap is not spent on whichever port
+# happens to run millions of times. Empty records every comparing port.
+VECTORS_ONLY=${AUDIO_VECTORS_ONLY:-}
 DIVERGED_ONLY=${SHADOW_DIVERGED_ONLY:-false}
 # PORT_CENSUS counts every hooked audio function and logs the first four calls' registers.
 CENSUS=${PORT_CENSUS:-false}
@@ -108,6 +111,7 @@ args=(
 )
 if [ -n "$VECTORS" ]; then
   args+=( "--skate3_audio_vectors_path=$VECTORS" "--skate3_audio_vectors_max=$VECTORS_MAX" )
+  [ -n "$VECTORS_ONLY" ] && args+=( "--skate3_audio_vectors_only=$VECTORS_ONLY" )
 fi
 if [ -n "$SCRIPT" ]; then
   args+=( "--skate3_input_script=$SCRIPT" "--skate3_input_script_settle_ms=$SETTLE_MS" )

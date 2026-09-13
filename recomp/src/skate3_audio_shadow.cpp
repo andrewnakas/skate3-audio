@@ -45,6 +45,13 @@ REXCVAR_DEFINE_INT32(
     skate3_audio_vectors_max, 4096, "Skate 3",
     "Stop recording shadow vectors after this many, so a session cannot fill the disk.");
 
+REXCVAR_DEFINE_STRING(
+    skate3_audio_vectors_only, "", "Skate 3",
+    "Comma-separated function names to record vectors for; empty records every comparing port. "
+    "Without this the cap is spent on whichever functions run most -- one four-lane sine kernel "
+    "runs millions of times a session -- so a rarely called function gets no vectors at all and "
+    "cannot be replayed against its Rust translation.");
+
 REXCVAR_DEFINE_BOOL(
     skate3_audio_vectors_diverged_only, false, "Skate 3",
     "Record a shadow vector only for comparisons that diverged.\n"
@@ -294,6 +301,8 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
       } else {
         std::fprintf(g_vector_file,
                      "# skate3 shadow vectors: name run r3 r4 r5 r6 r7 ret_r3 then spans.\n"
+                     "# F:n:bits              = entry f1..f4 as raw 64-bit patterns\n"
+                     "# Fr:1:bits             = f1 as the ORIGINAL left it\n"
                      "# I:addr:len:bytes      = read set, the memory the function saw\n"
                      "# W:addr:len:entry:exp  = write set, entry bytes and what the ORIGINAL "
                      "produced\n");
@@ -304,6 +313,43 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
   }
   if (g_vector_file == nullptr) {
     return;
+  }
+  // The filter is parsed once, under the same lock that guards the file.
+  static bool s_filter_parsed = false;
+  static std::vector<std::string> s_wanted;
+  if (!s_filter_parsed) {
+    s_filter_parsed = true;
+    const std::string only = REXCVAR_GET(skate3_audio_vectors_only);
+    size_t at = 0;
+    while (at < only.size()) {
+      size_t comma = only.find(',', at);
+      if (comma == std::string::npos) {
+        comma = only.size();
+      }
+      std::string one = only.substr(at, comma - at);
+      while (!one.empty() && (one.front() == ' ' || one.front() == '\t')) one.erase(one.begin());
+      while (!one.empty() && (one.back() == ' ' || one.back() == '\t')) one.pop_back();
+      if (!one.empty()) {
+        s_wanted.push_back(one);
+      }
+      at = comma + 1;
+    }
+    if (!s_wanted.empty()) {
+      REXLOG_INFO("skate3-audio-shadow: recording vectors for {} named function(s) only",
+                  s_wanted.size());
+    }
+  }
+  if (!s_wanted.empty()) {
+    bool wanted = false;
+    for (const std::string& one : s_wanted) {
+      if (one == name) {
+        wanted = true;
+        break;
+      }
+    }
+    if (!wanted) {
+      return;
+    }
   }
   if (g_vector_count >= static_cast<uint64_t>(REXCVAR_GET(skate3_audio_vectors_max))) {
     if (g_vector_count == static_cast<uint64_t>(REXCVAR_GET(skate3_audio_vectors_max))) {
@@ -318,7 +364,18 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
   std::fprintf(g_vector_file, "%s\t%llu\t%08X\t%08X\t%08X\t%08X\t%08X\t%08X", name,
                static_cast<unsigned long long>(run), entry.r3.u32, entry.r4.u32, entry.r5.u32,
                entry.r6.u32, entry.r7.u32, after.r3.u32);
-  // The read set first, taken from memory as it stands now: these spans are not written by the
+  // Float arguments, as raw bit patterns. Without these a kernel whose scale factor arrives in
+  // f1 -- which is most of the DSP surface -- records its memory and its integer registers and is
+  // still unreplayable, because the one value that decides its output is missing. `Fr:1` is what
+  // the ORIGINAL left in f1, for the bodies that return a float.
+  for (int i = 0; i < 4; ++i) {
+    const PPCRegister* const fprs[4] = {&entry.f1, &entry.f2, &entry.f3, &entry.f4};
+    std::fprintf(g_vector_file, "\tF:%d:%016llX", i + 1,
+                 static_cast<unsigned long long>(fprs[i]->u64));
+  }
+  std::fprintf(g_vector_file, "\tFr:1:%016llX",
+               static_cast<unsigned long long>(after.f1.u64));
+  // The read set next, taken from memory as it stands now: these spans are not written by the
   // function, so their entry bytes are still intact after the lifted body ran.
   for (const ShadowWindow& w : inputs) {
     std::fprintf(g_vector_file, "\tI:%08X:%u:", w.addr, w.len);
