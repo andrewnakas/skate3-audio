@@ -317,6 +317,19 @@ process, before it can be tested. Open — risk 7.
 
 ### Phase 5 — containers and codec, Rust-only, fully parallel
 
+> **Status 2026-09-12.** The codec bullet is **met by a different route than it names.** It asked
+> for `tools/xma_decode.c`'s persistent-decoder pattern to be folded into the crate, and said that
+> is what needs `libavcodec-dev`. This box has `libavcodec.so.62` and not its headers, so that tool
+> cannot even be built here. Measuring the claim it rested on turned it over: the `ffmpeg` binary
+> **can** keep decoder state across a stream's chunks, if each chunk is padded to a whole number of
+> 2048-byte XMA2 packets before the chain is concatenated. Zero deficit on every context, byte
+> identical across three different paddings, and byte identical to an independent decode of the one
+> chunk that needs no prior state. The crate now owns the orchestration
+> (`crates/skate-data/src/audio/ffmpeg.rs` in the engine) and the shell pipeline is gone.
+> `docs/xma-transcode.md` carries the measurement and the three controls. A pure-Rust decoder is
+> still the only way to drop the external binary, and `tools/xma_vectors.py` builds per-chunk
+> vectors for checking one.
+
 No dependency on the recomp build at all.
 
 - Commit the `.mus` header and `next_segment_start` fixes already in the tree.
@@ -331,6 +344,14 @@ rather than a shell pipeline, and `.mpf` sequencing is either decoded or explici
 deferred with what is still open written down.
 
 ### Phase 6 — Rust engine integration
+
+> **Status 2026-09-12: the first half of the exit criterion is met.** The engine reads a retail
+> archive member, decodes it byte-exactly and plays it through a Bevy audio source; recording the
+> output device while it played confirmed the samples reached the sound card (cross-correlation
+> peak at the right lag, peak/mean 58.8 against 5.7 for a time-reversed control). What is **not**
+> met: it does not play through the *ported graph* — it plays decoded PCM directly, because
+> `scheduler.rs`, `xma.rs`, `dsp/` and `graph.rs` are unwritten — and nothing chooses *which*
+> sound, because the metadata that maps a sound to a map or an event is undecoded.
 
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.

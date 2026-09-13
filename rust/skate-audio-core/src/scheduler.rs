@@ -317,6 +317,38 @@ mod tests {
         assert_eq!(g.u32(SCHEDULER + BUCKET_COUNT).unwrap(), 0xFFFF_FFFF);
     }
 
+    #[test]
+    fn the_free_head_is_re_read_after_the_nodes_link_words_are_written() {
+        // **This input was never compared against the original.** The C++ `Windows()` predicate
+        // refuses to bracket a layout where the manager's free-head cell lives inside the node's
+        // two link words, because then the reloaded head is a value produced *during* the call —
+        // that is its gate-2 exit. So what this test pins is that the reload is still in the
+        // transcription, not that the guest agrees with the answer; nothing establishes the
+        // latter, and the C++ port would decline to run at all here.
+        //
+        // The layout: the node sits eight bytes into the manager, so `node + 4` IS the free head.
+        // Clearing the node's next link therefore empties the free list mid-call, and the reload
+        // sees that. Reusing the value read before the store would instead write a back link into
+        // the old free head.
+        let mut g = guest();
+        let manager = SYSTEM;
+        let node = manager + 8;
+        g.set_u32(manager + BUCKET_HEAD_B, 0).unwrap(); // makes the `which` byte read 0
+        g.set_u32(node + NODE_PREV, 0).unwrap();
+        g.set_u32(manager + BUCKET_FREE_HEAD, FREE).unwrap();
+        g.set_u32(FREE + NODE_NEXT, 0xFEED_FACE).unwrap();
+        g.set_u32(manager + BUCKET_COUNT, 1).unwrap();
+
+        recycle_node(&mut g, manager, node).unwrap();
+
+        assert_eq!(
+            g.u32(FREE + NODE_NEXT).unwrap(),
+            0xFEED_FACE,
+            "the reload saw an empty free list, so no back link was written"
+        );
+        assert_eq!(g.u32(manager + BUCKET_FREE_HEAD).unwrap(), node, "the push still happened");
+    }
+
     /// An instance linked into bucket `bucket` through `node`.
     fn instance(g: &mut Guest, node: u32, bucket: u8) {
         g.set_u32(INSTANCE + INSTANCE_NODE, node).unwrap();
@@ -410,6 +442,29 @@ mod tests {
         assert_eq!(g.u8(INSTANCE + INSTANCE_BUCKET).unwrap(), 3);
         // r3 on the unlink path is the manager address the callee was handed.
         assert_eq!(r3, (SYSTEM + SYSTEM_SCHEDULER + 2 * BUCKET_STRIDE) as u64);
+    }
+
+    #[test]
+    fn a_null_node_is_an_error_rather_than_a_write_to_guest_address_eight() {
+        // A deliberate divergence, pinned here the way the crate's other three are. The original
+        // would store through `node + 8` with `node` null and then hand null to `sub_82B39690`;
+        // the C++ `Windows()` refuses that input, so it was never compared in either language and
+        // nothing is known about what the guest does with it. Inventing a write to address 8 would
+        // turn a gap in coverage into a wrong answer.
+        let mut g = guest();
+        instance(&mut g, NODE_B, 1);
+        g.set_u32(INSTANCE + INSTANCE_NODE, 0).unwrap();
+        g.set_u32(SCHEDULER + SCHED_CURRENT, 0).unwrap();
+
+        let err = detach_instance(&mut g, SYSTEM as u64, INSTANCE).unwrap_err();
+        assert_eq!(err.address, NODE_INSTANCE, "the address the original would have stored to");
+
+        // Same on the parked path, which reaches the same store.
+        let mut g = guest();
+        instance(&mut g, NODE_B, 1);
+        g.set_u32(INSTANCE + INSTANCE_NODE, 0).unwrap();
+        g.set_u32(SCHEDULER + SCHED_CURRENT, INSTANCE).unwrap();
+        assert!(detach_instance(&mut g, SYSTEM as u64, INSTANCE).is_err());
     }
 
     #[test]
