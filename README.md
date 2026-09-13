@@ -54,12 +54,17 @@ the set that is actually audio and actually runs. Every one has a body; 138 of t
 
 | outcome | count | meaning |
 |---|---|---|
-| verified | **138** | zero register and zero memory divergence against the original, on real game inputs |
-| gate 1 | 69 | reaches an indirect call, lock, allocation or release, so replaying it on rewound memory is unsound |
-| gate 2 | 3 | write set not derivable from entry state |
-| gate 3 | 4 | reads `mftb`, so two runs return two values and no comparison can pass |
-| uncalled | 0 | every function was reached by some profile |
+| verified | **124** | zero divergence, on enough calls for their size to carry promotion |
+| verified but thin | 14 | zero divergence, but on too few calls for their size — held out of default promotion (`docs/promotion.md`) |
+| partial | 9 | one path compares clean, another is declined and never compared — never promotable |
+| gate 1 | 62 | reaches an indirect call, lock, allocation or release, so replaying it on rewound memory is unsound |
+| gate 2 | 2 | write set not derivable from entry state |
+| gate 3 | 3 | reads `mftb`, so two runs return two values and no comparison can pass |
 | pre-existing | 2 | hooked before this work (`EVENT_STOP`, the XMA probe) |
+
+Nine of the gate-1 group were later given window builders that decline only the uncomparable
+path, which is how the count fell from 69: a gate is often a property of one path, not of the
+function. `docs/port-loop.md` has the measured split.
 
 A gate is a property of the function, not a gap in the work. Each gated port still has a
 readable body and a note recording the write set it *would* have declared.
@@ -83,9 +88,12 @@ to one function cannot close it (`docs/command-queue.md`).
 
 In rough order of value:
 
-1. **Promotion.** The 138 verified bodies run natively only behind `--skate3_audio_native=true`.
-   Deciding which to make the default is a separate judgement from proving them equal, and it is
-   the open question this work hands over.
+1. ~~**Promotion.**~~ **Decided and enforced** (`docs/promotion.md`): promote a verified body when
+   its weaker profile compared at least one call per lifted line and at least 100 calls. That is
+   124 of 138; the other 14 carry `kPortVerifiedThin`, which shadows but can never be promoted.
+   Confirmed in a promoted session — exactly 124 native bodies ran, audio at 187.5 frames a second
+   with zero silent submits. The cvar still defaults to false; flipping it is the recomp owner's
+   call.
 2. **The Rust audio engine** (`docs/PLAN.md` Phase 4). Every function the Rust port needs now has
    a verified C++ reference, which turns each translation into a transcription risk rather than a
    semantic one. `skate-audio-core` has the queue path and the expression evaluator; the
@@ -115,9 +123,13 @@ In rough order of value:
 3. **`.mpf` sequencing**, sections 0–3. Interactive music needs segments *plus* the map that
    orders them. The `.mus` side is complete; this is the headline format gap
    (`docs/xma-transcode.md`, and the live lead in the guest image).
-4. **Bug 1's ordering fix**, now that two producers are known. `docs/command-queue.md` specifies
-   what a fix must achieve; landing it diverges from the original by construction, which the
-   harness cannot distinguish from a porting mistake, so it needs its own argument.
+4. **Bug 1's ordering fix**, now that **at least fourteen** producers are known, on three measured
+   threads. A corpus-wide search (`probe/screen/find_producers.py`) found thirteen append sites
+   beyond the two that were read by hand, every one publishing the write offset before storing the
+   record. Three of them ran on the render, audio and load threads in the traced sessions, so the
+   concurrency is measured rather than argued. The discipline has to land at every site, most of
+   which sit outside the 216 ported functions, and eleven have never been observed executing at
+   all. `docs/command-queue.md` has the list and the two limits on it.
 5. **Codec in-crate.** The engine decodes exactly today, but through the `ffmpeg` binary: XMA2 is
    a hardware codec and `libavcodec` is the only free implementation of it. A pure-Rust decoder
    would remove the last external dependency in the audio path. `tools/xma_vectors.py` builds
