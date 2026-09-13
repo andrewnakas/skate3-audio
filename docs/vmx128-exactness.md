@@ -72,8 +72,17 @@ Emulating two roundings matched all 16 distinct inputs, where the fused form mat
 now builds every reference with the recomp's flags. Against those builds the Rust layer is 45 of 45
 on `clang20_pinned`, `gcc_pinned` and `clang20_plain`.
 
-**Only one kernel's real data could tell the two apart.** Every other recorded vector replays
-clean under both layers (48,399 of 48,403 fused, 48,403 unfused, the 4 all in the sine kernel).
+**A second kernel settles it decisively.** `sub_82B389A0`, the four-lane allpass stage, was ported
+and recorded on 2026-09-13 after this correction: 800 recorded vectors, all passing under the
+two-rounding layer, and **701 of 800 failing** under a fused one. Where the sine kernel disagreed on
+4 calls of 2,000, this one disagrees on seven eighths of them — three multiply-adds per lane per
+sample, and a coefficient near 0.75 rather than the tiny reduced arguments sine works with. Anyone
+doubting rule 1 should run that control: patch the two macro lines in `rust/skate-audio-core/src/vmx.rs`
+to `_mm_fmadd_ps`/`_mm_fnmadd_ps`, rebuild `replay_vectors`, and replay `allpass.tsv`.
+
+**Of the data recorded before the correction, only one kernel could tell the two apart.** Every
+other vector replays clean under both layers (48,399 of 48,403 fused, 48,403 unfused, the 4 all in
+the sine kernel).
 The unit tests with constructed inputs pin `vmx`, `dsp::gain_ramp`, `dsp::scale`, `dsp::sine` and
 `crossfade`, which failed when the layer changed. `stage` and `dsp::scale_add` have no test that
 distinguishes the two.
