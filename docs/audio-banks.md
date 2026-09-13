@@ -148,9 +148,24 @@ A fixed `0x5C`-byte header of section offsets, then four regions.
 ```
 
 `offsets[0] == 12 + 4 * count` on every bank that has any samples (two banks, `Common.abk`
-and `emitter_utility.abk`, declare zero). 89,431 sample offsets in total. What a sample's
-bytes *are* is not established here — that is the stream-container work, already done
-elsewhere in this repo.
+and `emitter_utility.abk`, declare zero). 89,431 slots in total.
+
+**Most of those slots are empty, and `count` is a capacity rather than a population.** Measured
+2026-09-12 across all 376 banks: 5,168 slots hold a real offset and **84,263 hold
+`0xFFFFFFFF`**, and no real offset ever appears after one — so the table is a fixed-capacity
+array with a used prefix, not a sparse map with holes. `Abk::present()` is that prefix length and
+`Abk::SAMPLE_ABSENT` is the sentinel.
+
+Two ways that bites, both hit before it was understood. Adding the sentinel to the section base
+overflows past 4 GB, so a range built from it addressed `0x10000c17f` and read like a corrupt
+bank. And using it as the *next* sample's offset gives the sample before it a ~4 GB length. The
+parser now refuses a sentinel slot and ends the last real sample at the section's end.
+
+**Every real slot is a stream.** All 5,168 parse as EA Audio Core headers, and one decodes
+exactly: `water_brook.abk` slot 0 is mono 48 kHz, 74,759 frames, 1.56 s. So a bank name is
+enough to reach playable audio. An earlier note in the engine repo reported this as "5,168 of
+89,431 parsed, a 5.8% success rate" and wondered what was wrong with the other 94%. Nothing was:
+they were empty slots being counted as sounds.
 
 **The export table at `0x38`** is the interesting one:
 
