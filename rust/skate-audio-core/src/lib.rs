@@ -23,6 +23,18 @@ pub mod player;
 pub mod scheduler;
 pub mod system;
 
+/// The VMX128 layer and the DSP kernels that stand on it.
+///
+/// Gated on x86_64 because they are a translation of RexGlue's **x86 lowering**, not of Xenon:
+/// `core::arch::x86_64` has each of RexGlue's SSE4.1/FMA intrinsics one-for-one, which is the
+/// entire reason `docs/vmx128-exactness.md` could measure the translation bit-identical. ARM64 is
+/// out of scope there for the same reason and by the same decision (`docs/PLAN.md` non-goals): its
+/// rule 4 behaviour would have to be re-measured before anything could be claimed about it.
+#[cfg(target_arch = "x86_64")]
+pub mod dsp;
+#[cfg(target_arch = "x86_64")]
+pub mod vmx;
+
 /// One contiguous span of guest memory.
 #[derive(Clone, Debug)]
 pub struct Segment {
@@ -150,6 +162,17 @@ impl Guest {
     pub fn span(&self, base: u32, len: usize) -> Result<&[u8]> {
         let (i, o) = self.locate(base, len)?;
         Ok(&self.segments[i].bytes[o..o + len])
+    }
+
+    /// Write a block of bytes at `ea`, all or nothing.
+    ///
+    /// The byte-granular counterpart of [`Guest::span`], added for [`crate::vmx`]: a `stvx128` is
+    /// sixteen bytes at one address and a `stvlx128` is a run of one to sixteen, neither of which
+    /// decomposes into word stores without inventing an order the guest does not have.
+    pub fn set_span(&mut self, ea: u32, bytes: &[u8]) -> Result<()> {
+        let (i, o) = self.locate(ea, bytes.len())?;
+        self.segments[i].bytes[o..o + bytes.len()].copy_from_slice(bytes);
+        Ok(())
     }
 }
 

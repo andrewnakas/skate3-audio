@@ -8,13 +8,24 @@
 //! computation: the guest holds intermediates in 64-bit FPRs and narrows only where a `.s`
 //! form appears, which is not the same thing as computing in `f32`.
 //!
-//! **Flush-to-zero.** The bodies these came from call
-//! `ctx.fpscr.disableFlushModeUnconditional()` before each float group, which writes MXCSR
-//! `0x0000`: round-to-nearest, denormals preserved. Rust's `f32`/`f64` operators run under the
-//! host's default `0x1F80`, which differs only in that it *masks* the FP exceptions the guest
-//! leaves unmasked. Masking changes whether a trap fires, never the value produced, so the
-//! results here match and the FPSCR calls have no Rust counterpart. (The recomp's own hooks do
-//! have to care — an unmasked SIGFPE inside a guest call killed the first capture tap.)
+//! **Flush-to-zero. Corrected 2026-09-12 — this paragraph previously said the opposite.** It
+//! claimed `ctx.fpscr.disableFlushModeUnconditional()` writes MXCSR `0x0000`, denormals
+//! preserved. It does not. `rex/ppc/context.h` sets `fpu_csr |= FlushMask` when it initialises
+//! the host FPU (line 214) and re-applies that mask on every rounding-mode change (line 227), so
+//! the **scalar** side carries flush-to-zero and denormals-are-zero exactly as the vector side
+//! does. The two "flush mode" calls differ only in *rounding mode*.
+//!
+//! What that changes here: nothing yet, and the reason is worth stating rather than assuming.
+//! Every operation in this module is a conversion or a single arithmetic step on values the game
+//! supplies, and no test in this crate drives one with a denormal. A denormal input or an
+//! intermediate that underflows to one **would** differ between this code and the recomp, and
+//! nothing here would catch it. Treat that as an open gap, not as a cleared one. `vmx.rs`
+//! implements the real behaviour and models the CSR directly.
+//!
+//! Rust's `f32`/`f64` operators also run under the host default's *masked* FP exceptions where
+//! the guest leaves them unmasked. Masking changes whether a trap fires, never the value
+//! produced. (The recomp's own hooks have to care — an unmasked SIGFPE inside a guest call
+//! killed the first capture tap.)
 
 use crate::{Guest, Result};
 
