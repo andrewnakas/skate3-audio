@@ -28,10 +28,22 @@ have one.**
 
 ### The two kinds of green in this crate
 
-**Replayed against recorded vectors** — `system.rs`, `player.rs`, `buffers.rs`, and now
-`cursors.rs` and `scheduler.rs`. Tier 1 is met: 8,607 of 8,607 comparisons from one complete game
-session replay with 0 disagreements, and a later session recorded 2,500 more for the scheduler and
-cursor ports, all 2,500 replaying with 0 disagreements and 0 unreplayable.
+**Replayed against recorded vectors** — `system.rs`, `player.rs`, `buffers.rs`, `cursors.rs`,
+`scheduler.rs`, and the three DSP kernels. Tier 1 is met:
+
+| module group | vectors | result |
+|---|---|---|
+| the queue path | 8,603 | all pass, 0 unreplayable |
+| scheduler and cursors | 2,500 | all pass, 0 unreplayable |
+| DSP kernels | 900 | all pass, 0 unreplayable |
+
+**These are re-recorded numbers, and the reason matters.** The figure here used to read 8,607,
+recorded before a defect in the recorder was found: it snapshotted the read set *after* the
+original body ran, so any cell a function both reads and writes was recorded holding its own
+output. Of 4,454 such bytes in one file, 4,454 held the post-call value and none held the entry
+value. That defect is fixed at the recorder, every vector file above was recorded after the fix,
+and the count differs from 8,607 only because two sessions of the same script do not produce
+identical call counts.
 
 **Read the scheduler and cursor counts per function, never as one total.** They are
 `sub_82B3C9D8` 2,462, `sub_82B32550` 34, `sub_82B489D0` 2, `sub_82B39690` 2, and `sub_82B349A8`
