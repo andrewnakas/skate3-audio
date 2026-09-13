@@ -287,6 +287,23 @@ game uses gets credited to whichever thread happened to reach it first, so a fun
 216 can still sit on the audio path. When a port's callee has no verified body, check the callee's
 thread by who calls it, not by who called it first.
 
+### A control that never applied looks exactly like a weak test
+
+The commit that fixed the crossfade's gain guard (`3a56902`) says a negative control narrowing the
+gain now fails that test. When the message was written, the control had not run. The script that
+inserted the mutation asserted that its anchor text appeared exactly once; it appeared twice,
+because the public function and its private body end their signatures with the same two lines. The
+assertion aborted the script, the file was never changed, and the chain went on to run the
+"control" against the unmodified port -- which passed, as an unmodified port should. The pass was
+printed, and read past.
+
+Run properly afterwards, both controls fail as they must: narrowing the gain on every path, and
+narrowing it in one scalar lane only.
+
+**A control's verdict means nothing until the mutation is confirmed present.** Check that the file
+actually changed, or make the mutation step fail the whole chain, before reading what the test said.
+A control that silently did not apply reports the same "passed" as a test too weak to notice.
+
 ## Measurements
 
 Static census over the 216 (`docs/ports-static.md`):
