@@ -223,6 +223,13 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
   spec.read(kRampStep1, 4);
   spec.read(kGainStart3, 4);
   spec.read(kRampStep3, 4);
+  // sub_82B44D18's constant pool, as its own Windows() declares it, so a recorded vector carries
+  // everything the ramp kernel reads. For replay only; reads cost nothing against the budget.
+  spec.read(0x82257308u, 4);        // its kStepScale
+  spec.read(0x820ED958u, 4);        // kRampSpan
+  spec.read(0x82060C50u, 4);        // kLane2Scale
+  spec.read(0x82063B08u, 4);        // kLane3Scale
+  spec.read(0x8231BA20u, 16 * 8);   // kScale5..kScaleStep, then kScale1..kScale4
   return true;
 }
 
