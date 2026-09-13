@@ -288,7 +288,8 @@ void HexBytes(std::FILE* out, const uint8_t* data, uint32_t len) {
 
 void RecordVector(const char* name, const PPCContext& entry, const PPCContext& after,
                   std::span<const ShadowWindow> windows, std::span<const ShadowWindow> inputs,
-                  const uint8_t* base, const std::vector<uint8_t>& mem_entry,
+                  const uint8_t* base, const std::vector<uint8_t>& mem_inputs,
+                  const std::vector<uint8_t>& mem_entry,
                   const std::vector<uint8_t>& mem_lifted, uint64_t run) {
   std::lock_guard<std::mutex> lock(g_vector_mutex);
   if (!g_vector_tried) {
@@ -302,6 +303,7 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
         std::fprintf(g_vector_file,
                      "# skate3 shadow vectors: name run r3 r4 r5 r6 r7 ret_r3 then spans.\n"
                      "# F:n:bits              = entry f1..f4 as raw 64-bit patterns\n"
+                     "# R64:n:bits            = entry r3 and r4, full 64 bits\n"
                      "# Fr:1:bits             = f1 as the ORIGINAL left it\n"
                      "# I:addr:len:bytes      = read set, the memory the function saw\n"
                      "# W:addr:len:entry:exp  = write set, entry bytes and what the ORIGINAL "
@@ -375,11 +377,26 @@ void RecordVector(const char* name, const PPCContext& entry, const PPCContext& a
   }
   std::fprintf(g_vector_file, "\tFr:1:%016llX",
                static_cast<unsigned long long>(after.f1.u64));
-  // The read set next, taken from memory as it stands now: these spans are not written by the
-  // function, so their entry bytes are still intact after the lifted body ran.
+  // The fixed columns above keep only the low word of each argument. A chain formed 64-bit --
+  // RexGlue's add and mullw are 64-bit on zero-extended operands -- carries the high half into a
+  // returned address, so a truncated recording cannot exercise it and a truncated port passes.
+  std::fprintf(g_vector_file, "\tR64:3:%016llX\tR64:4:%016llX",
+               static_cast<unsigned long long>(entry.r3.u64),
+               static_cast<unsigned long long>(entry.r4.u64));
+  // The read set, from a snapshot taken BEFORE the lifted body ran.
+  //
+  // It used to be read from live memory here, on the reasoning that a read span is not written
+  // and so still holds its entry bytes. That reasoning is wrong whenever a span is both read and
+  // written -- a header word a function reads and then updates, which is common -- and the
+  // recording then held the POST-call value while claiming to be the input. Measured on one
+  // recorded file: of 4,454 bytes covered by both a read span and a write span whose entry and
+  // expected bytes differ, 4,454 held the expected byte and none held the entry byte. Replaying
+  // those vectors fed a function its own output and made a correct port look broken.
+  size_t in_off = 0;
   for (const ShadowWindow& w : inputs) {
     std::fprintf(g_vector_file, "\tI:%08X:%u:", w.addr, w.len);
-    HexBytes(g_vector_file, base + w.addr, w.len);
+    HexBytes(g_vector_file, mem_inputs.data() + in_off, w.len);
+    in_off += w.len;
   }
   size_t off = 0;
   for (const ShadowWindow& w : windows) {
@@ -434,6 +451,18 @@ bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lif
     std::memcpy(mem_entry.data() + off, base + w.addr, w.len);
     off += w.len;
   }
+  // The read set is snapshotted here, before anything runs. See RecordVector for why reading it
+  // afterwards was wrong.
+  size_t input_total = 0;
+  for (const ShadowWindow& w : inputs) {
+    input_total += w.len;
+  }
+  std::vector<uint8_t> mem_inputs(input_total);
+  size_t in_off = 0;
+  for (const ShadowWindow& w : inputs) {
+    std::memcpy(mem_inputs.data() + in_off, base + w.addr, w.len);
+    in_off += w.len;
+  }
 
   // 1. The lifted body, for real.
   const PPCContext entry = ctx;
@@ -447,8 +476,8 @@ bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lif
 
   const uint64_t run_number = stats.runs.load(std::memory_order_relaxed) + 1;
   if (!diverged_only) {
-    RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_entry, mem_lifted,
-                 run_number);
+    RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_inputs, mem_entry,
+                 mem_lifted, run_number);
   }
 
   // 2. Rewind memory, last window first so overlapping windows end at their entry bytes.
@@ -495,8 +524,8 @@ bool ShadowCompare(PPCContext& ctx, uint8_t* base, PPCFunc* native, PPCFunc* lif
   const uint64_t runs = stats.runs.fetch_add(1, std::memory_order_relaxed) + 1;
 
   if (diverged && diverged_only) {
-    RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_entry, mem_lifted,
-                 runs);
+    RecordVector(stats.name, entry, after_lifted, windows, inputs, base, mem_inputs, mem_entry,
+                 mem_lifted, runs);
   }
   if (diverged && stats.reports.fetch_add(1, std::memory_order_relaxed) < report_cap) {
     if (bad_register.name) {

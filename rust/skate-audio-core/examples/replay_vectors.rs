@@ -15,7 +15,7 @@
 //! on the command line. Deriving them from the expected bytes would be using the answer to
 //! check the answer.
 
-use skate_audio_core::{Guest, buffers, player, system};
+use skate_audio_core::{Guest, buffers, cursors, dsp, player, scheduler, system};
 
 struct Vector {
     name: String,
@@ -26,6 +26,9 @@ struct Vector {
     r6: u32,
     r7: u32,
     ret_r3: u32,
+    /// Entry `f1`..`f4` as raw bit patterns. A DSP kernel's scale factor arrives in `f1`, so
+    /// without these its memory and integer registers record a call that cannot be replayed.
+    f: [u64; 4],
     /// The read set: memory the function saw but does not write.
     inputs: Vec<(u32, Vec<u8>)>,
     /// The write set: entry bytes, and what the original lifted body produced.
@@ -44,11 +47,21 @@ fn parse(line: &str) -> Option<Vector> {
     let hex = |s: &str| u32::from_str_radix(s, 16).unwrap_or(0);
     let mut inputs = Vec::new();
     let mut windows = Vec::new();
+    let mut fprs = [0u64; 4];
     for tok in &f[8..] {
         let p: Vec<&str> = tok.split(':').collect();
         match (p.first(), p.len()) {
             (Some(&"I"), 4) => inputs.push((hex(p[1]), unhex(p[3]))),
             (Some(&"W"), 5) => windows.push((hex(p[1]), unhex(p[3]), unhex(p[4]))),
+            // Vectors recorded before the float columns existed simply have none, and every
+            // function that needs one fails loudly rather than replaying against a zero.
+            (Some(&"F"), 3) => {
+                if let (Ok(i), Ok(bits)) = (p[1].parse::<usize>(), u64::from_str_radix(p[2], 16)) {
+                    if (1..=4).contains(&i) {
+                        fprs[i - 1] = bits;
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -56,6 +69,7 @@ fn parse(line: &str) -> Option<Vector> {
         return None; // a vector with no write set compares nothing; counted as malformed
     }
     Some(Vector {
+        f: fprs,
         name: f[0].to_string(),
         run: f[1].parse().unwrap_or(0),
         r3: hex(f[2]),
@@ -69,20 +83,62 @@ fn parse(line: &str) -> Option<Vector> {
     })
 }
 
-/// Build guest memory holding exactly what was recorded: the read set as the function saw it,
-/// and the write set at its entry bytes. Each span is its own segment, because a real vector
-/// puts an object on the stack at 0x7018E110 and its buffers on the heap at 0x401736D0.
+/// Build guest memory holding exactly what was recorded, as the function saw it **on entry**.
 ///
 /// Nothing is invented. An address the function reaches that was not recorded stays uncovered
 /// and the vector is reported `unreplayable`, never zero-filled: feeding the port fabricated
 /// inputs would turn a failure into a meaningless pass.
+///
+/// Two things this has to get right, both found by replaying the scheduler and cursor vectors:
+///
+/// **The `W:` entry bytes are authoritative wherever they overlap an `I:` span.** The recorder
+/// snapshots the read set *after* the original body has run, so any cell that is both read and
+/// written is recorded holding the post-call value. That is not a guess: across
+/// `sched_cursors.tsv` there are 4,454 bytes covered by both an `I:` span and a `W:` span whose
+/// entry and expected bytes differ, and in **4,454 of 4,454** the `I:` byte equals the
+/// *expected* byte and in none of them the *entry* byte. The `W:` entry column is the only
+/// record of true entry state for those cells, so it is laid down last and wins.
+///
+/// **Spans are merged byte-wise, not stored one segment each.** Overlap is common — a window
+/// often sits inside a larger read span, and sometimes shares its base — and a whole-segment
+/// model resolves it by whichever segment `Guest::locate` happens to reach first, which is
+/// insertion order. That silently fed `sub_82B489D0` a bucket byte from the read set while its
+/// own store landed in the window segment the comparison then read, and it truncated
+/// `sub_82B39690`'s 16-byte node span to the 8 bytes of a window sharing its base, losing the
+/// `which` byte four bytes past the end. Merging into one map and coalescing runs of adjacent
+/// recorded bytes removes both, without covering a single byte that was not recorded.
 fn guest_of(v: &Vector) -> Guest {
-    let mut g = Guest::default();
+    let mut cells: std::collections::BTreeMap<u32, u8> = Default::default();
     for (addr, bytes) in &v.inputs {
-        g.put(*addr, bytes.clone());
+        for (i, b) in bytes.iter().enumerate() {
+            cells.insert(addr.wrapping_add(i as u32), *b);
+        }
     }
+    // Laid down second, so the entry bytes overwrite the read set's post-call copy.
     for (addr, entry, _) in &v.windows {
-        g.put(*addr, entry.clone());
+        for (i, b) in entry.iter().enumerate() {
+            cells.insert(addr.wrapping_add(i as u32), *b);
+        }
+    }
+
+    let mut g = Guest::default();
+    let mut run: Vec<u8> = Vec::new();
+    let mut base = 0u32;
+    let mut last = 0u32;
+    for (addr, byte) in cells {
+        if !run.is_empty() && addr == last.wrapping_add(1) && addr != 0 {
+            run.push(byte);
+        } else {
+            if !run.is_empty() {
+                g.put(base, std::mem::take(&mut run));
+            }
+            base = addr;
+            run.push(byte);
+        }
+        last = addr;
+    }
+    if !run.is_empty() {
+        g.put(base, run);
     }
     g
 }
@@ -156,6 +212,38 @@ fn main() {
                     .map(|_| None)
                     .map_err(|e| e.to_string())
             }
+            // The scheduler and cursor ports, addressed by their guest names. Each argument's
+            // register is the one its module doc states; getting one wrong would not fail
+            // gracefully, it would compare a different call.
+            "sub_82B32550" => cursors::claim_ring_slot(&mut g, v.r3, v.r4)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            "sub_82B349A8" => cursors::advance_ring_cursor(&mut g, v.r3)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B3C9D8" => cursors::advance_segment_position(&mut g, v.r3, v.r4)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B39690" => scheduler::recycle_node(&mut g, v.r3, v.r4)
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B489D0" => scheduler::detach_instance(&mut g, u64::from(v.r3), v.r4)
+                .map(|r| Some(r as u32))
+                .map_err(|e| e.to_string()),
+            // The DSP kernels. `count` is r6, not r5, and the scale arrives in f1 -- both
+            // straight from the module docs, both easy to get wrong in a way that still runs.
+            "sub_82B3BED8" => dsp::scale::scale(&mut g, v.r3, v.r4, v.r6, f64::from_bits(v.f[0]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
+            "sub_82B44B20" => {
+                dsp::scale::scale_accumulate(&mut g, v.r3, v.r4, v.r6, f64::from_bits(v.f[0]))
+                    .map(|_| None)
+                    .map_err(|e| e.to_string())
+            }
+            "sub_82B3C098" => dsp::gain_ramp::gain_ramp_copy(
+                &mut g, v.r3, v.r4, f64::from_bits(v.f[0]), f64::from_bits(v.f[1]))
+                .map(|_| None)
+                .map_err(|e| e.to_string()),
             _ => {
                 t.skipped += 1;
                 continue;

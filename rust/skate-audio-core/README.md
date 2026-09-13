@@ -15,21 +15,45 @@ than at a misunderstanding of the engine.
 | `fp.rs` | the guest's scalar FP idioms: `lfs`/`stfs`, `fcfid`/`frsp`, the single-rounded forms, `fctiwz`, `rlwinm` | unit-tested only |
 | `counter.rs` | `sub_82B1F360`, the six-word cascading counter the evaluator draws from | verified C++ reference; unit-tested only |
 | `eval/` | the expression evaluator's 40-slot opcode table at guest `0x82FD3600` — **31 slots**, every one that has a verified C++ body | verified C++ reference; unit-tested only |
-| `scheduler.rs` | `sub_82B489D0` and `sub_82B39690`: an instance detaching itself from the scheduler, and the bucket list mechanic that removal runs on | verified C++ reference; unit-tested only |
-| `cursors.rs` | `sub_82B32550`, `sub_82B349A8`, `sub_82B3C9D8`: the three verified cursor advances — which ring slot, which entry, which segment comes next | verified C++ reference; unit-tested only |
+| `scheduler.rs` | `sub_82B489D0` and `sub_82B39690`: an instance detaching itself from the scheduler, and the bucket list mechanic that removal runs on | **4 replayed** — two calls each, read the count before quoting it |
+| `cursors.rs` | `sub_82B32550`, `sub_82B349A8`, `sub_82B3C9D8`: the three verified cursor advances — which ring slot, which entry, which segment comes next | **2,496 replayed** (2,462 + 34; `sub_82B349A8` recorded none) |
 | `vmx.rs` | the VMX128 layer: RexGlue's lowerings, the flush-mode control, and the guest-memory vector accesses | **45 ops replayed** against `probe/vmx128`'s recorded C++; the rest unit-tested only |
 | `dsp/sine.rs` | `sub_824531C8`, four-lane sine by range reduction and an 11-term odd polynomial | verified C++ reference; unit-tested only |
 | `dsp/scale.rs` | `sub_82B3BED8` and `sub_82B44B20`: `dst[i] = src[i]*k` and `dst[i] += src[i]*k`, each on a vector and a scalar path | verified C++ reference; unit-tested only |
 | `dsp/gain_ramp.rs` | `sub_82B3C098`, a gain-ramped copy of a fixed 256-single block | verified C++ reference; unit-tested only |
 
 `cargo test` runs 155 unit tests. **Read the next two sections before reading that as one number:
-the three original modules and everything added after them are checked in different ways, and only
-the first three, plus `vmx.rs`'s operation table, have replay figures.**
+the modules are checked in different ways, and only the ones whose table row gives a replay figure
+have one.**
 
 ### The two kinds of green in this crate
 
-**Replayed against recorded vectors** — `system.rs`, `player.rs`, `buffers.rs`. Tier 1 is met:
-8,607 of 8,607 comparisons from one complete game session replay with 0 disagreements.
+**Replayed against recorded vectors** — `system.rs`, `player.rs`, `buffers.rs`, and now
+`cursors.rs` and `scheduler.rs`. Tier 1 is met: 8,607 of 8,607 comparisons from one complete game
+session replay with 0 disagreements, and a later session recorded 2,500 more for the scheduler and
+cursor ports, all 2,500 replaying with 0 disagreements and 0 unreplayable.
+
+**Read the scheduler and cursor counts per function, never as one total.** They are
+`sub_82B3C9D8` 2,462, `sub_82B32550` 34, `sub_82B489D0` 2, `sub_82B39690` 2, and `sub_82B349A8`
+**zero** — that last one has a Rust body and unit tests but no recorded call at all, so nothing in
+the 2,500 touches it. Two calls is a real comparison and a thin one; `sub_82B39690`'s two both
+arrive with the same `which` byte and with the node naming neither list head, so
+`the_which_byte_decides_which_head_can_name_the_node` is carried by its unit test alone. Measured,
+not assumed: breaking the head selection leaves all 2,500 vectors passing.
+
+Of eight deliberate breaks replayed against these vectors, **three were caught** — the segment
+index wrap (83 failures), the ring index wrap (2 failures), and the bucket-manager address (which
+turned a pass into an *unreplayable*, because the wrong manager is not in the recorded read set).
+The five the vectors miss are named where they belong: three are the equivalent transformations
+listed below, one is the equality-versus-threshold end test (every recorded call lands exactly on
+a segment end, so `<` and `!=` agree on all 2,462), and one is a limit of the recording — see
+below.
+
+**What the recording cannot exercise: `detach_instance`'s 64-bit `r3`.** The vector format stores
+`r3` as 32 bits, and the replay therefore calls with `u64::from(v.r3)`, so the high half is always
+zero. Truncating the port's `(r3 + 112)` chain to 32 bits passes all 2,500 vectors. That chain is
+not decoration — it is what carries the high half into the returned manager address — so it is
+covered by a unit test only, and it stays that way until the recorder stores the full register.
 
 ```
 cargo run --example replay_vectors -- VECTORS.tsv 00000000 3F800000
@@ -64,16 +88,17 @@ composed in the right order. It also leaves seven primitives uncovered — `vrfi
 of which has a unit test against a hand-written model instead, which is weaker. `vmx`'s module
 documentation carries the table.
 
-**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, `scheduler.rs`,
-`cursors.rs`, and all of `dsp/`. The C++ body each of these was translated from was compared
+**Unit-tested against a verified reference** — `fp.rs`, `counter.rs`, `eval/`, all of `dsp/`, and
+`cursors::advance_ring_cursor`. The C++ body each of these was translated from was compared
 call-for-call against the original under the harness, on real inputs, at zero divergence. The Rust
-has no vectors of its own, for one of two reasons. For `fp.rs`, `counter.rs` and `eval/` there is no
-direct call site in the lifted tree at all (the evaluator reaches all 40 slots through one `bctrl`
-on a data word), so the harness never bracketed them individually. For `scheduler.rs`, `cursors.rs`
-and `dsp/` the harness does bracket the functions — that is how they were verified, over 6,994,118
-calls for `dsp::sine` alone — but it records no per-call inputs for them, so there is still nothing
-to replay. Either way what this buys is a much smaller search space — a fault here is a
-transcription error, not a misreading of the engine — and what it does not buy is a number.
+has no vectors of its own, for one of three reasons. For `fp.rs`, `counter.rs` and `eval/` there is
+no direct call site in the lifted tree at all (the evaluator reaches all 40 slots through one
+`bctrl` on a data word), so the harness never bracketed them individually. For `dsp/` the harness
+does bracket the functions — that is how they were verified, over 6,994,118 calls for `dsp::sine`
+alone — but it records no per-call inputs for them. And `cursors::advance_ring_cursor`
+(`sub_82B349A8`) is bracketed *and* recordable, but the session that recorded the rest caught none
+of its 865-per-boot calls. Either way what this buys is a much smaller search space — a fault here
+is a transcription error, not a misreading of the engine — and what it does not buy is a number.
 
 **The call counts in `dsp/` are the C++'s evidence, not the Rust's.** `sub_824531C8` is verified
 over 6,994,118 calls and `sub_82B3BED8` over 1,057,635 with `skipped=0`; those numbers say the body
@@ -156,6 +181,31 @@ One reload of this family *is* pinned, by `scheduler.rs`'s
 quoting it: the aliasing layout it uses is one the C++ `Windows()` refuses to bracket, so what it
 establishes is that the reload survived the transcription, **not** that the guest agrees with the
 answer. Nothing establishes the latter.
+
+**The 2,500 recorded vectors do not catch these six either**, which is the stronger version of the
+same statement: removing `advance_segment_position`'s index reload, or `recycle_node`'s free-head
+reload, leaves every vector passing. Real gameplay simply does not lay these objects out so that
+they alias. That is evidence they are equivalences on the inputs the game produces, and it is not
+evidence they can be dropped — the C++ has them because the original does.
+
+### A recording defect these vectors exposed, and what the replay does about it
+
+The recorder snapshots the **read set after the original body has run**, so any cell that is both
+read and written is recorded holding its post-call value. This is measurable inside a single file,
+without a second recording: across `sched_cursors.tsv` there are 4,454 bytes covered by both an
+`I:` span and a `W:` span whose entry and expected bytes differ, and in **4,454 of 4,454** the
+`I:` byte equals the *expected* byte — in none of them the *entry* byte.
+
+`replay_vectors` therefore treats the `W:` entry column as authoritative wherever it overlaps an
+`I:` span, and merges the spans byte-wise instead of storing one segment each. The overlay is
+sound rather than convenient: the harness requires every byte a body writes to lie inside a
+declared window (`docs/shadow-harness.md` — a write outside them is never rewound), so every stale
+read-set byte is by construction covered by a window entry byte, and the overlay restores all of
+them. It invents nothing; a byte no span recorded stays uncovered and the vector is still reported
+unreplayable.
+
+Until the recorder is fixed, **the `I:` columns of a vector file cannot be read on their own** as
+the state a function saw. Reading them that way is what first made these ports look wrong.
 
 ### Limits carried over from the harness
 
