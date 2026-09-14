@@ -311,6 +311,30 @@ The ring's publish ordering also diverges deliberately — records first, offset
 leaves memory byte-identical and is therefore invisible to a single-threaded compare in either
 direction.
 
+**Status 2026-09-13 — 132 of the 140 verified (or thin) C++ bodies have a Rust translation and a
+replay arm.** Before that day's porting, 109,099 recorded calls had replayed with zero failures
+(the per-module counts are in `rust/skate-audio-core/README.md`). The same day added 22 bodies,
+the 31 evaluator ops' generic arm, and `sub_82B43CC0`'s missing arm. Their window builders now
+declare every read a replay needs, and all of them are unit-tested, but **none of them has replayed
+yet**: sessions need an unlocked screen and no other skate3 instance. The recording is one session,
+because the recorder gained `skate3_audio_vectors_per_function` (`AUDIO_VECTORS_PER_FN`): the
+global cap otherwise fills with the hot functions before the rare ones are reached. `sub_82B305C0`
+is never called in the boot profile, so it needs the scripted play profile.
+
+The last eight are not transcription work, because each reaches a callee that has no verified C++
+reference:
+
+| body | the callee with no `.inc` |
+|---|---|
+| `sub_82B2DBA8`, `sub_82B42C98`, `sub_82B427D8` | `sub_82F52FB8` |
+| `sub_82B238A8` | `sub_82B43340`, plus the two above |
+| `sub_82B2F590` | `sub_82B2FF88` |
+| `sub_82B470D0`, `sub_82B33780` | `sub_82B471D8`, `sub_82B472C0` |
+| `sub_82B22898` | `sub_82473930`, `sub_82B41D58`, `sub_82B42510` |
+
+Porting one of these means first giving that callee a native body verified under the shadow harness
+(Phase 2's recipe), or porting it from the lifted code with nothing to compare it against.
+
 **Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
 same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
 process, before it can be tested. Open — risk 7.
