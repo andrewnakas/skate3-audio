@@ -404,8 +404,17 @@ deferred with what is still open written down.
 > **Update 2026-09-14, player scope.** The player character's banks are identified
 > (`docs/audio-banks.md`, "The player character's banks"). The decode path was fixed for the 399
 > looping bank samples, whose header is 12 bytes, not 8 (sk8Audio `d480a62`, engine `d88b7dc`); a
-> grind sample now decodes in the engine. Still open, and the gate on playing a player sound
-> *through the graph*: which game event fires which bank's port.
+> grind sample now decodes in the engine.
+>
+> The event side is now read. Each player object has a message constructor that clamps its
+> arguments and posts to a `.csi` symbol: `Class_grind`'s carries a normalised speed, a surface
+> class, a variant and a level, and is held for the length of the grind. See `docs/audio-banks.md`,
+> "How the game addresses a player sound object".
+>
+> Still open, and the gate on playing a player sound *through the graph*: the `.abk` patch program
+> that a listener runs on those arguments. Two things are pending. A played session with the message
+> probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
+> And seven player exports cite a project the game does not look up, which that trace settles.
 
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.
