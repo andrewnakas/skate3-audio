@@ -328,6 +328,52 @@ functions that reference the neighbouring path pool — `sub_82486AC8`, `sub_824
 `sub_82487B98`, `sub_82488120` — are where to look. The other half of the answer is the
 undecoded body of the `.csi`, which is the project graph those messages run through.
 
+## The player character's banks, 2026-09-14
+
+The Rust engine only needs the player character's sounds (user direction, 2026-09-14), so the first
+question was which banks those are. `rust/skate-audio-formats/examples/player_sounds.rs` walks every
+`.abk` in `audiofiles.big` and keeps those whose exports or member names look player-side:
+
+| object exported | bank | samples | length |
+|---|---|---|---|
+| `Class_rolling` | PatchBank_Rolling_Surfaces, PatchBank_Objects, PatchBank_SpiderCracks, PatchBank_RocksBounce | 16, 18, 18, 26 | 13.4, 7.0, 11.0, 3.3 s |
+| `Class_wheels_skid` | WHEEL_SKID_BANK | 96 | 19.2 s |
+| `Class_Flips` | Sk8_Air_Flip_Tricks | 33 | 22.4 s |
+| `Class_grind` | GRINDS | 123 | 215.1 s |
+| `c_board_slide` | board_scrapes | 30 | 8.2 s |
+| `c_body_slide` | Bodyslide (with `bodyslide_{con,dirt,face,wood}_vol`) | 20 | 10.9 s |
+| `playercharacter_footstep` | fstep_skateshoe1_sm | 192 | 55.2 s |
+| `Class_foot_drag` | FOOT_DRAG | 168 | 24.5 s |
+| `cloth_*`, `PC_Foley_*` | Foley_Cloth | 28 | 12.7 s |
+| `Rolling_Rattle_Class` | Rolling_Rattles, probably the board | 18 | 22.7 s |
+
+**DEMONSTRATED:** every sample in them parses as EA Audio Core **XMA, mono, 48 kHz** — a few
+footsteps at 36 kHz — so the engine's existing decode path can play every one. The same walk also
+matched banks that are not the skater, and they are set aside by what they export: the `TRAFFIC_*`
+car banks, `c_dynamic_*` and `c_moveable_*` world objects, and two `c_emitter` ambience banks.
+
+Two more archives are the skater's. `wheels.big` holds two wheel-spin loops, `Whls_spins_Jump_1`
+and `Whls_spins_Man_1` (XMA mono 48 kHz, 14.81 s each, with `.sek` companions of about 90 bytes).
+`grains.big` holds fourteen `.grain` files, one per surface and hardness (`asphalt_smooth_hard`,
+`wood_ramp_soft`, `x_jet_rolling`, …), in a format **not yet decoded**. Their headers, compared
+across all fourteen:
+
+```text
++0x00  u32  0x70, 0x90, 0xA0 or 0xB0   varies by file; smaller in smaller files
++0x04  f32  12.15 .. 21.97             x_jet 12.15, wood_ramp_soft 17.62, asphalt_smooth_hard 21.97;
+                                       roughly member length / 12,000, so plausibly seconds
++0x08  u32  0x00100180                 identical on all 14
++0x0C  u32  0x18                       identical on all 14
++0x10  ...  a run of small words, then from +0x24 a long run of slowly varying bytes (0x0e..0x11)
+```
+
+The run at `+0x10` is not byte-aligned the same way in every file (`x_jet_rolling` is shifted by
+one byte), so it is a variable-length encoding, not fixed fields. **Not established:** what the
+slowly varying bytes are, where the audio starts, or what codec it uses.
+
+**Still open, and the harder half:** which game event fires which of these banks' ports. See the
+next section's negative results; nothing here changes them.
+
 ## Also established, in passing
 
 **The `.grain` prediction in `docs/grain-banks.md` is not supported in its strict form.**
