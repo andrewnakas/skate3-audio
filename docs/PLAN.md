@@ -401,6 +401,12 @@ deferred with what is still open written down.
 > `scheduler.rs`, `xma.rs`, `dsp/` and `graph.rs` are unwritten — and nothing chooses *which*
 > sound, because the metadata that maps a sound to a map or an event is undecoded.
 
+> **Update 2026-09-14, player scope.** The player character's banks are identified
+> (`docs/audio-banks.md`, "The player character's banks"). The decode path was fixed for the 399
+> looping bank samples, whose header is 12 bytes, not 8 (sk8Audio `d480a62`, engine `d88b7dc`); a
+> grind sample now decodes in the engine. Still open, and the gate on playing a player sound
+> *through the graph*: which game event fires which bank's port.
+
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.
 

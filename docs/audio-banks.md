@@ -352,6 +352,22 @@ footsteps at 36 kHz — so the engine's existing decode path can play every one.
 matched banks that are not the skater, and they are set aside by what they export: the `TRAFFIC_*`
 car banks, `c_dynamic_*` and `c_moveable_*` world objects, and two `c_emitter` ambience banks.
 
+**Corrected the same day: "can play every one" was false for the looping ones.** A looping EAAC
+header is longer than 8 bytes. It carries the loop start sample as a third word, and on a streamed
+sound (`stream_type` 1, the `.snr`/`.sns` pairs) the loop block's byte offset as a fourth. The
+engine skipped a fixed 8 bytes, so `GRINDS.abk` sample 0 read its zero loop start as a block header
+and failed with "block size 0 does not advance".
+
+**DEMONSTRATED on all of them:**
+- 399 of the 5,168 bank samples loop, and every one of their block chains begins at +12
+  (`examples/verify_loop_headers.rs`).
+- All 23 16-byte `.snr` records loop with `stream_type` 1. Each loop offset is a block boundary of
+  the paired `.sns`, and the block starting there holds the loop start (`verify_pairing`).
+- The "8 unknown trailing bytes" of those records were these two words all along.
+
+The engine now skips `StreamInfo::header_bytes` (engine `d88b7dc`), and that grind sample decodes
+to 101,701 frames, its header's own count.
+
 Two more archives are the skater's. `wheels.big` holds two wheel-spin loops, `Whls_spins_Jump_1`
 and `Whls_spins_Man_1` (XMA mono 48 kHz, 14.81 s each, with `.sek` companions of about 90 bytes).
 `grains.big` holds fourteen `.grain` files, one per surface and hardness (`asphalt_smooth_hard`,
