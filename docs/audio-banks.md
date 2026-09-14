@@ -582,6 +582,37 @@ onto the interpreter's node list. Read from the lifted code:
 
 Opcode slot 4, `sub_82B1C150`, is the reverse: it unlinks an instance from both lists and frees it.
 
+**The programs themselves, DEMONSTRATED on all 376 banks** (`examples/verify_patch_programs.rs`):
+- A record's program at `+28` parses as `{u8 op, u8 pairs, u16, pairs x {i32 src, i32 dst},
+  i32 advance}`, ending at opcode 255.
+- 385 programs, 31,016 ops (longest 879), **0 failures**. Every opcode is below 40.
+- Every pair's offsets, relative to the current block and sometimes negative, stay inside the
+  operand area.
+- The block pointer finishes **exactly** at the end of that area (`size - 24`) on all 385.
+- Programs share a frame: they open with op 0, then 2 or 1, then 3, and 360 of the 385 close with
+  `[27, 4]` or `[5, 4]`.
+
+Opcode use across all programs: 19 never, 38 once, 9 three times; 10, 15, 17 and 35 over 2,000
+each. The player banks use every ported slot plus six unported ones:
+
+| slot | function | used by | what it is |
+|---|---|---|---|
+| 1 | `sub_82832BA8` | all 385 | `return block[20]`, one instruction, shared by identical-code folding with game code |
+| 2 | `sub_82C8CDC8` | 252 | `return block[24]`, likewise |
+| 4 | `sub_82B1C150` | all 385 | end the instance: unlink from both lists and free |
+| 5 | `sub_82B1C210` | 182 | clamp a value block and broadcast it (C++ body pending) |
+| 27 | `sub_82B1D240` | 1,527 ops, every player bank | **the voice op**. `block[24]`, clamped to 0..2, is the requested state. State 0 releases the voice at `block+8`. State 1 picks entry `clamp(block[20])` of the table at `block+4`, whose u16 at `+4` is a sample id (`0xFFFF` means none), starts it through `sub_82B1F4C8`, and updates it through `sub_82B1F5F8` and the voice's vtable `+24` |
+| 39 | `sub_82B1C450` | `Foley_Cloth` only | notify a handler list |
+
+**The allocator's callbacks** (addresses computed, then read):
+
+| address | role |
+|---|---|
+| `sub_82B1D7F8` | set `+16` = 1 when the posted message is released |
+| `sub_82B1D7E8` | copy a registered value into `+24` |
+| `sub_82B1D808` | copy the posted message's payload words into the entry. This is how `Class_grind`'s arguments reach the program's operand block |
+| `sub_82B1D840` | the same for messages the instance subscribes to (the `+22` list), setting `+25` = 1 on arrival |
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;
