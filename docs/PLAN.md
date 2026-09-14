@@ -478,7 +478,15 @@ deferred with what is still open written down.
 > For the engine, that fill function is the seam: the engine's own EAAC and XMA decode
 > (`crates/skate-data/src/audio/`) supplies the PCM there, and the rest of `SndPlayer1` plus the
 > ported chain run unchanged. Transcribing `sub_82B34278` (1,032 lifted lines) and `sub_82B3CA60`
-> is the remaining source work, from their gate-1 C++ bodies. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> is the remaining source work, from their gate-1 C++ bodies.
+>
+> **Both are written (2026-09-14), unverified.** `stream.rs` (`sub_82B3CA60`, with the fill function
+> as a `StreamFill` trait) and `sndplayer.rs` (`sub_82B34278` plus its fade path `sub_82B34108`).
+> Every kernel a voice needs now has Rust. Left for the device:
+> - build the module instances in graph order;
+> - route property ids to their parameter slots;
+> - chain each module's block into the next;
+> - supply decoded PCM as the fill. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
