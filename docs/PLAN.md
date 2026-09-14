@@ -346,6 +346,12 @@ Work that serves only music or ambience comes off the Rust queue. `sub_82B22898`
 single-sideband frequency shift) and its five-helper chain are deferred until something shows a
 player sound reaches it; the recomp's C++ keeps its whole-game goal.
 
+**Replayed, 2026-09-14 (backlog1).** One boot-profile session recorded up to 300 vectors for each of
+65 functions (`AUDIO_VECTORS_PER_FN`). All 34 expected shadow comparisons were clean, and the Rust
+replay found **no failures in any function**. Eight functions did not replay because their window
+builders left out memory the call reads. Those reads are now declared, and they wait for a second,
+played session, together with the four functions a boot session never reaches.
+
 **Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
 same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
 process, before it can be tested. Open — risk 7.
