@@ -426,7 +426,18 @@ deferred with what is still open written down.
 > The interpreter is written: `rust/skate-audio-core/src/eval/interp.rs`, 2026-09-14, unit-tested
 > and unverified. So is the installer's symbol half, `symbols.rs`: all 1,059 real exports resolve
 > exactly as an independent search predicts. The binding path is `docs/audio-banks.md`, `.csi`
-> section. Two things are pending. A played session with the message
+> section.
+>
+> The rest of the bank side is written too, `patch.rs`: bank load and install, post, listener,
+> instance allocation and the instance callbacks. Slots 1 and 2 are ported as the one-instruction
+> accessors they are. `examples/grind_instance.rs` runs the real `GRINDS.abk` over the dumped
+> image:
+> - it installs, a `Class_grind` post spawns an instance with the payload in its block, and the
+>   interpreter ticks with a 4-frame period;
+> - the program then stops at **slot 27, the voice op** (`sub_82B1D240`), the next gate.
+>
+> That op drives a device object through a vtable (`0x82FD35F8`) and `sub_82B1BE30`, which is where
+> a patch meets the mixer. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
 > Seven player exports cite a project the game does not look up, but the lookups' second pass
 > matches by name alone, so they bind.

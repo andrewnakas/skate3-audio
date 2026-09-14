@@ -5,3 +5,10 @@ version = 4
 [[package]]
 name = "skate-audio-core"
 version = "0.1.0"
+dependencies = [
+ "skate-audio-formats",
+]
+
+[[package]]
+name = "skate-audio-formats"
+version = "0.1.0"

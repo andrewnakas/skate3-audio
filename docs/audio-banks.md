@@ -588,6 +588,10 @@ onto the interpreter's node list. Read from the lifted code:
 - Capacities are mostly 10 (300 records), then 1 (30) and 16 (28). `GRINDS.abk` has one record of
   capacity 4 with a 2,500-byte template.
 
+**The installer's fixup lists, DEMONSTRATED on all 376 banks** (`examples/verify_bank_fixups.rs`):
+- The code-reference list at the header's `+0x30` is empty on every bank.
+- The rebase list at `+0x34` holds 4,656 words, each an offset inside its bank's first section.
+
 **A post spawns an instance.** The listener `sub_82B1DAD0` checks live < capacity, then calls
 `sub_82B1D880`, which:
 - allocates the instance and copies the template;
