@@ -56,6 +56,8 @@ fn int_to_single(v: i32) -> f64 {
 /// `dst`, four vector stores at a time while whole groups remain, then one store replicated over the
 /// rest by a forward copy. Nothing for `units <= 0`.
 unsafe fn fill_vector_units(g: &mut Guest, dst: u32, units: i32, value: __m128) -> Result<()> {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     let bulk = aligned4(units);
     if bulk > 0 {
         let mut p = dst.wrapping_add(32);
@@ -77,6 +79,7 @@ unsafe fn fill_vector_units(g: &mut Guest, dst: u32, units: i32, value: __m128) 
     }
     Ok(())
 }
+}
 
 /// What both writers do before their vector bodies: the flat `start` lead-in below index zero, then
 /// the linear alignment padding. Returns the index and cursor the bodies start from. `threshold` is
@@ -91,6 +94,8 @@ unsafe fn lead_in(
     ramp: (f64, f64, f64, f64, f64),
     threshold: Option<f64>,
 ) -> Result<(i32, u32)> {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     let (start, end, step, length_f, delta) = ramp;
     let (mut index, mut cursor) = (first, out);
     if index >= 0 {
@@ -142,6 +147,7 @@ unsafe fn lead_in(
     }
     Ok((index, cursor))
 }
+}
 
 /// Past the ramp: single `end` entries until the count left is a multiple of four, then the
 /// 16-byte fill for the unit count taken **before** that loop trimmed it, as the original's `r5`.
@@ -153,6 +159,8 @@ unsafe fn trailing_fill(
     block_last: i32,
     end: f64,
 ) -> Result<()> {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     if tail_index > block_last {
         return Ok(());
     }
@@ -173,13 +181,17 @@ unsafe fn trailing_fill(
     fpscr.disable_flush_mode_unconditional();
     fill_vector_units(g, cursor, units, _mm_set1_ps(end as f32))
 }
+}
 
 /// `stfs float(i+1..i+4)` into the frame, read back by `lvx128`: the lane reversal puts `i + 4` in
 /// lane 0.
 unsafe fn index_vector(index: i32) -> __m128 {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     let i0 = index as u32;
     let f = |k: u32| int_to_single(i0.wrapping_add(k) as i32) as f32;
     _mm_setr_ps(f(4), f(3), f(2), f(1))
+}
 }
 
 /// The ramp span in whole vectors, and those taken four at a time.
@@ -263,13 +275,18 @@ pub fn linear_ramp(g: &mut Guest, out: u32, first: i32, length: i32, start: f64,
 
 /// `vspltisw128 1 ; vcsxwfp128 v0,v61,1` — 0.5 in every lane, kept as the lifted expression.
 unsafe fn half_vector() -> __m128 {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     _mm_mul_ps(_mm_cvtepi32_ps(_mm_set1_epi32(1)), _mm_castsi128_ps(_mm_set1_epi32(0x3F00_0000)))
+}
 }
 
 /// The vector square root: the `vrsqrtefp` estimate, one Newton step, and a mask selecting `x` in
 /// exactly the lanes where the estimate cannot be refined (`+0` and `+inf`, their own roots). Every
 /// multiply is separate and both multiply-adds round twice; the operand order is the lifted one.
 unsafe fn sqrt_vector(x: __m128, half: __m128) -> __m128 {
+    // SAFETY: the callers check vmx support; every guest access is bounds-checked.
+    unsafe {
     let e = vmx::vrsqrtefp(x); // vrsqrtefp128 v13,v63
     let scaled = _mm_mul_ps(x, half); // vmulfp128 v10,v63,v0
     let square = _mm_mul_ps(e, e); // vmulfp128 v7,v13,v13
@@ -283,6 +300,7 @@ unsafe fn sqrt_vector(x: __m128, half: __m128) -> __m128 {
         _mm_andnot_si128(mask, _mm_castps_si128(product)),
         _mm_and_si128(mask, _mm_castps_si128(x)),
     )) // vsel v2,v12,v4,v31
+}
 }
 
 /// The square-root ramp writer (`sub_82B42C98`). Returns 1.
