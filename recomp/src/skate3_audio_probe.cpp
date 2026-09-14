@@ -164,8 +164,21 @@ extern "C" REX_FUNC(sub_828E2B48) {
   __imp__sub_828E2B48(ctx, base);
 
   if (n < cap) {
-    REXLOG_INFO("skate3-audio-msg: {} obj={} {} slot={:08X} payload={:08X} result={} [{}]", n,
-                index, ObjectName(base, index), slot, payload, ctx.r3.s32, words);
+    // The listeners the post just called: the slot's symbol record heads a list of
+    // {next, ?, fn, ctx} nodes (sub_828E2B48's first loop). Walked only after a successful post,
+    // which validated the slot, and only while every pointer looks like guest heap.
+    char listeners[4 * 20 + 1] = {0};
+    if (ctx.r3.s32 == 0) {
+      uint32_t node = REX_LOAD_U32(REX_LOAD_U32(slot));
+      for (uint32_t i = 0; i < 4 && node >= 0x40000000 && node < 0xF0000000; ++i) {
+        std::snprintf(listeners + i * 20, 21, "%08X/%08X ", REX_LOAD_U32(node + 8),
+                      REX_LOAD_U32(node + 12));
+        node = REX_LOAD_U32(node);
+      }
+    }
+    REXLOG_INFO(
+        "skate3-audio-msg: {} obj={} {} slot={:08X} payload={:08X} result={} [{}] listeners=[{}]",
+        n, index, ObjectName(base, index), slot, payload, ctx.r3.s32, words, listeners);
   } else if (n % 5000 == 0) {
     std::string totals;
     for (uint32_t i = 0; i <= kObjects; ++i) {

@@ -428,6 +428,8 @@ own entry.
 | `sub_828E2B48` | post a message to a slot. It checks the slot's id against the record's, allocates a 16-byte node through an allocator vtable, and calls every listener on the record's two lists as `fn(node, payload, ctx)`. Returns -6 or -3 on an empty or stale slot |
 | `sub_828E2AF0` | `sub_828E2B48` under the critical section at `0x830784F0` |
 | `sub_828E2730` | allocate a message (45 callers) |
+| `sub_828E2818` | install a loaded `.csi`: turn each record's name offset into a pointer, for all three tables, and link the project into the list at `0x830BBE50`. So a record's listener head is zero on disk and filled in at run time |
+| `sub_828E2C78` | release a held message: call the callbacks on its own list, drop its reference count, and free it through the allocator vtable when that reaches zero |
 
 **One message constructor per object.** Each fills a message, clamps its arguments to authored
 ranges, posts it, and on a stale slot resolves the entry and posts again:
