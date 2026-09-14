@@ -467,7 +467,18 @@ deferred with what is still open written down.
 > `docs/audio-banks.md`). The one gap is `SndPlayer1`'s process, `sub_82B34278`, which renders a
 > block of the stream and fails gate 1. So the device is: that source, the ported chain, and the
 > glue: instantiate the modules, stamp parameters through the verified `0x82B463A8`, and chain the
-> blocks. The graph probe still has to confirm the order. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> blocks. The graph probe still has to confirm the order.
+>
+> **The source, mapped.** `sub_82B34278` takes each block from its 48-byte record ring, handling
+> start time, pre-roll, looping at record `+24` and retirement. It pulls frames through
+> `sub_82B3CA60` (gate 1), which drains a scratch descriptor and refills it through the stream's fill
+> function pointer at `+20`: the XMA decode path. The "frames left" query `sub_82B23C10` is verified
+> and in `leaves.rs` (`stream_remaining`).
+>
+> For the engine, that fill function is the seam: the engine's own EAAC and XMA decode
+> (`crates/skate-data/src/audio/`) supplies the PCM there, and the rest of `SndPlayer1` plus the
+> ported chain run unchanged. Transcribing `sub_82B34278` (1,032 lifted lines) and `sub_82B3CA60`
+> is the remaining source work, from their gate-1 C++ bodies. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
