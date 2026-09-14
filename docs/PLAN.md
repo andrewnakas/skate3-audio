@@ -552,14 +552,9 @@ deferred with what is still open written down.
 > registration and default blocks it needs in `classes.rs`. It builds the same 9-module list the
 > `msgs1` graph probe logged for a footstep open (graph 112): SndPlayer1, Rechannel, Resample, HP,
 > LP, Send, Gain, a 6-channel Pan2D1, and a 6-channel Send. Unverified and unit-tested; bus creation
-> is left to a host. They were held for the `msgs1` probes, which have
-> since confirmed the module order (a Send ends each chain) and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
-> the meaning of the property ids. A Rust player sound therefore needs its own
-> device: open a voice on the ported graph from that sample and descriptor, and route
-> `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
-> probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
-> Seven player exports cite a project the game does not look up, but the lookups' second pass
-> matches by name alone, so they bind.
+> is left to a host. The `msgs1` probes confirmed the module order (a Send ends each chain) and the
+> open arguments before these were written. Seven player exports cite a project the game does not
+> look up, but the lookups' second pass matches by name alone, so they bind.
 >
 > **First comparison with the game, 2026-09-14.** The real footstep program is driven by the
 > `msgs1` trace's post and its 409 update payloads. It opens eight layers on the same update as the
@@ -567,6 +562,26 @@ deferred with what is still open written down.
 > Variant, pitch and two start gains differ, as a different state of the random counter would make
 > them. Seeding that counter from a trace is what would turn this into an exact check.
 > Details are in `docs/audio-banks.md`.
+>
+> **From an open to sound: the chain still to cross (read 2026-09-14).** An open only enqueues
+> commands. Three audio-thread functions stand between them and `sndplayer::render_block`:
+> 1. **The drain**, phase 4 of `sub_82B48530` (gate 1 and 3). It walks the ring at `system+48` up to
+>    `+204`, calling each record's handler and advancing by the size the handler returns. Then it
+>    raises the high-water mark at `+208`, zeroes `+204` and counts at `+256`. The handlers an open
+>    queues are mostly ported: `modules::install_command`, `leaves::publish_float`,
+>    `leaves::stamp_slot` and `voices::repoint_link`. The exception is play.
+> 2. **Play**, `sub_82B32DC8` (gate 1, C++ body present). It claims the SndPlayer1 ring slot at
+>    the write index (`+467`), sets its state to 1, runs `bitstream::parse_voice_header` and
+>    `decode_packet_header` (both ported), and advances the index. Record kind `+73` is bits 31-30
+>    of the sample header's second word, so a bank sample that does not loop is kind 0 and commits
+>    on the short path. Kinds 1 and 2 (looping, streamed) also acquire a voice through
+>    `sub_82B47A68` (gate 1, C++ present), allocate the name, and schedule callbacks through
+>    `sub_82EC0E08` (no port).
+> 3. **The stream pump**, `sub_82B31EE0` (gate 1: XMA submit under critical sections). It is the
+>    pool node's callback, and it moves a record to state 2 or 3 and readies the consumer slot
+>    (`object + 16*[+474]`, byte `+113`), which is what `render_block` waits for. **This is where the
+>    engine's decoded PCM has to come in.** A Rust replacement must leave the slot in the state the
+>    pump would, with `stream_remaining` and `deliver_frames` reading decoded frames.
 
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.
