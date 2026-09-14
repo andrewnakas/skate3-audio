@@ -717,6 +717,40 @@ it audible.**
   probe (`skate3-audio-update` lines) records real ones in the pending session. The query `sub_824A2DD8` reports a voice finished (first word 0) when
 its player's `+71` byte is 2.
 
+**The voice's graph is made of named RwAudio modules (2026-09-14).** `sub_824A2FD8` fills the
+device's class table at `0x830828F8..0x83082918` by registering static class descriptors through
+`sub_82B46770`. Each descriptor's first word points at its name.
+
+**DEMONSTRATED, from the image's strings:**
+
+| slot | class |
+|---|---|
+| `0x830828F8` | `Gain` |
+| `0x830828FC` | `HighPassIir2` |
+| `0x83082900` | `LowPassIir2` |
+| `0x83082904` | `Pan2D1` |
+| `0x8308290C` | `SndPlayer1` |
+| `0x83082910` | `Rechannel` |
+| `0x83082914` | `Resample` |
+| `0x83082918` | `PeakingIir2` |
+
+`0x83082908` is found by id `0x53656E30` in the registered list rather than by descriptor.
+
+**Read, not yet confirmed at run time:** the device open `sub_824A3140` builds each voice's module
+list from that table in the order `SndPlayer1, Rechannel, Resample, HighPassIir2, LowPassIir2`, then
+optionally the `0x83082908` class, then `Gain` (a second one when a flag is set) and `Pan2D1`. It
+keeps pointers at voice `+8` (`SndPlayer1`), `+12` (`Resample`), `+16` (`HighPassIir2`) and `+20`
+(`LowPassIir2`), with the gains and the panner at `+24`, `+28` and `+32`.
+
+Against the property table above, that makes:
+- id 6 the low-pass cutoff, and id 7 the high-pass cutoff;
+- id 0 the resampler's rate (`value / 4096`);
+- ids 8 and 5 the two gains;
+- id 3 the panner's angle.
+
+The graph probe (`skate3-audio-graph`) logs each module class the game passes to `sub_82B48C48`,
+which will confirm or correct the order.
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;
