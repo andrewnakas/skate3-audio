@@ -863,6 +863,22 @@ words logged at the post and seeded into the run.
 **The program also depends on elapsed time.** With one update per audio frame, update 10 arrives
 53 ms into the run, and 375 frames open nothing. Which op gates on time is not read yet.
 
+**The graphs, 2026-09-14.** With `GRAPH=1` the example opens each voice through the Rust device open
+(`device::open_voice_graph`) over the image's real classes. It stands in the audio system, a bus
+manager with buses 0-17, and the Send class registration. All eight footstep layers build the
+module list the `msgs1` graph probe logged for footstep open 24 (graph 112): `SndPlayer1, Rechannel,
+Resample, HighPassIir2, LowPassIir2, Send, Gain` at one channel, then `Pan2D1` and `Send` at six. Each
+open enqueues:
+- the install;
+- the player's `+56` = 0.4, the descriptor byte 40 × 0.01;
+- a play of its sample;
+- the first send's bus;
+- a Send stamp;
+- a mono pan angle (id 0) of 0;
+- the output bus 2, from routing record 9 = 12.
+
+The trace does not record the commands, so only the module list is checked against the game.
+
 ## Also established, in passing
 
 **The `.grain` prediction in `docs/grain-banks.md` is not supported in its strict form.**
