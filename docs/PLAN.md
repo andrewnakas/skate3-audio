@@ -548,7 +548,11 @@ deferred with what is still open written down.
 > The constructors and the builder are written: `modules.rs` has the builder, its install
 > command (the system's player list, sorted by the `+73` byte), all eight classes' size and
 > constructor functions, `Pan2D1`'s speaker tables and `SndPlayer1`'s node pool. It is unverified
-> and unit-tested. Still to transcribe: the device open `sub_824A3140` (1,511 lifted lines). They were held for the `msgs1` probes, which have
+> and unit-tested. The device open is written too: `device.rs` (`sub_824A3140`), with the class
+> registration and default blocks it needs in `classes.rs`. It builds the same 9-module list the
+> `msgs1` graph probe logged for a footstep open (graph 112): SndPlayer1, Rechannel, Resample, HP,
+> LP, Send, Gain, a 6-channel Pan2D1, and a 6-channel Send. Unverified and unit-tested; bus creation
+> is left to a host. They were held for the `msgs1` probes, which have
 > since confirmed the module order (a Send ends each chain) and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
