@@ -423,7 +423,7 @@ own entry.
 
 | function | role |
 |---|---|
-| `sub_828E3250` | resolve a group-1 symbol into a slot: walk the loaded projects (list head at `0x830BBE50`), match the project id, then scan the 12-byte records for the name id **and** a string compare of the name; store the record pointer and its `+8` word |
+| `sub_828E3250` | resolve a group-1 symbol into a slot: walk the loaded projects (list head at `0x830BBE50`) and scan each one's 12-byte records for the name id **and** a string compare of the name; store the record pointer and its `+8` word. Two passes: projects with the requested id, then, if that failed, every project. -5 when neither finds it |
 | `sub_828E3358` | the same over the 16-byte group-2 records (17 callers) |
 | `sub_828E2B48` | post a message to a slot. It checks the slot's id against the record's, allocates a 16-byte node through an allocator vtable, and calls every listener on the record's two lists as `fn(node, payload, ctx)`. Returns -6 or -3 on an empty or stale slot |
 | `sub_828E2AF0` | `sub_828E2B48` under the critical section at `0x830784F0` |
@@ -527,9 +527,12 @@ export of the 17 player objects the game table names (`examples/export_projects.
   where the game uses `0x5C48`.
 - Neither `0x63D9` nor `0x4228` ships a `.csi`.
 
-`sub_828E3250` compares the project id as well, so those banks cannot bind through the lookup as
-read. Either a listener attaches some other way, or those objects have no listener. The message
-probe's `listeners=` column records that directly.
+**Corrected the same day: they do bind.** The lookups make **two passes** over the loaded
+projects. The first requires the project id to match. If it finds nothing, the second ignores the
+project and matches the name id and the name string alone (`sub_828E3250`'s `r29` flag, read from
+labelled blocks). So `GRINDS.abk`'s `0x63D9:0x09C5` export binds to `SK8_AEMS_skateboard`'s
+`Class_grind`. The paragraph that stood here said those banks could not bind, which was a misreading
+of one branch.
 
 ## From a message to the evaluator, 2026-09-14
 
@@ -623,10 +626,10 @@ Only the opcodes are transcription (31 ported). The interpreter fails the port s
 and 2, and the installer and allocator run on the load and game threads, outside the 216. So those
 three are new work, checkable against traces rather than against a verified C++ body.
 
-**The project mismatch now has a mechanism.** The installer resolves a record's slot through
-`sub_828E3250` with the bank's own project id. A `GRINDS.abk` built against `0x63D9` therefore
-binds only if a `0x63D9` project is loaded, and no such `.csi` ships in `audiofiles.big`. The message
-probe's `listeners=` column shows whether `Class_grind` posts reach anyone.
+**The project mismatch does not stop binding.** The installer resolves a record's slot through
+`sub_828E3250`, whose second pass ignores the project id. So a `GRINDS.abk` built against `0x63D9`
+binds by name to the `0x64BD` symbol the game posts to. The message probe's `listeners=` column will
+confirm it at run time.
 
 ## Also established, in passing
 

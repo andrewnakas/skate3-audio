@@ -426,7 +426,8 @@ deferred with what is still open written down.
 > The interpreter is written: `rust/skate-audio-core/src/eval/interp.rs`, 2026-09-14, unit-tested
 > and unverified. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
-> And seven player exports cite a project the game does not look up, which that trace settles.
+> Seven player exports cite a project the game does not look up, but the lookups' second pass
+> matches by name alone, so they bind.
 
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.
