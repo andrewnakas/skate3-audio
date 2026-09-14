@@ -507,7 +507,13 @@ deferred with what is still open written down.
 > `pitch::resample_block`, and `sndplayer::render_block`. So a Rust graph pass is:
 > - those two functions transcribed, with profiling stores written as zero;
 > - a table from each class's process address to its Rust function;
-> - the builder `sub_82B48C48` and the device open `sub_824A3140`, to lay out a voice's nodes. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> - the builder `sub_82B48C48` and the device open `sub_824A3140`, to lay out a voice's nodes.
+>
+> The two gate-1 functions are written: `graph.rs` (`run_pass`, `fill_mixer_block`, and a
+> `GraphHost` trait for the class-table calls and the timebase), unverified and unit-tested. Left:
+> - the process-address table (a `GraphHost`);
+> - the builder and the device open;
+> - an end-to-end run of `grind_instance` through a real graph. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
