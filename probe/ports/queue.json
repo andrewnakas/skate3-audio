@@ -4563,6 +4563,34 @@
   "tu": "skate3_recomp.68.cpp",
   "vec": 99
  },
+ "82B43340": {
+  "agg": "ports_68a",
+  "attempts": 0,
+  "batch": null,
+  "calls": {
+   "boot": null,
+   "map": null,
+   "play": null
+  },
+  "gate": null,
+  "gate1": "pass",
+  "gate1_at": null,
+  "gate1_reason": null,
+  "gate2_suspect": 0,
+  "last_divergence": null,
+  "leaf": false,
+  "legacy": null,
+  "line": 24085,
+  "lines": 973,
+  "name": null,
+  "note": "outside the 216: the sine-curve generator sub_82B238A8 dispatches to on curve 2; blocks its Rust port",
+  "status": "pending",
+  "stores_present": false,
+  "thread": "reached from sub_82B238A8",
+  "tier": "A",
+  "tu": "skate3_recomp.68.cpp",
+  "vec": 1
+ },
  "82B43AF8": {
   "agg": "ports_68a",
   "attempts": 0,

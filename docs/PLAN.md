@@ -335,6 +335,17 @@ reference:
 Porting one of these means first giving that callee a native body verified under the shadow harness
 (Phase 2's recipe), or porting it from the lifted code with nothing to compare it against.
 
+**Update 2026-09-14, and a scope change.** The four one-callee blockers got native bodies (pending
+verification), and all six bodies behind them now have Rust translations. So do `sub_82B42C98`,
+`sub_82B427D8` and `sub_82B2DBA8`, and `sub_82B43340`'s C++ is written for `sub_82B238A8`.
+
+The user narrowed the Rust side the same day: **the engine only needs the player character's
+sounds, not other skaters, music or ambience.** The mixer core those sounds pass through (queue,
+voices, per-voice DSP, gain, spatial, output) is shared by every sound, so the ports above stand.
+Work that serves only music or ambience comes off the Rust queue. `sub_82B22898` (the
+single-sideband frequency shift) and its five-helper chain are deferred until something shows a
+player sound reaches it; the recomp's C++ keeps its whole-game goal.
+
 **Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
 same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
 process, before it can be tested. Open — risk 7.
