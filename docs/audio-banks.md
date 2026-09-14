@@ -668,6 +668,29 @@ Read at face value, 6 matches `send_low_pass`'s 25000 default, 8 a full volume a
 12-bit fixed point. **None of that is established**; the run is against a logging device, not the
 game.
 
+**What the property ids do, read from the voice's own setters (2026-09-14).** The voice
+`sub_824A3140` returns has vtable `0x822FBCA8`. Its `+12` setter `sub_824A29A8(id, value)` posts
+each change as a command to the audio thread. The handler is `0x82B463A8`, the verified
+parameter-slot stamp in `rust/skate-audio-core/src/leaves.rs`, so a property is a module parameter
+write inside the ported graph.
+
+| id | effect |
+|---|---|
+| 0 | module at voice `+12`, parameter 0 = `value / 4096` |
+| 2 | stored as `value / 32767` at voice `+40`; the gains below are multiplied by it |
+| 5 | stored as `value / 32767` at `+48`; module `+24` gets `+48 × +40` |
+| 8 | stored as `value / 32767` at `+44`; module `+28` gets `+44 × +40` |
+| 6 | module `+20`, parameter 0 = `value` as a float (25000 reads as a cutoff in Hz) |
+| 7 | module `+16`, parameter 0 = `value` as a float |
+| 11 | module `+84`, parameter 0 = `value / 32767`, only when `+88` is set |
+| 3 | the alternate setter `sub_824A2C58`: module `+32`, parameters 7 and 8 to constants, then parameter 0 = `value × 360/65536`, i.e. degrees |
+| 1, 4, 9, 10, 12 and above, except 11 | no effect in this setter |
+
+So ids 5 and 8 are two gains under a master gain (id 2). In the logged grind run id 2 was **0**,
+which would make both voices silent; whether that is what the game does for those arguments is for
+the `msgs1` open probe to show. The query `sub_824A2DD8` reports a voice finished (first word 0) when
+its player's `+71` byte is 2.
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;
