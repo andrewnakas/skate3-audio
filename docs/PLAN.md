@@ -451,7 +451,9 @@ deferred with what is still open written down.
 > - It runs 375 frames, 7,192 ops, without an error.
 >
 > None of it is verified: the `msgs1` session's open probe will show what the game opens for real
-> posts. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> posts. A first post is silent by design (word 0 is 0), and the game's per-frame re-delivery
+> (`sub_828E2D18`, now in `patch.rs` as `redeliver`) makes it audible; with updates the Rust run's
+> voices get non-zero master gains. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message

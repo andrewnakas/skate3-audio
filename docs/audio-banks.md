@@ -686,9 +686,35 @@ write inside the ported graph.
 | 3 | the alternate setter `sub_824A2C58`: module `+32`, parameters 7 and 8 to constants, then parameter 0 = `value × 360/65536`, i.e. degrees |
 | 1, 4, 9, 10, 12 and above, except 11 | no effect in this setter |
 
-So ids 5 and 8 are two gains under a master gain (id 2). In the logged grind run id 2 was **0**,
-which would make both voices silent; whether that is what the game does for those arguments is for
-the `msgs1` open probe to show. The query `sub_824A2DD8` reports a voice finished (first word 0) when
+So ids 5 and 8 are two gains under a master gain (id 2). In the logged grind run id 2 was **0**, and
+the reason is now read: **the first post is silent by design, and the game's per-frame update makes
+it audible.**
+
+- **Why the first post is silent.** The grind program computes each voice's master gain as
+  `round(level × (word0 − s) × band weight / 32767²)`. Here `s` is a value the two flag arguments
+  select, and the band weight is one of three speed-mapped ramps (for speed 5000: 0, 27306 and
+  6553). The constructor `sub_824AF8C8` posts word 0 as **0**.
+- **What the update does.** Every frame, for both held grind messages, `sub_824C39E0` rewrites the
+  payload and re-delivers it through **`sub_828E2D18`**, which runs the post node's payload
+  callbacks again. It writes:
+
+  | field | value |
+  |---|---|
+  | `+4` (word 0) | 32767 |
+  | `+8` | a volume, clamped to 32767 |
+  | `+12` | clamped to 32767 |
+  | `+16` | clamped to 65536 |
+  | `+20` | clamped to 8192 |
+  | `+24`, `+28` | two values clamped to 25000 |
+  | `+32` | the speed, clamped to 10000 |
+  | `+44` | the variant |
+  | `+64` | clamped to 32767 |
+
+- **The Rust run with those updates** (`UPDATES=1 cargo run --example grind_instance`: word 0 =
+  32767, volume 20000, both cutoffs 25000, speed 5000). By frame 23 the two open voices' master
+  gains are 2441 and 7068, a third voice opens with 6553, and id 8 follows the volume (20000).
+- **What stays unverified.** The update values are chosen here, not the game's. The re-delivery
+  probe (`skate3-audio-update` lines) records real ones in the pending session. The query `sub_824A2DD8` reports a voice finished (first word 0) when
 its player's `+71` byte is 2.
 
 **What this means for the Rust engine.** A player sound needs four pieces:
