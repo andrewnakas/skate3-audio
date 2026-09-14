@@ -736,9 +736,23 @@ device's class table at `0x830828F8..0x83082918` by registering static class des
 
 `0x83082908` is found by id `0x53656E30` in the registered list rather than by descriptor.
 
-**Read, not yet confirmed at run time:** the device open `sub_824A3140` builds each voice's module
-list from that table in the order `SndPlayer1, Rechannel, Resample, HighPassIir2, LowPassIir2`, then
-optionally the `0x83082908` class, then `Gain` (a second one when a flag is set) and `Pan2D1`. It
+**Confirmed at run time (`msgs1` session, 2026-09-14), correcting the static reading.**
+`0x83082908` is `Send`, the class registered as `Sen0`. The graph probe logged 400 graph builds;
+voice graphs take three shapes:
+
+| builds | modules |
+|---|---|
+| 119 | `SndPlayer1 → Rechannel → Resample → HighPassIir2 → LowPassIir2 → Send → Gain → Pan2D1 → Send` |
+| 86 | `SndPlayer1 → Resample → Gain → Pan2D1 → Send` |
+| 94 | `SndPlayer1 → Resample → GainFader → Send` |
+
+The static reading below had the head right. It missed both `Send`s and read a second `Gain` that
+is not there.
+
+Earlier static reading, kept for the record: the device open `sub_824A3140` builds each voice's
+module list from that table in the order `SndPlayer1, Rechannel, Resample, HighPassIir2,
+LowPassIir2`, then optionally the `0x83082908` class, then `Gain` (a second one when a flag is set)
+and `Pan2D1`. It
 keeps pointers at voice `+8` (`SndPlayer1`), `+12` (`Resample`), `+16` (`HighPassIir2`) and `+20`
 (`LowPassIir2`), with the gains and the panner at `+24`, `+28` and `+32`.
 
@@ -765,6 +779,19 @@ already has:
 | `Rechannel` | `sub_82B2C8E8` | `sub_82B2C8F0`, re-fold the rows | verified | `leaves.rs`, `mix.rs` |
 | `Resample` | `sub_82B2DAC8`, the pitch ratio | `sub_82B2DBA8`, resample a block | verified | `pitch.rs` |
 | `SndPlayer1` | `sub_82B34268` | **`sub_82B34278`**, render a block | prepare verified; process **gate 1** | prepare in `leaves.rs`; process **none** |
+
+The rest of the classes the session built, named from their descriptors with their process functions:
+- `Send`: `sub_82B31838`, which is `bus::mix_source`, verified;
+- `GainFader`: `sub_82B238A8`, `gains::advance_gain_ramp`;
+- `SubMix`: `sub_82B34E08`; `Dac`: `sub_82B21F58`; `VuMeter`: `sub_82B376B8`;
+- `HighShelfIir2`: `sub_82B26740`; `PeakingIir2`: `sub_82B2C658`; `ReverbModel1`: `sub_82B2F8C0`;
+- `DistortionClip`: `sub_82B22678`; `Delay`: `sub_82B222D8`; `SampleCapture`: `sub_82B30C50`;
+- `FrequencyShiftSsb`: `sub_82B22898`, the deferred single-sideband kernel;
+- `PacketPlayer`: prepare `sub_82B29278`, process `sub_82B29288`.
+
+**The binding, confirmed at run time.** All 150 logged posts returned 0 and reached exactly one
+listener, `sub_82B1DAD0`. That includes `Class_Flips`, whose bank cites the unshipped project
+`0x63D9`, so the lookups' second pass binds it in the game as it does in `bind_banks`.
 
 **So a voice's whole graph is ported except its source.** Nine of the ten kernels have verified C++
 and a Rust translation; the stream player's process is the one that does not.

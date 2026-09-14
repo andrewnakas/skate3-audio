@@ -455,9 +455,13 @@ deferred with what is still open written down.
 > (`sub_828E2D18`, now in `patch.rs` as `redeliver`) makes it audible; with updates the Rust run's
 > voices get non-zero master gains.
 >
-> **The device to build, as read.** A voice's graph is the RwAudio modules
-> `SndPlayer1 → Rechannel → Resample → HighPassIir2 → LowPassIir2 → Gain (×1–2) → Pan2D1`, with
-> class names demonstrated from image strings and the order read from `sub_824A3140`. Property ids
+> **The device to build, confirmed by the `msgs1` trace.** A voice's graph is one of three shapes:
+> - `SndPlayer1 → Rechannel → Resample → HighPassIir2 → LowPassIir2 → Send → Gain → Pan2D1 → Send`;
+> - `SndPlayer1 → Resample → Gain → Pan2D1 → Send`;
+> - `SndPlayer1 → Resample → GainFader → Send`.
+>
+> This corrects the static reading, which missed the `Send`s. The class names come from image strings.
+> `Send` and `GainFader` are also ported: `bus::mix_source` and `gains::advance_gain_ramp`. Property ids
 > map onto it: 0 is the resample rate, 7 and 6 the high- and low-pass cutoffs, 8 and 5 the gains
 > under master gain 2, and 3 the pan angle.
 >
