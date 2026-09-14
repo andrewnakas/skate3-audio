@@ -424,7 +424,9 @@ deferred with what is still open written down.
 > work checked against traces.
 >
 > The interpreter is written: `rust/skate-audio-core/src/eval/interp.rs`, 2026-09-14, unit-tested
-> and unverified. Two things are pending. A played session with the message
+> and unverified. So is the installer's symbol half, `symbols.rs`: all 1,059 real exports resolve
+> exactly as an independent search predicts. The binding path is `docs/audio-banks.md`, `.csi`
+> section. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
 > Seven player exports cite a project the game does not look up, but the lookups' second pass
 > matches by name alone, so they bind.

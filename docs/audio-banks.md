@@ -233,6 +233,18 @@ The remaining **872** exports name one of six project ids for which no `.csi` sh
 `audiofiles.big` (15 project ids are cited in total, 9 are shipped). Where those projects
 live is **unknown**; no `.csi` exists anywhere else in the audio data.
 
+**They do not need to live anywhere (2026-09-14).** The run-time lookup falls back to matching by
+name id and name in any project. `rust/skate-audio-core/examples/bind_banks.rs` installs the nine
+shipped projects and resolves all 1,059 exports through the Rust transcription of the lookups:
+- **187** bind on the first pass;
+- **868** bind on the second, by-name pass;
+- **4** find nothing: `semi_horns_msg`, and `pa_announce_a_glb` twice and `pa_announce_b_glb`, from
+  projects `0x0412` and `0x27CC`;
+- every outcome, and the record each lands on, **agrees with an independent search** of the parsed
+  files: 0 disagreements.
+
+None of the four is a player sound.
+
 What the three tables *are* — and the rest of the `.csi`, which is the project graph proper —
 is **not decoded**. Only the symbol table is read here.
 
