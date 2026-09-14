@@ -437,7 +437,11 @@ deferred with what is still open written down.
 > - the program then stops at **slot 27, the voice op** (`sub_82B1D240`), the next gate.
 >
 > That op drives a device object through a vtable (`0x82FD35F8`) and `sub_82B1BE30`, which is where
-> a patch meets the mixer. Two things are pending. A played session with the message
+> a patch meets the mixer. The device is read: game init installs `0x8302F068`. Its open,
+> `sub_824A3140`, receives a pointer to the bank sample's EA Audio Core stream plus the playback
+> descriptor, and builds a mixer graph for the voice. A Rust player sound therefore needs its own
+> device: open a voice on the ported graph from that sample and descriptor, and route
+> `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
 > Seven player exports cite a project the game does not look up, but the lookups' second pass
 > matches by name alone, so they bind.

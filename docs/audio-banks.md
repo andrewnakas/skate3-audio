@@ -632,6 +632,30 @@ each. The player banks use every ported slot plus six unported ones:
 | `sub_82B1D808` | copy the posted message's payload words into the entry. This is how `Class_grind`'s arguments reach the program's operand block |
 | `sub_82B1D840` | the same for messages the instance subscribes to (the `+22` list), setting `+25` = 1 on arrival |
 
+**Where a patch meets the voice system (read 2026-09-14).** Slot 27 opens its voice through
+`sub_82B1F4C8`, which calls slot 0 of the device singleton at `0x82FD35F8`.
+- **The device.** The boot-time image holds a fallback object there (`0x83036F48`). Game init
+  (`sub_826D4C30`) replaces it with the static device at `0x8302F068`, vtable `0x822FBC9C`. Slot 0 of
+  that vtable is `sub_824A3140`, 693 instructions on the game thread.
+- **The open call's arguments** name a sample, which means a bank sample and its playback
+  parameters:
+  - `r4` is `table + table[s16 index + 3]`, where the table is `*(config+64)`. The config is the
+    bank itself, via the back-pointer the installer wrote into the template, and `+64` is the sample
+    bank pointer `load_bank` sets. So `r4` points at an EA Audio Core stream inside the bank's
+    `S10A` section: the index skips the section's three header words.
+  - The rest: a byte, six descriptor bytes shifted up a byte, the bank's `+72`, `+76` plus the
+    descriptor's `+8` word, and the op's `{count, records}` parameter block.
+- **What `sub_824A3140` does.** It allocates a 104-byte voice and builds a mixer graph for it
+  through the audio system (`sub_82B48C48`, `sub_82B46260`, and module vtables). That graph is the
+  ported Phase 4 code, so this is the seam between a patch and the mixer.
+- **The parameter pushes.** `sub_82B1BE30` clamps a property id and value and tail-calls the
+  voice's own setter at vtable `+12` (or `+16` for id 3).
+
+**Correction to the interpreter's period.** The image dump's `0x82FD35F4` reads 41.6, but that is a
+boot-time value: the same game init stores 30.0 there (from `0x820D4924`) and zeroes the delta
+cache. So in play an evaluator period is 1/30 s. With 256-sample frames at 48 kHz, that is 6
+frames.
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;
