@@ -411,8 +411,17 @@ deferred with what is still open written down.
 > class, a variant and a level, and is held for the length of the grind. See `docs/audio-banks.md`,
 > "How the game addresses a player sound object".
 >
-> Still open, and the gate on playing a player sound *through the graph*: the `.abk` patch program
-> that a listener runs on those arguments. Two things are pending. A played session with the message
+> The bank side is read too ("From a message to the evaluator"). A post runs listener
+> `sub_82B1DAD0`, which spawns an instance of the bank's input record by copying its template and
+> linking its nodes onto the list that interpreter `sub_82B1E290` walks, running the 40 evaluator
+> opcodes. So the gate on playing a player sound *through the graph* is now four pieces of Rust:
+> - a bank installer (`sub_82B1DF50`);
+> - post, listener and instance allocation;
+> - the interpreter;
+> - the 9 unported opcodes.
+>
+> The first three have no verified C++ body (off the audio thread, or gate 1/2), so they are new
+> work checked against traces. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
 > And seven player exports cite a project the game does not look up, which that trace settles.
 

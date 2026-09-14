@@ -531,9 +531,71 @@ export of the 17 player objects the game table names (`examples/export_projects.
 read. Either a listener attaches some other way, or those objects have no listener. The message
 probe's `listeners=` column records that directly.
 
-**Still open:** what the listener on a symbol does with the payload, i.e. the `.abk` patch program
-that turns `Class_grind`'s arguments into a sample, a pitch and a gain. The listeners attach at bank
-load, since an `.abk` export cites the same `(project_id, name_id)` pair.
+## From a message to the evaluator, 2026-09-14
+
+**This closes the chain from a game event to running audio code.** The "patch program" is the
+expression evaluator that `rust/skate-audio-core/src/eval/mod.rs` already documents (40 opcode
+slots at `0x82FD3600`, interpreter `sub_82B1E290`). What was missing was how a bank's program gets
+onto the interpreter's node list. Read from the lifted code:
+
+**Installing a bank: `sub_82B1DF50`** (load thread).
+1. It rewrites code references in the bank: each listed word holds an opcode index and becomes
+   `TABLE[index] - address - 4`.
+2. It rebases the offset lists.
+3. It resolves every export into a slot *inside the bank* through the `.csi` lookups. The export's
+   `kind` top byte picks the table: 0 means `sub_828E3358` (group 2), 1 means `sub_828E3250`
+   (group 1), and 2 means `sub_828E3148` (group 0). That explains the earlier correlation of the
+   top byte with `_snd`, `c_*` and `_msg` names.
+4. For each input record whose slot resolved, it links a listener node onto the symbol record:
+   function `sub_82B1DAD0`, context the input record.
+
+**Input records**, counted by the header's u16 at `+0x0A` and starting at the offset at `+0x1C`:
+
+```text
++04  slot {symbol record*, id}     an export resolves into it
++14  listener node {next, prev, fn = sub_82B1DAD0, ctx = this record}
++1C  u16 live instances            +1E  u16 capacity
++20  u16, +22 u16                  counts of two further entry lists sub_82B1D880 links
++24  u8, u8, u8, u8                +24 and +27 count the u32 entries that follow +3C
++28  offset copied to each instance's +10 (the program)
++2C  instance template offset      +30  instance size        +34  back-pointer offset
++38  live instance list
++3C  u32 entries, 4 bytes each
+```
+
+**DEMONSTRATED on all 376 banks** (`examples/verify_patch_records.rs`):
+- 385 input records, 0 failures.
+- Every record's `+04` is the target of **exactly one** export, and all 385 of those exports have
+  kind top byte 1, the group-1 objects the game posts to.
+- The other 674 exports (top byte 0: 362; 2: 311; 1: 1) bind slots elsewhere in the program.
+- Every template lies inside the first section, and `+28` points past the records on all 385. It
+  is the very next byte on 369, which is why it first read as "the next region".
+- Capacities are mostly 10 (300 records), then 1 (30) and 16 (28). `GRINDS.abk` has one record of
+  capacity 4 with a 2,500-byte template.
+
+**A post spawns an instance.** The listener `sub_82B1DAD0` checks live < capacity, then calls
+`sub_82B1D880`, which:
+- allocates the instance and copies the template;
+- links the instance onto the record's live list;
+- threads the instance's evaluator nodes, wiring them to the posted message's lists;
+- links the instance onto the interpreter's node list at `0x83036F4C`.
+
+Opcode slot 4, `sub_82B1C150`, is the reverse: it unlinks an instance from both lists and frees it.
+
+**What this means for the Rust engine.** A player sound needs four pieces:
+- a bank installer;
+- the post, listener and instance allocator;
+- the interpreter `sub_82B1E290`;
+- the 40 opcodes.
+
+Only the opcodes are transcription (31 ported). The interpreter fails the port screen's gates 1
+and 2, and the installer and allocator run on the load and game threads, outside the 216. So those
+three are new work, checkable against traces rather than against a verified C++ body.
+
+**The project mismatch now has a mechanism.** The installer resolves a record's slot through
+`sub_828E3250` with the bank's own project id. A `GRINDS.abk` built against `0x63D9` therefore
+binds only if a `0x63D9` project is loaded, and no such `.csi` ships in `audiofiles.big`. The message
+probe's `listeners=` column shows whether `Class_grind` posts reach anyone.
 
 ## Also established, in passing
 
