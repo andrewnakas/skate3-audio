@@ -439,7 +439,8 @@ deferred with what is still open written down.
 > That op drives a device object through a vtable (`0x82FD35F8`) and `sub_82B1BE30`, which is where
 > a patch meets the mixer. The device is read: game init installs `0x8302F068`. Its open,
 > `sub_824A3140`, receives a pointer to the bank sample's EA Audio Core stream plus the playback
-> descriptor, and builds a mixer graph for the voice. A Rust player sound therefore needs its own
+> descriptor, and builds a mixer graph for the voice. Instance teardown (slot 4) is written as well,
+> so slot 27 is the only unported op between a post and a finished grind program. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
