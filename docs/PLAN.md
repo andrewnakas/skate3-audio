@@ -461,12 +461,13 @@ deferred with what is still open written down.
 > map onto it: 0 is the resample rate, 7 and 6 the high- and low-pass cutoffs, 8 and 5 the gains
 > under master gain 2, and 3 the pan angle.
 >
-> The ported kernels that plausibly implement those stages are `pitch.rs` (`sub_82B2DBA8`,
-> resampling), the Iir2 stages in `filters.rs`, `gains.rs` and `spatial.rs`. The link from each
-> class to its process function (the class's `f0`/`f1` pointers and the vtable they install) is
-> **not established**, and `SndPlayer1` is absent from the plug-in metadata table
-> (`docs/rw-audio-core.md`). The graph probe settles the order; tracing each class's `f1`
-> constructor gives its process function. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> **The class-to-kernel link is established.** Each class descriptor sits 12 bytes after its own
+> `{0, prepare, process}` table, and nine of the ten kernels those tables name are verified C++
+> with Rust translations (`gains.rs`, `filters.rs`, `leaves.rs`, `mix.rs`, `pitch.rs`; table in
+> `docs/audio-banks.md`). The one gap is `SndPlayer1`'s process, `sub_82B34278`, which renders a
+> block of the stream and fails gate 1. So the device is: that source, the ported chain, and the
+> glue: instantiate the modules, stamp parameters through the verified `0x82B463A8`, and chain the
+> blocks. The graph probe still has to confirm the order. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message

@@ -751,6 +751,24 @@ Against the property table above, that makes:
 The graph probe (`skate3-audio-graph`) logs each module class the game passes to `sub_82B48C48`,
 which will confirm or correct the order.
 
+**Each class names its own kernels (DEMONSTRATED from the image).** Every descriptor is preceded, 12
+bytes earlier, by a function table `{0, prepare, process}`. The constructors do not do this job: all
+but `SndPlayer1` install the same base vtable `0x8231B924`. The tables name functions this repo
+already has:
+
+| class | prepare | process | C++ | Rust |
+|---|---|---|---|---|
+| `Gain` | — | `sub_82B23B50`, per-channel gain ramp | verified | `gains.rs` |
+| `HighPassIir2` | — | `sub_82B26568`, high-pass stage | verified | `filters.rs` |
+| `LowPassIir2` | — | `sub_82B27E20`, low-pass stage | verified | `filters.rs` |
+| `Pan2D1` | — | `sub_82B29BE0`, republish a spatial mix | verified | `gains.rs` |
+| `Rechannel` | `sub_82B2C8E8` | `sub_82B2C8F0`, re-fold the rows | verified | `leaves.rs`, `mix.rs` |
+| `Resample` | `sub_82B2DAC8`, the pitch ratio | `sub_82B2DBA8`, resample a block | verified | `pitch.rs` |
+| `SndPlayer1` | `sub_82B34268` | **`sub_82B34278`**, render a block | prepare verified; process **gate 1** | prepare in `leaves.rs`; process **none** |
+
+**So a voice's whole graph is ported except its source.** Nine of the ten kernels have verified C++
+and a Rust translation; the stream player's process is the one that does not.
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;
