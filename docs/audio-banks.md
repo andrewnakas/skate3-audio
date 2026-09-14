@@ -289,6 +289,9 @@ and they appear in three places at once.
    for the name, `sprintf`s it through a bare `"%s"` at `0x8224A0D4`, and hands the result to
    `sub_828DC158`. **A `name_id` is resolved to a string and used as a file name.**
 
+**Answered for the player's objects on 2026-09-14:** see "How the game addresses a player sound
+object" below. What follows is the state before that.
+
 **What is not demonstrated, and is the next piece of work.** The step from "the game decides
 the board landed" to "the bank's `_msg` port fires" is **not pinned to a call site**. Two
 clean negative results bound it:
@@ -390,6 +393,91 @@ grains by speed.
 
 **Still open, and the harder half:** which game event fires which of these banks' ports. See the
 next section's negative results; nothing here changes them.
+
+## How the game addresses a player sound object, 2026-09-14
+
+This answers "which game event fires which bank" for the player's objects, up to the bank's own
+patch program. Read from the decrypted image (`probe/harness/out/image/`) and the lifted corpus.
+
+**The object table.** At `0x8302D4A4` the image holds 72 entries of 8 bytes,
+`{char *name; u16 project_id; u16 name_id}`. The names are the string pool at `0x8224D700` this
+document already pointed at, and no `lis`/`addi` pair reaches that pool because code addresses the
+*table*, not the strings.
+- **DEMONSTRATED on all 72:** each `(project_id, name_id)` resolves, through the crate's
+  `banks::Csi` parser (`examples/csi_dump.rs`), to the identical string.
+- 55 of the entries are `.csi` group 1, 16 are group 2 and 1 is group 0.
+- The player's objects are in `SK8_AEMS_skateboard.csi` (`0x64BD`): `Class_grind`,
+  `Class_wheels_skid`, `Class_Flips`, `c_board_slide`, …. `c_body_slide` and
+  `playercharacter_footstep` are in `SK8_AEMS_Foley.csi` (`0x5C48`), and `Class_rolling` is in
+  `SK8_AEMS_rolling.csi` (`0x4EA6`).
+
+This is why the earlier search found no `(project_id << 16 | name_id)` constant in code: the pairs
+are data.
+
+**A handle slot per entry.** Entry *i*'s handle lives at `0x8302EE28 + 8*i`, as
+`{symbol record *; u32 id}`. `Class_grind` is entry 3 at `0x8302EE40`, and `Class_rolling` is
+entry 42 at `0x8302EF78`. Checked on all 16 constructors below: each loads its own slot and its
+own entry.
+
+**The functions:**
+
+| function | role |
+|---|---|
+| `sub_828E3250` | resolve a group-1 symbol into a slot: walk the loaded projects (list head at `0x830BBE50`), match the project id, then scan the 12-byte records for the name id **and** a string compare of the name; store the record pointer and its `+8` word |
+| `sub_828E3358` | the same over the 16-byte group-2 records (17 callers) |
+| `sub_828E2B48` | post a message to a slot. It checks the slot's id against the record's, allocates a 16-byte node through an allocator vtable, and calls every listener on the record's two lists as `fn(node, payload, ctx)`. Returns -6 or -3 on an empty or stale slot |
+| `sub_828E2AF0` | `sub_828E2B48` under the critical section at `0x830784F0` |
+| `sub_828E2730` | allocate a message (45 callers) |
+
+**One message constructor per object.** Each fills a message, clamps its arguments to authored
+ranges, posts it, and on a stale slot resolves the entry and posts again:
+
+| object | constructor |
+|---|---|
+| `Class_foot_drag` | `sub_824AF498` |
+| `Class_wheels_skid` | `sub_824AF678` |
+| `Class_grind` | `sub_824AF8C8` |
+| `Class_Flips` | `sub_824AFAD8` |
+| `Class_Seams` | `sub_824AFDD0` |
+| `Class_Squeaks` | `sub_824AFF48` |
+| `Class_Treatment` | `sub_824B0080` |
+| `Rolling_Rattle_Class` | `sub_824B0248` |
+| `SenseOfSpeed_wind` | `sub_824B0388` |
+| `SenseOfSpeed_rattle` | `sub_824B0520` |
+| `c_board_slide` | `sub_824B0670` |
+| `c_body_slide` | `sub_824B7070` |
+| `cloth_trick` | `sub_824B71C0` |
+| `c_cloth_falls` | `sub_824B72D8` |
+| `playercharacter_footstep` | `sub_824B73E0` |
+| `Class_rolling` | `sub_824C4C18` |
+
+`Class_grind`'s, read by hand from `sub_824AF8C8`: the message is 72 bytes, `+0` receives the
+posted node, and the payload handed to listeners starts at `+4`.
+
+```text
++04 0      +08 32767   +0C..+14 0   +18 25000   +1C 0          fixed
++20 clamp(arg1, 0, 10000)           +24 1024 (fixed)
++28 clamp(arg2, 0, 14)              +2C clamp(arg3, 0, 3)
++30 clamp(arg4, 0, 32767)
++34 +38 +3C clamp(arg5..arg7, 0, 1)
++40 +44 clamp(stack args 8 and 9, 0, 32767)
+```
+
+The fixed `25000` equals group-2 symbol `send_low_pass`'s second word in the same project, and
+`32767` is the common second word. So that word reads as a variable's default, but that is **not
+established**. What each argument means is not read yet; the sender is.
+
+**The senders are virtual.** `sub_824C28B0` and `sub_824C39E0` allocate a 72-byte message and call
+`sub_824AF8C8`. Neither has a direct caller: both sit in a vtable at `0x822FC740`, next to
+`sub_824C27D0`.
+
+**A trap, recorded so nobody repeats it.** The image also holds `{function, 0x4000xxxx}` pairs at
+`0x82338100…` that name these constructors in order. That is `.pdata`, the function-extent table,
+not a dispatch table.
+
+**Still open:** what the listener on a symbol does with the payload, i.e. the `.abk` patch program
+that turns `Class_grind`'s arguments into a sample, a pitch and a gain. The listeners attach at bank
+load, since an `.abk` export cites the same `(project_id, name_id)` pair.
 
 ## Also established, in passing
 
