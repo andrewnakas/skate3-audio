@@ -265,6 +265,7 @@ bool Windows(PPCContext& ctx, uint8_t* base, skate3::audio::PortSpec& spec) {
 
   const uint32_t owner = REX_LOAD_U32(object + kModeOwner);
   if (owner == 0) return false;  // lbz 72(r11) through null
+  spec.read(object + kModeOwner, 4);  // lwz r11,12(r31), for replay
   spec.read(owner + kModeByte, 1);
 
   // Which bus blocks the mixers touch is a routing-table walk, and the table is rodata: readable
