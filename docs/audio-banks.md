@@ -656,6 +656,18 @@ boot-time value: the same game init stores 30.0 there (from `0x820D4924`) and ze
 cache. So in play an evaluator period is 1/30 s. With 256-sample frames at 48 kHz, that is 6
 frames.
 
+**A grind program, run (2026-09-14).** With the whole chain in Rust (`patch.rs`, `voice.rs`,
+`eval/`), one `Class_grind` post with speed 5000, surface class 3, variant 0 and level 20000 makes
+the real `GRINDS.abk` program:
+- open **two looping voices**, bank samples **41** and **40** (48 kHz mono, 65,718 and 70,161
+  samples), each with descriptor byte 80;
+- push the same 11 parameter records to each: `0 = 0, 2 = 0, 3 = 0, 5 = 0, 6 = 25000, 7 = 0,
+  8 = 32767, 9 = 4096, 10..12 = 0`.
+
+Read at face value, 6 matches `send_low_pass`'s 25000 default, 8 a full volume and 9 a unit pitch in
+12-bit fixed point. **None of that is established**; the run is against a logging device, not the
+game.
+
 **What this means for the Rust engine.** A player sound needs four pieces:
 - a bank installer;
 - the post, listener and instance allocator;

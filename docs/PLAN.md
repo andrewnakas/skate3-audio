@@ -440,7 +440,19 @@ deferred with what is still open written down.
 > a patch meets the mixer. The device is read: game init installs `0x8302F068`. Its open,
 > `sub_824A3140`, receives a pointer to the bank sample's EA Audio Core stream plus the playback
 > descriptor, and builds a mixer graph for the voice. Instance teardown (slot 4) is written as well,
-> so slot 27 is the only unported op between a post and a finished grind program. A Rust player sound therefore needs its own
+> so slot 27 is the only unported op between a post and a finished grind program.
+>
+> **Slot 27 is written too (`voice.rs`), against a `VoiceDevice` trait, and a real grind program now
+> runs end to end in Rust.** `examples/grind_instance.rs` posts one `Class_grind` message (speed
+> 5000, surface class 3, variant 0, level 20000) with a device that only logs.
+> - `GRINDS.abk`'s program opens two looping voices, samples 41 and 40 of the bank (48 kHz mono,
+>   1.37 s and 1.46 s), with descriptor byte 80.
+> - It pushes 11 parameters to each: 6 = 25000, 8 = 32767, 9 = 4096, the rest 0.
+> - It runs 375 frames, 7,192 ops, without an error.
+>
+> None of it is verified: the `msgs1` session's open probe will show what the game opens for real
+> posts. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
