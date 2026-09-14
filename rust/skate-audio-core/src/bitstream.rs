@@ -1162,7 +1162,7 @@ mod seek_tests {
     impl Bits {
         fn push(&mut self, value: u64, width: u32) {
             for i in (0..width).rev() {
-                if self.1 % 8 == 0 {
+                if self.1.is_multiple_of(8) {
                     self.0.push(0);
                 }
                 let bit = ((value >> i) & 1) as u8;
@@ -1347,7 +1347,7 @@ mod seek_tests {
         let mut g = packet_guest(5 * 512, 0);
         g.set_u32(DESC + PACKET_DESC_TABLE, TABLE).unwrap();
         g.set_u32(TABLE + 4, 0x40).unwrap();
-        fill(&mut g, TABLE + 0x40, &vec![2, 3, 4]);
+        fill(&mut g, TABLE + 0x40, &[2, 3, 4]);
         g.set_u32(CHUNK + 4 + 4096, 0x0000_5000).unwrap(); // the third packet's header: position 10
         seek_packet(&mut g, CURSOR, 1, DESC, u64::from(CHUNK), SP).unwrap();
         assert_eq!(g.u32(CURSOR + PACKET_CURSOR_PACKET).unwrap(), CHUNK + 4 + 4096);
