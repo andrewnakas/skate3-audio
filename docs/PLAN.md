@@ -532,6 +532,9 @@ deferred with what is still open written down.
 >   release through the instance vtable. Then entry `+0` = the class's function table.
 > - **Last.** Enqueue `{0x82B49210, player}` on the system command ring.
 >
+> The process-address table is written: `kernels.rs`, a `GraphHost` that routes the ten class
+> addresses to their Rust ports, with the routing unverified.
+>
 > Still to transcribe: the six voice classes' `f1` constructors (about 450 lifted instructions) and
 > the device open `sub_824A3140` (693). Both are held until the `msgs1` graph and open probes
 > confirm the module order and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
