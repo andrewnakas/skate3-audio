@@ -517,6 +517,20 @@ So those names live in game data, not in the executable.
 `0x82338100…` that name these constructors in order. That is `.pdata`, the function-extent table,
 not a dispatch table.
 
+**The banks cite the same name ids, but not always the same project.** Measured over every `.abk`
+export of the 17 player objects the game table names (`examples/export_projects.rs`):
+- 22 exports, and the `name_id` agrees with the game's table on **all 22**.
+- The project id agrees on 15: `Class_rolling` ×6, `playercharacter_footstep`, `Class_foot_drag`,
+  `Class_wheels_skid`, and others.
+- It differs on 7. `Class_grind`, `Class_Flips`, `Class_Squeaks`, `c_board_slide` and both
+  `SenseOfSpeed_*` cite `0x63D9` where the game uses `0x64BD`, and `c_body_slide` cites `0x4228`
+  where the game uses `0x5C48`.
+- Neither `0x63D9` nor `0x4228` ships a `.csi`.
+
+`sub_828E3250` compares the project id as well, so those banks cannot bind through the lookup as
+read. Either a listener attaches some other way, or those objects have no listener. The message
+probe's `listeners=` column records that directly.
+
 **Still open:** what the listener on a symbol does with the payload, i.e. the `.abk` patch program
 that turns `Class_grind`'s arguments into a sample, a pitch and a gain. The listeners attach at bank
 load, since an `.abk` export cites the same `(project_id, name_id)` pair.
