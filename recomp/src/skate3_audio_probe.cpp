@@ -29,7 +29,9 @@
  * "which game event reaches which bank, with what arguments" into a trace
  * (docs/audio-banks.md, "How the game addresses a player sound object").
  *
- * Under the same cvar, two more hooks record where a patch meets the mixer: the voice
+ * Under the same cvar, `sub_828E2D18` logs re-deliveries: the game rewrites a held message's payload
+ * every frame (a grind's volume, cutoffs and speed) and re-delivers it to the instance's payload
+ * copies, which the post hook alone never sees. Two more hooks record where a patch meets the mixer: the voice
  * device's open (`sub_824A3140`, reached through the device vtable from the voice op) with
  * the sample pointer, descriptor and parameter records it is handed, and the graph builder
  * `sub_82B48C48` with each module descriptor and the class it names.
@@ -269,4 +271,42 @@ extern "C" REX_FUNC(sub_82B48C48) {
   __imp__sub_82B48C48(ctx, base);
   REXLOG_INFO("skate3-audio-graph: {} r4={:08X} count={} modules=[{}] -> player={:08X}", n, r4,
               count, modules, ctx.r3.u32);
+}
+
+namespace {
+
+std::atomic<uint64_t> g_updates{0};
+constexpr uint64_t kUpdateCap = 6000;
+
+}  // namespace
+
+// sub_828E2D18(node, payload) -- re-deliver a held message: call each payload callback on the post
+// node's +8 list with (payload, ctx). The node's +0 is the object's symbol record, whose +4 is its name.
+extern "C" REX_FUNC(sub_828E2D18) {
+  static const bool enabled = REXCVAR_GET(skate3_audio_probe_messages);
+  if (!enabled) {
+    __imp__sub_828E2D18(ctx, base);
+    return;
+  }
+  const uint64_t n = g_updates.fetch_add(1, std::memory_order_relaxed);
+  if (n < kUpdateCap || n % 20000 == 0) {
+    const uint32_t node = ctx.r3.u32, payload = ctx.r4.u32;
+    const char* name = "(unknown)";
+    if (node >= 0x40000000 && node < 0xF0000000) {
+      const uint32_t record = REX_LOAD_U32(node);
+      if (record >= 0x40000000 && record < 0xF0000000) {
+        const uint32_t text = REX_LOAD_U32(record + 4);
+        if (text >= 0x40000000 && text < 0xF0000000) name = reinterpret_cast<const char*>(base + text);
+      }
+    }
+    char words[17 * 9 + 1] = {0};
+    if (payload >= 0x40000000 && payload < 0xF0000000) {
+      for (uint32_t i = 0; i < 17; ++i) {
+        std::snprintf(words + i * 9, 10, "%08X ", REX_LOAD_U32(payload + 4 * i));
+      }
+    }
+    REXLOG_INFO("skate3-audio-update: {} {} node={:08X} payload={:08X} [{}]", n, name, node, payload,
+                words);
+  }
+  __imp__sub_828E2D18(ctx, base);
 }
