@@ -545,8 +545,10 @@ deferred with what is still open written down.
 > The process-address table is written: `kernels.rs`, a `GraphHost` that routes the ten class
 > addresses to their Rust ports, with the routing unverified.
 >
-> Still to transcribe: the six voice classes' `f1` constructors (about 450 lifted instructions) and
-> the device open `sub_824A3140` (693). They were held for the `msgs1` probes, which have
+> The constructors and the builder are written: `modules.rs` has the builder, its install
+> command (the system's player list, sorted by the `+73` byte), all eight classes' size and
+> constructor functions, `Pan2D1`'s speaker tables and `SndPlayer1`'s node pool. It is unverified
+> and unit-tested. Still to transcribe: the device open `sub_824A3140` (1,511 lifted lines). They were held for the `msgs1` probes, which have
 > since confirmed the module order (a Send ends each chain) and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
