@@ -46,6 +46,8 @@ SETTLE_MS=${INPUT_SETTLE_MS:-3000}
 EXPECT=${EXPECT_T:-}
 DURATION=${DURATION:-0}
 STOP_ON=${STOP_ON:-}
+# EXTRA_ARGS: further game flags, split on whitespace, e.g. a probe cvar.
+EXTRA=${EXTRA_ARGS:-}
 
 if pgrep -x skate3 >/dev/null; then echo "skate3 is already running" >&2; exit 1; fi
 # Shared-game lock. Other sessions on this machine (skate3loader-based pipelines) launch the same
@@ -124,6 +126,8 @@ if [ -n "$SCRIPT" ]; then
   args+=( "--skate3_input_script=$SCRIPT" "--skate3_input_script_settle_ms=$SETTLE_MS" )
 fi
 [ -n "$MACRO" ] && args+=( "--skate3_demo_path_gameplay_inputs=$MACRO" )
+# shellcheck disable=SC2206
+[ -n "$EXTRA" ] && args+=( $EXTRA )
 # GDB_SCRIPT runs the session under gdb, output to $OUT/LABEL.gdb.txt (see crash.gdb).
 if [ -n "${GDB_SCRIPT:-}" ]; then
   exec gdb -q -batch -x "$GDB_SCRIPT" --args "$BIN" "${args[@]}" > "$OUT/$LABEL.gdb.txt" 2>&1
