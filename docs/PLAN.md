@@ -352,6 +352,12 @@ replay found **no failures in any function**. Eight functions did not replay bec
 builders left out memory the call reads. Those reads are now declared, and they wait for a second,
 played session, together with the four functions a boot session never reaches.
 
+**Replayed, 2026-09-14 (backlog2).** The played session for those: 15 functions verified under the
+shadow harness, 3 were never called, and the Rust replay of its **3,907 vectors had no failures**.
+Three `sub_82B238A8` vectors do not replay, because the ramp tables it reads from rodata (e.g.
+`0x8231BA90`) are outside its declared windows by design. Declaring them is a `Windows()` change,
+and it needs a rebuild at a moment no `skate3` is running.
+
 **Caveat, measured in Phase 1:** two recomp sessions booted identically do not produce the
 same capture. "Matches bit-for-bit" needs a reproducible scene, or a comparison inside one
 process, before it can be tested. Open — risk 7.
@@ -540,14 +546,21 @@ deferred with what is still open written down.
 > addresses to their Rust ports, with the routing unverified.
 >
 > Still to transcribe: the six voice classes' `f1` constructors (about 450 lifted instructions) and
-> the device open `sub_824A3140` (693). Both are held until the `msgs1` graph and open probes
-> confirm the module order and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> the device open `sub_824A3140` (693). They were held for the `msgs1` probes, which have
+> since confirmed the module order (a Send ends each chain) and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
 > probe (`skate3_audio_probe_messages`) will record real posts and the listener functions they reach.
 > Seven player exports cite a project the game does not look up, but the lookups' second pass
 > matches by name alone, so they bind.
+>
+> **First comparison with the game, 2026-09-14.** The real footstep program is driven by the
+> `msgs1` trace's post and its 409 update payloads. It opens eight layers on the same update as the
+> game, from the same sample groups, and sets properties 3, 5, 6, 7, 8 and 9 to the game's values.
+> Variant, pitch and two start gains differ, as a different state of the random counter would make
+> them. Seeding that counter from a trace is what would turn this into an exact check.
+> Details are in `docs/audio-banks.md`.
 
 Wire into `skate-3-rust-engine` as `crates/skate-data/src/audio/`, add host primitives,
 drive playback from Bevy.

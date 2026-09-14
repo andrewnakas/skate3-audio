@@ -811,6 +811,58 @@ three are new work, checkable against traces rather than against a verified C++ 
 binds by name to the `0x64BD` symbol the game posts to. The message probe's `listeners=` column will
 confirm it at run time.
 
+## The footstep program against the game, 2026-09-14
+
+This is the first comparison of the Rust patch runtime with the running game on a player sound.
+
+**Setup.**
+- `rust/skate-audio-core/examples/grind_instance.rs` installs `fstep_skateshoe1_sm.abk` and resolves
+  `playercharacter_footstep` (`0x5C48:0x4D2E`). It posts the payload of the `msgs1` trace's post 11
+  (`40C936A4`).
+- It then re-delivers the 409 update payloads the trace holds for that message's node `40C02FD0`,
+  one every 6 audio frames (`UPDATE_FILE`, `UPDATE_EVERY=6`). The game re-delivers from its main
+  thread about every 25 ms.
+- Game opens are attributed to banks with `rust/skate-audio-formats/examples/find_samples.rs`. The
+  open probe logs the descriptor's slot index (its byte minus one) and the EAAC header's second
+  word, and that pair picks out one bank.
+  - The trace opened 131 distinct samples.
+  - 36 of them are `fstep_skateshoe1_sm`'s, over 42 opens.
+
+**Correction.** An earlier note paired the trace's opens 6-13 with the footstep, because they
+followed its posts. Those opens used samples of 1,614 and 3,010 frames. They are `Seams_Bank.abk`
+samples: Class_Seams, whose four instances explain the four pitches. The first footstep opens are
+24-31.
+
+**Result.**
+
+| | game (`msgs1`) | Rust |
+|---|---|---|
+| trigger | 1 ms after the 10th update, the one that sets word 8 to 1 | 4 audio frames after the 10th update |
+| first batch | 6 voices: slots 0x1F, 0x06, 0x79, 0xA8, 0x31, 0xA0 | 7 voices: 0x20, 0x08, 0x77, 0xA8, 0x30, 0x90, 0xA2 |
+| second batch | 41 ms later: 0x9C, 0x91 | 6 frames later: 0x9D |
+| properties 5, 6, 7, 8, 9 | 1789, 24971, 77, 9202, 12 | identical |
+| property 3 | 1214, update word 1 | 1214; 1244 on the late voice, opened after update 11 |
+| slot 0xA8 | no property 3 | no property 3 |
+| property 0 | 4297 | 3897 (3895 late) |
+| property 2 | 0, except 3227 (0x79) and 4314 (0xA0) | 0 on all |
+
+**What agrees, and what differs.**
+- **Agrees:** the trigger, the layer count (eight), each layer's sample group, and the controls taken
+  from the update payload.
+- **Differs** only where a random draw would:
+  - which variant each layer picks — always a neighbouring slot (0x1F/0x20, 0x31/0x30, 0x9C/0x9D);
+  - the pitch, 4096 ± about 200;
+  - whether the 0x90/0x91 layer opens in the first batch or the second;
+  - a start gain on two layers.
+
+The evaluator's only source of variation is the counter at `0x830775F0` (`counter.rs`, verified).
+The Rust run starts it from the boot image, not from the game's state at the post. So the
+differences are consistent with randomness. **That is not yet proved:** it needs the counter's six
+words logged at the post and seeded into the run.
+
+**The program also depends on elapsed time.** With one update per audio frame, update 10 arrives
+53 ms into the run, and 375 frames open nothing. Which op gates on time is not read yet.
+
 ## Also established, in passing
 
 **The `.grain` prediction in `docs/grain-banks.md` is not supported in its strict form.**
