@@ -28,6 +28,11 @@
  * whose handle slots start at 0x8302EE28) and the payload words. That turns
  * "which game event reaches which bank, with what arguments" into a trace
  * (docs/audio-banks.md, "How the game addresses a player sound object").
+ *
+ * Under the same cvar, two more hooks record where a patch meets the mixer: the voice
+ * device's open (`sub_824A3140`, reached through the device vtable from the voice op) with
+ * the sample pointer, descriptor and parameter records it is handed, and the graph builder
+ * `sub_82B48C48` with each module descriptor and the class it names.
  */
 
 #include <array>
@@ -192,4 +197,76 @@ extern "C" REX_FUNC(sub_828E2B48) {
     }
     REXLOG_INFO("skate3-audio-msg: totals after {}: {}", n, totals);
   }
+}
+
+namespace {
+
+std::atomic<uint64_t> g_opens{0};
+std::atomic<uint64_t> g_graphs{0};
+constexpr uint64_t kSeamCap = 400;
+
+}  // namespace
+
+// sub_824A3140(device, sample, byte, descriptor[6], word, word, {count, records}) -- the voice
+// device's open. r4 = the bank sample's EAAC stream, r5 = a descriptor byte, r6 = six shifted
+// descriptor words, r7/r8 = two bank words, r9 = {u32 count, u32 records*} of 12-byte records.
+extern "C" REX_FUNC(sub_824A3140) {
+  static const bool enabled = REXCVAR_GET(skate3_audio_probe_messages);
+  if (!enabled || g_opens.load(std::memory_order_relaxed) >= kSeamCap) {
+    __imp__sub_824A3140(ctx, base);
+    return;
+  }
+  const uint64_t n = g_opens.fetch_add(1, std::memory_order_relaxed);
+  const uint32_t sample = ctx.r4.u32, byte5 = ctx.r5.u32, desc = ctx.r6.u32, w7 = ctx.r7.u32,
+                 w8 = ctx.r8.u32, block = ctx.r9.u32;
+  char descriptor[6 * 9 + 1] = {0};
+  if (desc >= 0x40000000 && desc < 0xF0000000) {
+    for (uint32_t i = 0; i < 6; ++i) {
+      std::snprintf(descriptor + i * 9, 10, "%08X ", REX_LOAD_U32(desc + 4 * i));
+    }
+  }
+  const uint32_t header0 = sample ? REX_LOAD_U32(sample) : 0;
+  const uint32_t header1 = sample ? REX_LOAD_U32(sample + 4) : 0;
+  std::string records;
+  if (block >= 0x40000000 && block < 0xF0000000) {
+    const uint32_t count = REX_LOAD_U32(block);
+    const uint32_t array = REX_LOAD_U32(block + 4);
+    for (uint32_t i = 0; i < count && i < 24 && array >= 0x40000000 && array < 0xF0000000; ++i) {
+      char one[40];
+      std::snprintf(one, sizeof one, "%u:%d/%d ", REX_LOAD_U8(array + 12 * i),
+                    static_cast<int32_t>(REX_LOAD_U32(array + 12 * i + 4)),
+                    static_cast<int32_t>(REX_LOAD_U32(array + 12 * i + 8)));
+      records += one;
+    }
+  }
+  __imp__sub_824A3140(ctx, base);
+  REXLOG_INFO(
+      "skate3-audio-open: {} sample={:08X} eaac=[{:08X} {:08X}] byte={} desc=[{}] w7={:08X} "
+      "w8={:08X} records=[{}] -> voice={:08X}",
+      n, sample, header0, header1, byte5, descriptor, w7, w8, records, ctx.r3.u32);
+}
+
+// sub_82B48C48(system, r4, count, descriptors) -- build a player graph from `count` 12-byte module
+// descriptors; each names a module class at +4 whose vtable +4 sizes the instance. Returns the player.
+extern "C" REX_FUNC(sub_82B48C48) {
+  static const bool enabled = REXCVAR_GET(skate3_audio_probe_messages);
+  if (!enabled || g_graphs.load(std::memory_order_relaxed) >= kSeamCap) {
+    __imp__sub_82B48C48(ctx, base);
+    return;
+  }
+  const uint64_t n = g_graphs.fetch_add(1, std::memory_order_relaxed);
+  const uint32_t r4 = ctx.r4.u32, count = ctx.r5.u32, desc = ctx.r6.u32;
+  std::string modules;
+  for (uint32_t i = 0; i < count && i < 16 && desc >= 0x40000000 && desc < 0xF0000000; ++i) {
+    const uint32_t at = desc + 12 * i;
+    const uint32_t w0 = REX_LOAD_U32(at), cls = REX_LOAD_U32(at + 4), w2 = REX_LOAD_U32(at + 8);
+    const uint32_t vtbl = (cls >= 0x40000000 && cls < 0xF0000000) ? REX_LOAD_U32(cls) : 0;
+    char one[96];
+    std::snprintf(one, sizeof one, "{%08X cls=%08X vt=%08X size=%08X %08X} ", w0, cls, vtbl,
+                  (cls >= 0x40000000 && cls < 0xF0000000) ? REX_LOAD_U32(cls + 4) : 0, w2);
+    modules += one;
+  }
+  __imp__sub_82B48C48(ctx, base);
+  REXLOG_INFO("skate3-audio-graph: {} r4={:08X} count={} modules=[{}] -> player={:08X}", n, r4,
+              count, modules, ctx.r3.u32);
 }
