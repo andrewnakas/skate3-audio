@@ -355,21 +355,22 @@ car banks, `c_dynamic_*` and `c_moveable_*` world objects, and two `c_emitter` a
 Two more archives are the skater's. `wheels.big` holds two wheel-spin loops, `Whls_spins_Jump_1`
 and `Whls_spins_Man_1` (XMA mono 48 kHz, 14.81 s each, with `.sek` companions of about 90 bytes).
 `grains.big` holds fourteen `.grain` files, one per surface and hardness (`asphalt_smooth_hard`,
-`wood_ramp_soft`, `x_jet_rolling`, …), in a format **not yet decoded**. Their headers, compared
-across all fourteen:
+`wood_ramp_soft`, `x_jet_rolling`, …). **DEMONSTRATED on all 14** (`examples/grain_probe.rs`): a
+grain is a small table in front of an ordinary EA Audio Core stream.
 
 ```text
-+0x00  u32  0x70, 0x90, 0xA0 or 0xB0   varies by file; smaller in smaller files
-+0x04  f32  12.15 .. 21.97             x_jet 12.15, wood_ramp_soft 17.62, asphalt_smooth_hard 21.97;
-                                       roughly member length / 12,000, so plausibly seconds
++0x00  u32  offset of the embedded EAAC header: 0x70, 0x90, 0xA0 or 0xB0
++0x04  f32  that stream's duration in seconds, equal to the header's own to 0.01 s (12.15 .. 21.97)
 +0x08  u32  0x00100180                 identical on all 14
 +0x0C  u32  0x18                       identical on all 14
-+0x10  ...  a run of small words, then from +0x24 a long run of slowly varying bytes (0x0e..0x11)
++0x10  ...  a variable-length run up to the stream (x_jet_rolling's is shifted a byte), mostly
+            slowly varying bytes 0x0c..0x11 -- per-grain values, not yet interpreted
++head       EAAC: XMA, mono, 44.1 kHz on nine files and 48 kHz on five
 ```
 
-The run at `+0x10` is not byte-aligned the same way in every file (`x_jet_rolling` is shifted by
-one byte), so it is a variable-length encoding, not fixed fields. **Not established:** what the
-slowly varying bytes are, where the audio starts, or what codec it uses.
+So the rolling sound's raw material decodes with the same path as every bank sample. **Not
+established:** what the table's per-grain values mean, and how the game slices the stream into
+grains by speed.
 
 **Still open, and the harder half:** which game event fires which of these banks' ports. See the
 next section's negative results; nothing here changes them.
