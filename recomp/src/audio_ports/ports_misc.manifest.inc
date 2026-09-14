@@ -10,4 +10,5 @@
 #include "audio_ports/sub_82F4DED0.inc"
 #include "audio_ports/sub_82F4DFB0.inc"
 #include "audio_ports/sub_82F52318.inc"
+#include "audio_ports/sub_82F52FB8.inc"
 #include "audio_ports/sub_82F55068.inc"
