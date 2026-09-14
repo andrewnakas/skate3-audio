@@ -467,9 +467,49 @@ The fixed `25000` equals group-2 symbol `send_low_pass`'s second word in the sam
 `32767` is the common second word. So that word reads as a variable's default, but that is **not
 established**. What each argument means is not read yet; the sender is.
 
+`playercharacter_footstep`'s, read by hand from `sub_824B73E0`, is 104 bytes. It has no fixed
+header: the payload's first word is the first argument.
+
+```text
++04 clamp(0, 32767)   +08 clamp(0, 65535)   +0C clamp(0, 8192)    +10 clamp(0, 1000)
++14 clamp(0, 25001)   +18 clamp(0, 25001)   +1C clamp(0, 32767)   +20 clamp(0, 32767)
++24 clamp(0, 1)       +28 clamp(0, 1000)    +2C clamp(0, 1000)    +30 clamp(0, 1)
++34 clamp(1, 4)       +38 1 (fixed)         +3C clamp(0, 1000)    +40 clamp(0, 5)
++44 clamp(1, 7)       +48 clamp(1, 5)       +4C..+64 seven fields clamp(0, 32767)
+```
+
 **The senders are virtual.** `sub_824C28B0` and `sub_824C39E0` allocate a 72-byte message and call
 `sub_824AF8C8`. Neither has a direct caller: both sit in a vtable at `0x822FC740`, next to
 `sub_824C27D0`.
+
+**A message is a held instance, not a one-shot event.** In `sub_824C28B0` (`this` is the grind
+sound component, `obj = *(this+32)`):
+- The message is built only while `this+36` holds no handle and `obj+341` is set. The handle is kept
+  at `this+36`, and a second one at `this+40`.
+- When `obj+341` clears, both are released through `sub_828E2C78` and freed through `sub_828E27B0`.
+- So `obj+341` reads as "grinding", and the message lives for the grind.
+
+Where `Class_grind`'s arguments come from:
+
+| arg | source |
+|---|---|
+| 1 | `min(9000, int(clamp((obj+208 - 0.5) / D * 3.6, 0, 1) * 10000))`. `obj+208` is a speed and `3.6` converts m/s to km/h. `D` is a tuning float looked up by id `0x4890392C91829954` |
+| 2 | a surface class: `sub_82494E18(obj+692)` reads `+16` of material *n*'s entry (94 materials), or 4 when the material is 143. A class of 14 means no grind sound at all |
+| 3 | a grind variant from `obj+192`: 1, 2 or 4 give 0; 5 gives 3; anything else gives 2 |
+| 4 | `sub_824C2E48(class, variant)`: `int(tuning float * 32767)`. The float is chosen by a per-class 64-bit id (a 15-entry table at `0x82249F90`) and one of four keys by variant, so it reads as a per-surface, per-variant level |
+| 5 | 1 when a check against id `0x11A631798B239355` passes |
+| 6, 7 | flags from `*(this+16)`: `+72` set (7), and also `+64` zero (6) |
+| 8 | when 7 is set, the component's virtual call at vtable `+60` with argument 6 |
+| 9 | the word returned by `sub_824B7A40` |
+
+When `obj+192` is 0, a second `Class_grind` message is sent with variant 1 and its own level.
+
+**The tuning ids are not image strings.** `examples/resolve_ids.rs` hashes every printable run in
+the dumped image with `name_id`:
+- none of the 23 ids above resolves;
+- its positive controls do: `StateGraph`, `challenges` and `default`.
+
+So those names live in game data, not in the executable.
 
 **A trap, recorded so nobody repeats it.** The image also holds `{function, 0x4000xxxx}` pairs at
 `0x82338100…` that name these constructors in order. That is `.pdata`, the function-extent table,
