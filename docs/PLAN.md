@@ -513,7 +513,28 @@ deferred with what is still open written down.
 > `GraphHost` trait for the class-table calls and the timebase), unverified and unit-tested. Left:
 > - the process-address table (a `GraphHost`);
 > - the builder and the device open;
-> - an end-to-end run of `grind_instance` through a real graph. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> - an end-to-end run of `grind_instance` through a real graph.
+>
+> **The builder, read (`sub_82B48C48`).** Its arguments: the system, a byte stored at `+73`, the
+> module count, and 12-byte module descriptors `{construct arg, class, channel byte}`.
+> - **Size.** A header of `align8(4*(n-1) + 91) + 8n`, plus each class's `f0` size aligned to 16.
+>   The sizes are constants for `Gain` (64), `HighPassIir2`/`LowPassIir2` (208), `Pan2D1` (760) and
+>   `Rechannel` (44). `Resample` is `24*channels + 88`, and `SndPlayer1` is computed.
+> - **Allocation.** Through the system allocator.
+> - **Player fields:**
+>   - `+12` = 0, `+16` = system, `+20` = `0x820ED910`;
+>   - `+24` = the entry table;
+>   - `+36` = 1.0, `+40..+48` = 0.0, `+0/+4/+8` = 800.0 (`0x8209966C`), `+56` = 100.0 (`0x820ED57C`);
+>   - `+52` = system `+256`, `+64` = the size, `+68` = n;
+>   - `+69` = 0, `+70` = 255 or the last class with `+40 <= 3`, `+72` = 2.
+> - **Per module.** Instance header `+8` = `[0x8307762C]`, `+12` = player, `+20` = class, and `+41`/`+42`
+>   = the previous and this entry's channel bytes; construct with `f1(instance, arg)`. On failure,
+>   release through the instance vtable. Then entry `+0` = the class's function table.
+> - **Last.** Enqueue `{0x82B49210, player}` on the system command ring.
+>
+> Still to transcribe: the six voice classes' `f1` constructors (about 450 lifted instructions) and
+> the device open `sub_824A3140` (693). Both are held until the `msgs1` graph and open probes
+> confirm the module order and the open arguments. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
