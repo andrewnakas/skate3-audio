@@ -486,7 +486,28 @@ deferred with what is still open written down.
 > - build the module instances in graph order;
 > - route property ids to their parameter slots;
 > - chain each module's block into the next;
-> - supply decoded PCM as the fill. What remains for Phase 6 is a device that plays those samples through the ported graph, and
+> - supply decoded PCM as the fill.
+>
+> **How the graph runs, read 2026-09-14.** The audio thread's graph pass is `sub_82B44858` (gate 1,
+> plus gate 3 for its `mftb` profiling).
+> - It publishes three 276-byte descriptor records at `0x83077650`.
+> - For each node in its params array, it calls the node's mixer fill `sub_82B444C0`, then each child
+>   module's process function as `(child, pass, flag)`, where the flag is "past the last pass's
+>   progress".
+> - It reaches that function through the class table the builder stored at `node+0x18` (`[entry] + 8`).
+> - A child that declines falls back to `sub_82B443F8`, which is verified and ported as
+>   `mix::advance_and_clear`.
+>
+> The mixer fill `sub_82B444C0` (gate 1) negotiates a length with every source, descending through
+> the source's `+4` entry. It renders ascending through `+8`, with the same fallback, and assembles
+> 256 frames into the pair.
+>
+> The ported process functions already take the pointers it passes: `filters::lowpass_stage` and
+> `highpass_stage(g, trig, object, pass)`, `gains::republish_mix`, `mix::refold_rows`,
+> `pitch::resample_block`, and `sndplayer::render_block`. So a Rust graph pass is:
+> - those two functions transcribed, with profiling stores written as zero;
+> - a table from each class's process address to its Rust function;
+> - the builder `sub_82B48C48` and the device open `sub_824A3140`, to lay out a voice's nodes. What remains for Phase 6 is a device that plays those samples through the ported graph, and
 > the meaning of the property ids. A Rust player sound therefore needs its own
 > device: open a voice on the ported graph from that sample and descriptor, and route
 > `sub_82B1BE30`'s property ids to it. Two things are pending. A played session with the message
