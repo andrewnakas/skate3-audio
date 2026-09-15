@@ -896,28 +896,29 @@ every bank.
 | `flips2` | `late_flip_v5.txt` | 22 s | 26 | 1 |
 | `ollies2` | `ollie_check_v4.txt` | 18 s | 26 | 1 |
 | `bails2` | `bail_attribution_v3.txt` | 50 s | 20 | 2 |
+| `play1` | **played by hand** (the user, aiming for board slides, manuals, powerslides, grabs, flips and bails) | 166 s | none | not logged |
 
-**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2`):
+**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2` / `play1`):
 
 | object | posts |
 |---|---|
-| `Class_Flips` | 4 / 3 / 3 / 3 |
-| `cloth_trick` | 4 / 3 / 3 / 1 |
-| `c_cloth_falls` | 1 / 0 / 0 / 0 |
-| `Class_Treatment` | 1 / 1 / 1 / 1 (held from session start) |
-| `Class_Squeaks` | 4 / 2 / 0 / 0 |
-| `Class_Seams` | 20 / 20 / 8 / 20 |
-| `Class_rolling` | 2 / 2 / 2 / 2 |
-| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 |
-| `Class_wheels_skid` | 32 / 43 / 10 / 49 |
-| `Class_grind` | 4 / 3 / 4 / 2 |
-| `c_body_slide` | 8 / 7 / 2 / 5 |
-| `playercharacter_footstep` | 10 / 10 / 4 / 10 |
-| `Class_foot_drag` | 1 / 2 / 0 / 3 |
-| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 |
-| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 |
-| `c_foley_utility` | 1 / 1 / 1 / 1 |
-| `c_board_slide` | **never** |
+| `Class_Flips` | 4 / 3 / 3 / 3 / 21 |
+| `cloth_trick` | 4 / 3 / 3 / 1 / 35 |
+| `c_cloth_falls` | 1 / 0 / 0 / 0 / 2 |
+| `Class_Treatment` | 1 / 1 / 1 / 1 / 1 (held from session start) |
+| `Class_Squeaks` | 4 / 2 / 0 / 0 / 42 |
+| `Class_Seams` | 20 / 20 / 8 / 20 / 16 |
+| `Class_rolling` | 2 / 2 / 2 / 2 / 3 |
+| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 / 26 |
+| `Class_wheels_skid` | 32 / 43 / 10 / 49 / 45 |
+| `Class_grind` | 4 / 3 / 4 / 2 / 6 |
+| `c_body_slide` | 8 / 7 / 2 / 5 / 9 |
+| `playercharacter_footstep` | 10 / 10 / 4 / 10 / 8 |
+| `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 |
+| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 |
+| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 |
+| `c_foley_utility` | 1 / 1 / 1 / 1 / 1 |
+| `c_board_slide` | 0 / 0 / 0 / 0 / **4** |
 | `hall_of_meat_slo_mo` | **never** |
 
 **What the windows show.** Marker names are the script's intents, and a window holds whatever the
@@ -941,9 +942,25 @@ game did until the next marker. So these are readings of timing, not proof of ca
 - Wipeouts are logged for varying player objects (`IsWipeoutRequested` covers every physical
   player), so a wipeout line does not by itself mean the local skater bailed.
 
-**Still uncovered:** `c_board_slide` and `hall_of_meat_slo_mo` never fired. Hall of Meat is a
-bail-replay mode, and a board slide needs a rail or ledge approached on purpose. Both need a spawn
-point the scripts can aim from.
+**`play1`, played by hand (2026-09-15).** The user took the pad after the demo path reached free
+skate. The session ran 166 s, which fills more than the logger's ten rotated pieces, so
+`probe/trace/keep_log_pieces.sh` hard-linked every piece as it appeared; all 14 are in
+`probe/harness/out/play1.pieces/`. It has no markers, so `sound_report.py play1.log --every 5` groups
+it in 5-second buckets.
+- **Board slides are covered:** 4 `c_board_slide` posts, with `board_scrapes.abk` voices opening in
+  the same buckets.
+- **Much denser everywhere else:**
+  - 21 flips with 35 trick cloth posts;
+  - 42 board squeaks, with `Brd_Squeaks` voices;
+  - 6 grinds opening 22 `GRINDS` voices;
+  - 9 body slides, 2 bail cloth posts, 5 foot drags;
+  - 47 `Sk8_Air_Flip_Tricks` voices.
+- **Without markers, a move is not tied to its post.** Powerslides, manuals and grabs have no object
+  of their own in the table. They can only appear as the payloads and updates of the objects above
+  (wheel skid, squeaks, rolling), and they need a marked session to be told apart.
+
+**Still uncovered:** `hall_of_meat_slo_mo`, zero occurrences in all five sessions. Hall of Meat is
+a separate bail-replay mode, so it probably never posts during free skate.
 
 ## Also established, in passing
 
