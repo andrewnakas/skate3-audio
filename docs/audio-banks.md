@@ -448,22 +448,22 @@ ranges, posts it, and on a stale slot resolves the entry and posts again:
 
 | object | constructor |
 |---|---|
-| `Class_foot_drag` | `sub_824AF498` / 1 |
-| `Class_wheels_skid` | `sub_824AF678` / 47 |
-| `Class_grind` | `sub_824AF8C8` / 12 |
-| `Class_Flips` | `sub_824AFAD8` / 3 |
-| `Class_Seams` | `sub_824AFDD0` / 56 |
-| `Class_Squeaks` | `sub_824AFF48` / 20 |
-| `Class_Treatment` | `sub_824B0080` / 1 |
-| `Rolling_Rattle_Class` | `sub_824B0248` / 27 |
-| `SenseOfSpeed_wind` | `sub_824B0388` / 26 |
-| `SenseOfSpeed_rattle` | `sub_824B0520` / 26 |
-| `c_board_slide` | `sub_824B0670` / 7 |
-| `c_body_slide` | `sub_824B7070` / 9 |
-| `cloth_trick` | `sub_824B71C0` / 5 |
-| `c_cloth_falls` | `sub_824B72D8` / 6 |
-| `playercharacter_footstep` | `sub_824B73E0` / 28 |
-| `Class_rolling` | `sub_824C4C18` / 2 |
+| `Class_foot_drag` | `sub_824AF498` |
+| `Class_wheels_skid` | `sub_824AF678` |
+| `Class_grind` | `sub_824AF8C8` |
+| `Class_Flips` | `sub_824AFAD8` |
+| `Class_Seams` | `sub_824AFDD0` |
+| `Class_Squeaks` | `sub_824AFF48` |
+| `Class_Treatment` | `sub_824B0080` |
+| `Rolling_Rattle_Class` | `sub_824B0248` |
+| `SenseOfSpeed_wind` | `sub_824B0388` |
+| `SenseOfSpeed_rattle` | `sub_824B0520` |
+| `c_board_slide` | `sub_824B0670` |
+| `c_body_slide` | `sub_824B7070` |
+| `cloth_trick` | `sub_824B71C0` |
+| `c_cloth_falls` | `sub_824B72D8` |
+| `playercharacter_footstep` | `sub_824B73E0` |
+| `Class_rolling` | `sub_824C4C18` |
 
 `Class_grind`'s, read by hand from `sub_824AF8C8`: the message is 72 bytes, `+0` receives the
 posted node, and the payload handed to listeners starts at `+4`.
@@ -903,23 +903,23 @@ every bank.
 
 | object | posts |
 |---|---|
-| `Class_Flips` | 4 / 3 / 3 / 3 / 21 |
-| `cloth_trick` | 4 / 3 / 3 / 1 / 35 |
-| `c_cloth_falls` | 1 / 0 / 0 / 0 / 2 |
-| `Class_Treatment` | 1 / 1 / 1 / 1 / 1 (held from session start) |
-| `Class_Squeaks` | 4 / 2 / 0 / 0 / 42 |
-| `Class_Seams` | 20 / 20 / 8 / 20 / 16 |
-| `Class_rolling` | 2 / 2 / 2 / 2 / 3 |
-| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 / 26 |
-| `Class_wheels_skid` | 32 / 43 / 10 / 49 / 45 |
-| `Class_grind` | 4 / 3 / 4 / 2 / 6 |
-| `c_body_slide` | 8 / 7 / 2 / 5 / 9 |
-| `playercharacter_footstep` | 10 / 10 / 4 / 10 / 8 |
-| `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 |
-| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 |
-| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 |
+| `Class_Flips` | 4 / 3 / 3 / 3 / 21 / 3 |
+| `cloth_trick` | 4 / 3 / 3 / 1 / 35 / 5 |
+| `c_cloth_falls` | 1 / 0 / 0 / 0 / 2 / 6 |
+| `Class_Treatment` | 1 / 1 / 1 / 1 / 1 / 1 (held from session start) |
+| `Class_Squeaks` | 4 / 2 / 0 / 0 / 42 / 20 |
+| `Class_Seams` | 20 / 20 / 8 / 20 / 16 / 56 |
+| `Class_rolling` | 2 / 2 / 2 / 2 / 3 / 2 |
+| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 / 26 / 27 |
+| `Class_wheels_skid` | 32 / 43 / 10 / 49 / 45 / 47 |
+| `Class_grind` | 4 / 3 / 4 / 2 / 6 / 12 |
+| `c_body_slide` | 8 / 7 / 2 / 5 / 9 / 9 |
+| `playercharacter_footstep` | 10 / 10 / 4 / 10 / 8 / 28 |
+| `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 / 1 |
+| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 / 26 |
+| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 / 26 |
 | `c_foley_utility` | 1 / 1 / 1 / 1 / 1 / 1 |
-| `c_board_slide` | 0 / 0 / 0 / 0 / **4** |
+| `c_board_slide` | 0 / 0 / 0 / 0 / 4 / 7 |
 | `hall_of_meat_slo_mo` | **never** |
 
 **What the windows show.** Marker names are the script's intents, and a window holds whatever the
