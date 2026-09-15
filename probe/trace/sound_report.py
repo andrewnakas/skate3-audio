@@ -3,6 +3,10 @@
 
     probe/trace/sound_report.py LOG [AUDIOFILES.BIG]
 
+The game's logger rotates at 5 MB into LABEL.1.log, LABEL.2.log, ... (higher is older) and keeps ten,
+so the pieces are read oldest first and then LOG itself. A session that fills more than ten loses
+its start; the report says so when the oldest piece does not begin at the session's first line.
+
 For each marker window (from one `input script: t=... mark NAME` line to the next) it prints:
 - the posts to each player sound object (`skate3-audio-msg`);
 - the re-deliveries per object (`skate3-audio-update`);
@@ -36,8 +40,29 @@ def seconds(line):
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
 
 
+def pieces(log):
+    """The rotated pieces of `log`, oldest first, then `log`."""
+    stem = log.name[:-len(".log")] if log.name.endswith(".log") else log.name
+    rotated = []
+    for p in log.parent.glob(stem + ".*.log"):
+        middle = p.name[len(stem) + 1:-len(".log")]
+        if middle.isdigit():
+            rotated.append((int(middle), p))
+    return [p for _, p in sorted(rotated, reverse=True)] + [log]
+
+
+def lines_of(log):
+    for piece in pieces(log):
+        with piece.open(errors="replace") as f:
+            yield from f
+
+
 def main():
     log = Path(sys.argv[1])
+    parts = pieces(log)
+    print(f"reading {len(parts)} piece(s): {', '.join(p.name for p in parts)}")
+    if len(parts) >= 11:
+        print("   WARNING: ten rotated pieces - the logger keeps ten, so the session's start may be lost")
     archive = sys.argv[2] if len(sys.argv) > 2 else "/home/nakas/Documents/skate3/Skate3Recomp-Linux/game/data/audio/audiofiles.big"
     windows = [("(before the first marker)", None)]
     posts = collections.defaultdict(collections.Counter)
@@ -45,7 +70,7 @@ def main():
     opens = collections.defaultdict(collections.Counter)
     wipeouts = collections.defaultdict(list)
     pairs = set()
-    for line in log.open(errors="replace"):
+    for line in lines_of(log):
         t = seconds(line)
         if "input script: t=" in line and (" mark " in line or " capture " in line):
             m = re.search(r"t=(\d+) ms (?:mark|capture) (\S+)", line)
