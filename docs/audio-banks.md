@@ -879,6 +879,72 @@ open enqueues:
 
 The trace does not record the commands, so only the module list is checked against the game.
 
+## Trick and landing traces, 2026-09-15
+
+Four more played sessions, recorded with the message probe to cover the player's trick, landing and
+board sounds. They ran the recomp with `SHADOW=false`, and the probe caps were raised through the new
+`skate3_audio_probe_opens_count` and `skate3_audio_probe_updates_count` cvars. The logs are in
+`probe/harness/out/` (124 MB, untracked). The game's logger rotates them at 5 MB into `LABEL.N.log`
+and keeps ten pieces. `probe/trace/sound_report.py LABEL.log` reads the pieces in order and groups
+every post, re-delivery and voice open under the script marker it followed. It attributes each open
+to its bank by the EAAC header word at any slot, because the descriptor index is not the slot in
+every bank.
+
+| label | script | length | markers | wipeouts logged |
+|---|---|---|---|---|
+| `tour1` | `sound_tour_v1.txt` (new) | 92 s | 36 | 3 |
+| `flips2` | `late_flip_v5.txt` | 22 s | 26 | 1 |
+| `ollies2` | `ollie_check_v4.txt` | 18 s | 26 | 1 |
+| `bails2` | `bail_attribution_v3.txt` | 50 s | 20 | 2 |
+
+**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2`):
+
+| object | posts |
+|---|---|
+| `Class_Flips` | 4 / 3 / 3 / 3 |
+| `cloth_trick` | 4 / 3 / 3 / 1 |
+| `c_cloth_falls` | 1 / 0 / 0 / 0 |
+| `Class_Treatment` | 1 / 1 / 1 / 1 (held from session start) |
+| `Class_Squeaks` | 4 / 2 / 0 / 0 |
+| `Class_Seams` | 20 / 20 / 8 / 20 |
+| `Class_rolling` | 2 / 2 / 2 / 2 |
+| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 |
+| `Class_wheels_skid` | 32 / 43 / 10 / 49 |
+| `Class_grind` | 4 / 3 / 4 / 2 |
+| `c_body_slide` | 8 / 7 / 2 / 5 |
+| `playercharacter_footstep` | 10 / 10 / 4 / 10 |
+| `Class_foot_drag` | 1 / 2 / 0 / 3 |
+| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 |
+| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 |
+| `c_foley_utility` | 1 / 1 / 1 / 1 |
+| `c_board_slide` | **never** |
+| `hall_of_meat_slo_mo` | **never** |
+
+**What the windows show.** Marker names are the script's intents, and a window holds whatever the
+game did until the next marker. So these are readings of timing, not proof of cause.
+- **Every ollie or flip that popped** posted `Class_Flips`, `cloth_trick` and a `Class_wheels_skid`
+  in its window, and opened one `Foley_Cloth` voice, one `Sk8_Air_Flip_Tricks` voice and one
+  `Treatments` voice. There is also one voice whose header word both `Treatments` and `Brd_Squeaks`
+  hold. This held for 9 of 9 pops across the four sessions (ollies, the kickflip, late flips).
+  `Class_Treatment` is posted once at session start and held, so its landing voices come from
+  re-deliveries, not new posts.
+- **Grinds came by chance** in all four sessions. There are 13 `Class_grind` posts, with
+  `GRINDS.abk` opens beside them; the scripts do not aim at a ledge.
+- **Body slides** (`c_body_slide`, `Bodyslide.abk`) posted in 22 windows, often near a wipeout.
+  **Bail cloth** (`c_cloth_falls`) posted once, in `tour1`, shortly after the kickflip's logged
+  wipeout.
+- **Stepping back on** the board (`Y`) posted `Class_Flips` and `Class_foot_drag` together, and opened
+  `FOOT_DRAG.abk` voices.
+- **No distinct post** appeared in the windows for the heelflip, the pop shuv, manuals, powerslides,
+  grabs or either brake. Those inputs probably did not do what their names ask. That is unmeasured,
+  and the controls table in `docs/input-harness.md` still lists only push, ollie, `Back` and `Y`.
+- Wipeouts are logged for varying player objects (`IsWipeoutRequested` covers every physical
+  player), so a wipeout line does not by itself mean the local skater bailed.
+
+**Still uncovered:** `c_board_slide` and `hall_of_meat_slo_mo` never fired. Hall of Meat is a
+bail-replay mode, and a board slide needs a rail or ledge approached on purpose. Both need a spawn
+point the scripts can aim from.
+
 ## Also established, in passing
 
 **The `.grain` prediction in `docs/grain-banks.md` is not supported in its strict form.**
