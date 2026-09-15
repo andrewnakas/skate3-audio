@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Group a played session's audio probe lines by the input script's markers.
 
-    probe/trace/sound_report.py LOG [AUDIOFILES.BIG]
+    probe/trace/sound_report.py LOG [AUDIOFILES.BIG] [--every SECONDS]
+
+--every groups by elapsed time instead of by marker, for a session played by hand (no script).
+If a LABEL.pieces/ directory exists (hard links of every rotated piece, kept while the game ran),
+its files are read in name order instead of the logger's own pieces.
 
 The game's logger rotates at 5 MB into LABEL.1.log, LABEL.2.log, ... (higher is older) and keeps ten,
 so the pieces are read oldest first and then LOG itself. A session that fills more than ten loses
@@ -43,6 +47,9 @@ def seconds(line):
 def pieces(log):
     """The rotated pieces of `log`, oldest first, then `log`."""
     stem = log.name[:-len(".log")] if log.name.endswith(".log") else log.name
+    kept = log.parent / (stem + ".pieces")
+    if kept.is_dir() and any(kept.glob("*.log")):
+        return sorted(kept.glob("*.log"))
     rotated = []
     for p in log.parent.glob(stem + ".*.log"):
         middle = p.name[len(stem) + 1:-len(".log")]
@@ -58,20 +65,35 @@ def lines_of(log):
 
 
 def main():
-    log = Path(sys.argv[1])
+    args = sys.argv[1:]
+    every = None
+    if "--every" in args:
+        i = args.index("--every")
+        every = float(args[i + 1])
+        del args[i:i + 2]
+    log = Path(args[0])
     parts = pieces(log)
     print(f"reading {len(parts)} piece(s): {', '.join(p.name for p in parts)}")
     if len(parts) >= 11:
         print("   WARNING: ten rotated pieces - the logger keeps ten, so the session's start may be lost")
-    archive = sys.argv[2] if len(sys.argv) > 2 else "/home/nakas/Documents/skate3/Skate3Recomp-Linux/game/data/audio/audiofiles.big"
+    archive = args[1] if len(args) > 1 else "/home/nakas/Documents/skate3/Skate3Recomp-Linux/game/data/audio/audiofiles.big"
     windows = [("(before the first marker)", None)]
     posts = collections.defaultdict(collections.Counter)
     updates = collections.defaultdict(collections.Counter)
     opens = collections.defaultdict(collections.Counter)
     wipeouts = collections.defaultdict(list)
     pairs = set()
+    start = None
+    bucket = -1
     for line in lines_of(log):
         t = seconds(line)
+        if every is not None and t is not None:
+            start = t if start is None else start
+            # Threads log slightly out of order, so a bucket only ever moves forward.
+            b = int((t - start) // every)
+            if b > bucket:
+                bucket = b
+                windows.append(("t=%d:%02d" % divmod(int(b * every), 60), t))
         if "input script: t=" in line and (" mark " in line or " capture " in line):
             m = re.search(r"t=(\d+) ms (?:mark|capture) (\S+)", line)
             if m and " mark " in line:
