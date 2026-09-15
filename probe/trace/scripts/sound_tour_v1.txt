@@ -1,0 +1,210 @@
+# Skate 3 scripted session: a tour of the player's trick, landing and board sounds.
+#
+# Purpose: record the audio message probe (skate3-audio-msg / -update / -open / -graph) while
+# the skater does as many different sound-making moves as the pad can ask for. The input names
+# below are INTENTS: which moves really happened is read from the probe's posts (which sound
+# object fired, with what payload) against the @mark lines, never assumed from the step.
+#
+# One step per line: <duration_ms> [buttons] [lx= ly= rx= ry= lt= rt=]
+#   buttons: a b x y lb rb l3 r3 start back up down left right
+#   sticks -100..100 with up and right positive; triggers 0..100
+# @mark NAME logs a marker. @capture NAME logs one and saves a frame.
+#
+# Controls, from docs/input-harness.md and the earlier scripts: A pushes; right stick down then
+# up is an ollie; a sideways-diagonal flick after the pull is a flip; Y steps off the board.
+# Manuals, powerslides, grabs, shuvs and foot brakes are unmeasured guesses from public control
+# lists, tried here so the trace can say which of them the game took.
+
+@capture tour_00_start
+1500
+
+@mark push_ollies
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+@mark ollie_1
+250 ry=-100
+150 ry=100
+2200
+@mark ollie_2
+250 ry=-100
+150 ry=100
+2200
+
+@mark push_kickflip
+150 a
+450
+150 a
+450
+150 a
+900
+@mark kickflip
+250 ry=-100
+150 rx=-70 ry=100
+2400
+
+@mark push_heelflip
+150 a
+450
+150 a
+900
+@mark heelflip
+250 ry=-100
+150 rx=70 ry=100
+2400
+
+@mark push_shuv
+150 a
+450
+150 a
+900
+@mark pop_shuv
+250 ry=-100
+150 rx=-100
+2400
+
+@mark push_manual
+150 a
+450
+150 a
+450
+150 a
+900
+@mark manual
+1800 ry=40
+800
+@mark nose_manual
+1800 ry=-40
+1000
+
+@mark push_powerslide
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+@mark powerslide_right
+900 rx=100
+900
+@mark powerslide_left
+900 rx=-100
+1200
+
+@mark push_grab
+150 a
+450
+150 a
+450
+150 a
+900
+@mark grab_left
+250 ry=-100
+150 ry=100
+250
+700 lt=100
+1500
+@mark grab_right
+250 ry=-100
+150 ry=100
+250
+700 rt=100
+1800
+
+@mark push_brake
+150 a
+450
+150 a
+450
+150 a
+900
+@mark brake_left_stick_back
+1800 ly=-100
+800
+@mark push_brake_b
+150 a
+450
+150 a
+900
+@mark brake_hold_b
+1800 b
+1200
+
+@mark push_late_flips
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+@mark late_flip_900
+250 ry=-100
+150 ry=100
+900
+150 rx=-100 ry=100
+3000
+@mark push_late_flip_2
+150 a
+450
+150 a
+450
+150 a
+900
+@mark late_flip_1100
+250 ry=-100
+150 ry=100
+1100
+150 rx=100 ry=100
+3500
+
+@mark push_grind_hunt
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+450
+150 a
+900
+@mark grind_hunt_ollie_1
+250 ry=-100
+150 ry=100
+1500
+@mark grind_hunt_ollie_2
+250 ry=-100
+150 ry=100
+1500
+@mark grind_hunt_ollie_3
+250 ry=-100
+150 ry=100
+2000
+
+@mark step_off
+300 y
+1500
+@mark walk
+2500 ly=100
+1500 lx=100
+@mark step_on
+300 y
+2000
+
+@mark push_final
+150 a
+450
+150 a
+450
+150 a
+2500
+@capture tour_99_end
