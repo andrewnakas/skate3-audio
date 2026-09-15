@@ -955,7 +955,10 @@ it in 5-second buckets.
   - 6 grinds opening 22 `GRINDS` voices;
   - 9 body slides, 2 bail cloth posts, 5 foot drags;
   - 47 `Sk8_Air_Flip_Tricks` voices.
-- **Without markers, a move is not tied to its post.** Powerslides, manuals and grabs have no object
+- **Powerslides are the squeaks**, per the user, who played them and heard them. That matches
+  `Class_Squeaks` jumping from 0-4 posts in the scripted sessions (whose powerslide inputs did
+  nothing) to 42 in `play1`.
+- **Without markers, a move is not tied to its post.** Manuals and grabs have no object
   of their own in the table. They can only appear as the payloads and updates of the objects above
   (wheel skid, squeaks, rolling), and they need a marked session to be told apart.
 
