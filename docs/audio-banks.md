@@ -898,29 +898,30 @@ every bank.
 | `bails2` | `bail_attribution_v3.txt` | 50 s | 20 | 2 |
 | `play1` | **played by hand** (the user, aiming for board slides, manuals, powerslides, grabs, flips and bails) | 166 s | none | not logged |
 | `play2` | **played by hand** (the user: big falls for Hall of Meat, and powerslides) | 220 s | none | not logged |
+| `play4` | **played by hand, signed in** (the user: free skate, then Hall of Meat mode) | 13 min | none | not logged |
 
-**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2` / `play1` / `play2`):
+**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2` / `play1` / `play2` / `play4`):
 
 | object | posts |
 |---|---|
-| `Class_Flips` | 4 / 3 / 3 / 3 / 21 / 3 |
-| `cloth_trick` | 4 / 3 / 3 / 1 / 35 / 5 |
-| `c_cloth_falls` | 1 / 0 / 0 / 0 / 2 / 6 |
-| `Class_Treatment` | 1 / 1 / 1 / 1 / 1 / 1 (held from session start) |
-| `Class_Squeaks` | 4 / 2 / 0 / 0 / 42 / 20 |
-| `Class_Seams` | 20 / 20 / 8 / 20 / 16 / 56 |
-| `Class_rolling` | 2 / 2 / 2 / 2 / 3 / 2 |
-| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 / 26 / 27 |
-| `Class_wheels_skid` | 32 / 43 / 10 / 49 / 45 / 47 |
-| `Class_grind` | 4 / 3 / 4 / 2 / 6 / 12 |
-| `c_body_slide` | 8 / 7 / 2 / 5 / 9 / 9 |
-| `playercharacter_footstep` | 10 / 10 / 4 / 10 / 8 / 28 |
-| `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 / 1 |
-| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 / 26 |
-| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 / 26 |
-| `c_foley_utility` | 1 / 1 / 1 / 1 / 1 / 1 |
-| `c_board_slide` | 0 / 0 / 0 / 0 / 4 / 7 |
-| `hall_of_meat_slo_mo` | **never** |
+| `Class_Flips` | 4 / 3 / 3 / 3 / 21 / 3 / 47 |
+| `cloth_trick` | 4 / 3 / 3 / 1 / 35 / 5 / 79 |
+| `c_cloth_falls` | 1 / 0 / 0 / 0 / 2 / 6 / 11 |
+| `Class_Treatment` | 1 / 1 / 1 / 1 / 1 / 1 / 1 (held from session start) |
+| `Class_Squeaks` | 4 / 2 / 0 / 0 / 42 / 20 / 32 |
+| `Class_Seams` | 20 / 20 / 8 / 20 / 16 / 56 / 28 |
+| `Class_rolling` | 2 / 2 / 2 / 2 / 3 / 2 / 2 |
+| `Rolling_Rattle_Class` | 12 / 8 / 4 / 11 / 26 / 27 / 71 |
+| `Class_wheels_skid` | 32 / 43 / 10 / 49 / 45 / 47 / 99 |
+| `Class_grind` | 4 / 3 / 4 / 2 / 6 / 12 / 21 |
+| `c_body_slide` | 8 / 7 / 2 / 5 / 9 / 9 / 27 |
+| `playercharacter_footstep` | 10 / 10 / 4 / 10 / 8 / 28 / 14 |
+| `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 / 1 / 20 |
+| `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 / 26 / 154 |
+| `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 / 26 / 61 |
+| `c_foley_utility` | 1 / 1 / 1 / 1 / 1 / 1 / 1 |
+| `c_board_slide` | 0 / 0 / 0 / 0 / 4 / 7 / 12 |
+| `hall_of_meat_slo_mo` | 0 / 0 / 0 / 0 / 0 / 0 / **11** |
 
 **What the windows show.** Marker names are the script's intents, and a window holds whatever the
 game did until the next marker. So these are readings of timing, not proof of cause.
@@ -971,21 +972,64 @@ powerslides. The session ran 220 s, and all 16 pieces were kept. It added:
 
 The game ended with status 137 (killed, not by this harness).
 
-**Still uncovered: `hall_of_meat_slo_mo`, zero in all six sessions**, including the big falls. The
-probe does watch its slot (all 72 objects). The poster explains it. `sub_824DD408`, the same
-function that creates the held `Class_Treatment` message, creates the Hall of Meat message only on
-the path below. The message is kept at `[this+40]` and released on the other path.
-- **The condition:** post when `(flag && timer < 1.0) || mode != 7`, and only if no message is held
-  yet.
-  - `mode` is `[[0x830CFDC4] + 1060]`.
-  - `flag` is bit `0x04000000` of `[state + 96]` with `sub_8279E180()` returning 0, where `state` is
-    `[0x83083C38] + 0x2F070`.
-  - `timer` is the single at `state + 0`.
-- **The message:** `sub_824AF368` gets `this->vtable[60](this, 3)` and `mode - 7`.
+**`play4`: Hall of Meat, recorded (2026-09-15).** The user played free skate and then entered Hall of
+Meat mode, for 13 minutes in all.
+- **Booting signed in was needed.** A signed-out boot hung at "scanning for DLC" on the way into the
+  mode, so `run_session.sh` gained `SIGNED_IN=true`, and the session also passed
+  `--skate3_auto_install_dlc=false`.
+- **The log filled 77 rotated pieces (383 MB)**, all kept by `keep_log_pieces.sh`.
+- **`hall_of_meat_slo_mo` posted 11 times, between 8:30 and 10:00**, with 2,364 re-deliveries.
+  - Its voices come from `hom_slo_mo.abk`: 66 opens.
+  - Every 30-second window with those posts also had bail cloth, body slides and board slides, as a
+    Hall of Meat bail would.
+  - `fade_to_white` (object 68, the replay's white-out, not a player sound) posted 8 times alongside.
+- This fits the gate below: free skate never created the message, and Hall of Meat mode did.
+- Every other player object posted too, many times over (the table above).
 
-So free skate looks like mode 7, and a fall there does not start the Hall of Meat sound. It needs the
-game's Hall of Meat mode, or whatever sets that flag. That reading is static; nothing has confirmed
-the mode values at run time.
+**Every player sound object in the target list now has a real trace.**
+
+**The Hall of Meat gate, which the Rust port must reproduce.** `sub_824DD408` is the same function
+that creates the held `Class_Treatment` message. It creates the Hall of Meat message only when
+`(flag && timer < 1.0) || mode != 7`, and only if none is held at `[this+40]`.
+- `mode` is `[[0x830CFDC4] + 1060]`.
+- `flag` is bit `0x04000000` of `[state + 96]` with `sub_8279E180()` returning 0, where `state` is
+  `[0x83083C38] + 0x2F070`; `timer` is the single at `state + 0`.
+- It passes `this->vtable[60](this, 3)` and `mode - 7` to `sub_824AF368`, and releases the message on
+  the other path.
+
+The mode values are a static reading; the trace does not log the mode word.
+
+**Board and ground sounds.** The objects above cover:
+- the board on the ground: `Class_rolling` (surface roll), `Class_Seams` (wheels over seams and
+  cracks), `Rolling_Rattle_Class` (trucks), `Class_wheels_skid`, `Class_Squeaks` (powerslides),
+  `Class_grind`, `c_board_slide`;
+- landings and impacts: `Class_Treatment`;
+- the skater's body and clothes: `c_body_slide`, `cloth_trick`, `c_cloth_falls`,
+  `playercharacter_footstep`, `Class_foot_drag`;
+- speed: `SenseOfSpeed_*`.
+
+Three things around the board are not yet tied to the player:
+- **The loose board after a bail.** `c_dynamic_rolling_objects` and `c_dynamic_sliding_objects` posted
+  a few times in `play1` and `play4`. They are the world's physics-prop classes, and nothing yet shows
+  whether a thrown board uses them.
+- **`wheels.big`** (two 14.8 s wheel-spin loops). It is loaded by an `SFXObj_Wheels` object whose
+  constructor `sub_824CD6F8` formats `data\audio/wheels.big|%s` four times and opens streams through
+  `sub_828DC158` and `sub_8298ED88`. It does not go through a bank, so the voice-open probe never sees
+  it.
+- **`grains.big`** (14 surface grain files). The `SFXObj_Moving` code path (`sub_824E48D0`, and
+  `sub_824E7658` for `x_jet_rolling.grain`) builds `data\audio/` + name paths and opens them through
+  `sub_828DCCF8`. It is also outside the bank path.
+
+Neither archive's header words match any traced voice open, so both play through another route.
+Probing them needs hooks on `sub_828DC158` / `sub_828DCCF8`, or on the stream player they feed.
+
+**The traces are in git**, as compact extracts of the probe lines only:
+`probe/traces/sessions/LABEL.audio-trace.log.gz` (24 MB for all eight, README beside them). They were
+made from the full logs with:
+
+```sh
+cat PIECES... | grep -E "skate3-audio-(msg|update|open|graph):|input script: (t=|loaded|gameplay|complete)|wipeout log" | gzip -9
+```
 
 ## Also established, in passing
 
