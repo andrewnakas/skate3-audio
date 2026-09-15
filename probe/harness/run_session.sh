@@ -26,6 +26,9 @@ SHADOW=${SHADOW:-true}
 # NATIVE=true runs the verified native functions for real. Shadow wins when both are on.
 NATIVE=${NATIVE:-false}
 MOVIES=${PLAY_MOVIES:-true}
+# SIGNED_IN=true keeps the real signed-in profile. The default signed-out boot is enough for free
+# skate, but a game mode's DLC scan waits forever without a profile (seen entering Hall of Meat).
+SIGNED_IN=${SIGNED_IN:-false}
 # AUDIO_VECTORS_PATH records shadow comparisons as replayable vectors: the entry registers, the
 # watched windows, and the bytes the ORIGINAL body produced. SHADOW_DIVERGED_ONLY keeps only the
 # ones that diverged, which is what a port fix needs.
@@ -101,7 +104,7 @@ args=(
   --log_file="$LOG"
   --fullscreen=false
   --skate3_demo_path=true
-  --skate3_demo_path_signed_in=false
+  --skate3_demo_path_signed_in="$SIGNED_IN"
   --skate3_demo_path_play_movies="$MOVIES"
   --skate3_demo_path_input_settle_ms=2500
   --skate3_demo_path_input_delay_ms=600
