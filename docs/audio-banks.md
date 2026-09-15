@@ -448,22 +448,22 @@ ranges, posts it, and on a stale slot resolves the entry and posts again:
 
 | object | constructor |
 |---|---|
-| `Class_foot_drag` | `sub_824AF498` |
-| `Class_wheels_skid` | `sub_824AF678` |
-| `Class_grind` | `sub_824AF8C8` |
-| `Class_Flips` | `sub_824AFAD8` |
-| `Class_Seams` | `sub_824AFDD0` |
-| `Class_Squeaks` | `sub_824AFF48` |
-| `Class_Treatment` | `sub_824B0080` |
-| `Rolling_Rattle_Class` | `sub_824B0248` |
-| `SenseOfSpeed_wind` | `sub_824B0388` |
-| `SenseOfSpeed_rattle` | `sub_824B0520` |
-| `c_board_slide` | `sub_824B0670` |
-| `c_body_slide` | `sub_824B7070` |
-| `cloth_trick` | `sub_824B71C0` |
-| `c_cloth_falls` | `sub_824B72D8` |
-| `playercharacter_footstep` | `sub_824B73E0` |
-| `Class_rolling` | `sub_824C4C18` |
+| `Class_foot_drag` | `sub_824AF498` / 1 |
+| `Class_wheels_skid` | `sub_824AF678` / 47 |
+| `Class_grind` | `sub_824AF8C8` / 12 |
+| `Class_Flips` | `sub_824AFAD8` / 3 |
+| `Class_Seams` | `sub_824AFDD0` / 56 |
+| `Class_Squeaks` | `sub_824AFF48` / 20 |
+| `Class_Treatment` | `sub_824B0080` / 1 |
+| `Rolling_Rattle_Class` | `sub_824B0248` / 27 |
+| `SenseOfSpeed_wind` | `sub_824B0388` / 26 |
+| `SenseOfSpeed_rattle` | `sub_824B0520` / 26 |
+| `c_board_slide` | `sub_824B0670` / 7 |
+| `c_body_slide` | `sub_824B7070` / 9 |
+| `cloth_trick` | `sub_824B71C0` / 5 |
+| `c_cloth_falls` | `sub_824B72D8` / 6 |
+| `playercharacter_footstep` | `sub_824B73E0` / 28 |
+| `Class_rolling` | `sub_824C4C18` / 2 |
 
 `Class_grind`'s, read by hand from `sub_824AF8C8`: the message is 72 bytes, `+0` receives the
 posted node, and the payload handed to listeners starts at `+4`.
@@ -897,8 +897,9 @@ every bank.
 | `ollies2` | `ollie_check_v4.txt` | 18 s | 26 | 1 |
 | `bails2` | `bail_attribution_v3.txt` | 50 s | 20 | 2 |
 | `play1` | **played by hand** (the user, aiming for board slides, manuals, powerslides, grabs, flips and bails) | 166 s | none | not logged |
+| `play2` | **played by hand** (the user: big falls for Hall of Meat, and powerslides) | 220 s | none | not logged |
 
-**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2` / `play1`):
+**Posts to player sound objects, per session** (`tour1` / `flips2` / `ollies2` / `bails2` / `play1` / `play2`):
 
 | object | posts |
 |---|---|
@@ -917,7 +918,7 @@ every bank.
 | `Class_foot_drag` | 1 / 2 / 0 / 3 / 5 |
 | `SenseOfSpeed_wind` | 19 / 19 / 4 / 12 / 48 |
 | `SenseOfSpeed_rattle` | 5 / 2 / 2 / 4 / 39 |
-| `c_foley_utility` | 1 / 1 / 1 / 1 / 1 |
+| `c_foley_utility` | 1 / 1 / 1 / 1 / 1 / 1 |
 | `c_board_slide` | 0 / 0 / 0 / 0 / **4** |
 | `hall_of_meat_slo_mo` | **never** |
 
@@ -962,8 +963,29 @@ it in 5-second buckets.
   of their own in the table. They can only appear as the payloads and updates of the objects above
   (wheel skid, squeaks, rolling), and they need a marked session to be told apart.
 
-**Still uncovered:** `hall_of_meat_slo_mo`, zero occurrences in all five sessions. Hall of Meat is
-a separate bail-replay mode, so it probably never posts during free skate.
+**`play2`, played by hand (2026-09-15).** The user took big falls to try for Hall of Meat, and played
+powerslides. The session ran 220 s, and all 16 pieces were kept. It added:
+- 12 grinds and 7 board slides;
+- 20 squeaks, which the user confirms are the powerslides;
+- 6 bail cloth posts from the falls.
+
+The game ended with status 137 (killed, not by this harness).
+
+**Still uncovered: `hall_of_meat_slo_mo`, zero in all six sessions**, including the big falls. The
+probe does watch its slot (all 72 objects). The poster explains it. `sub_824DD408`, the same
+function that creates the held `Class_Treatment` message, creates the Hall of Meat message only on
+the path below. The message is kept at `[this+40]` and released on the other path.
+- **The condition:** post when `(flag && timer < 1.0) || mode != 7`, and only if no message is held
+  yet.
+  - `mode` is `[[0x830CFDC4] + 1060]`.
+  - `flag` is bit `0x04000000` of `[state + 96]` with `sub_8279E180()` returning 0, where `state` is
+    `[0x83083C38] + 0x2F070`.
+  - `timer` is the single at `state + 0`.
+- **The message:** `sub_824AF368` gets `this->vtable[60](this, 3)` and `mode - 7`.
+
+So free skate looks like mode 7, and a fall there does not start the Hall of Meat sound. It needs the
+game's Hall of Meat mode, or whatever sets that flag. That reading is static; nothing has confirmed
+the mode values at run time.
 
 ## Also established, in passing
 
