@@ -6,8 +6,9 @@
 For each marker window (from one `input script: t=... mark NAME` line to the next) it prints:
 - the posts to each player sound object (`skate3-audio-msg`);
 - the re-deliveries per object (`skate3-audio-update`);
-- the voice opens per bank (`skate3-audio-open`, attributed through the bank's slot index and EAAC
-  word with rust/skate-audio-formats' `find_samples`), with the objects that bank exports;
+- the voice opens per bank (`skate3-audio-open`), attributed by the EAAC header's second word at any
+  slot with rust/skate-audio-formats' `find_samples` -- the descriptor index is not the slot in every
+  bank -- with the objects that bank exports. A word several banks share lists them all;
 - any wipeouts.
 
 It ends with which player objects the whole session posted and which it never did. The marker names
@@ -65,7 +66,7 @@ def main():
         elif "skate3-audio-open: " in line:
             m = re.search(r"eaac=\[([0-9A-F]{8}) ([0-9A-F]{8})\] byte=\d+ desc=\[(?:[0-9A-F]{8} ){4}([0-9A-F]{8})", line)
             if m:
-                key = "%x:%x" % ((int(m.group(3), 16) >> 8) - 1, int(m.group(2), 16))
+                key = "%x" % int(m.group(2), 16)
                 pairs.add(key)
                 opens[w][key] += 1
 
@@ -73,12 +74,15 @@ def main():
     bank_of = collections.defaultdict(list)
     exports = {}
     if pairs:
-        out = subprocess.run([str(FORMATS / "find_samples"), archive, *sorted(pairs)], capture_output=True, text=True).stdout
+        out = subprocess.run([str(FORMATS / "find_samples"), archive, *("*:" + k for k in sorted(pairs))],
+                             capture_output=True, text=True).stdout
         for line in out.splitlines():
             m = re.match(r"(\S+\.abk): \d+ of \d+ match \[([^\]]*)\]", line)
             if m:
-                for key in m.group(2).split():
-                    bank_of[key].append(m.group(1))
+                for hit in m.group(2).split():
+                    word = hit.split(":")[1].split("@")[0]
+                    if m.group(1) not in bank_of[word]:
+                        bank_of[word].append(m.group(1))
         out = subprocess.run([str(FORMATS / "list_exports"), archive], capture_output=True, text=True).stdout
         for line in out.splitlines():
             m = re.match(r"(\S+\.abk) \(\d+ samples\): (.*)", line)
