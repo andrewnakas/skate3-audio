@@ -3,6 +3,12 @@
 
     probe/trace/sound_report.py LOG [AUDIOFILES.BIG] [--every SECONDS]
 
+LOG may also be a gzipped trace extract (probe/traces/sessions/LABEL.audio-trace.log.gz).
+AUDIOFILES.BIG defaults to $SKATE_AUDIOFILES, then the Linux copy. The find_samples and list_exports
+binaries come from $SKATE_AUDIO_EXAMPLES (default rust/skate-audio-formats/target/release/examples),
+with `.exe` appended on Windows; build them with
+`cargo build --release -p skate-audio-formats --example find_samples --example list_exports`.
+
 --every groups by elapsed time instead of by marker, for a session played by hand (no script).
 If a LABEL.pieces/ directory exists (hard links of every rotated piece, kept while the game ran),
 its files are read in name order instead of the logger's own pieces.
@@ -23,13 +29,16 @@ It ends with which player objects the whole session posted and which it never di
 are the script's intents; the posts are what the game did.
 """
 import collections
+import gzip
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent.parent
-FORMATS = HERE / "rust/skate-audio-formats/target/release/examples"
+FORMATS = Path(os.environ.get("SKATE_AUDIO_EXAMPLES", HERE / "rust/skate-audio-formats/target/release/examples"))
+EXE = ".exe" if os.name == "nt" else ""
 PLAYER_OBJECTS = [
     "Class_Flips", "cloth_trick", "c_cloth_falls", "Class_Treatment", "Class_Squeaks", "Class_Seams",
     "Class_rolling", "Rolling_Rattle_Class", "Class_wheels_skid", "Class_grind", "c_board_slide",
@@ -46,6 +55,8 @@ def seconds(line):
 
 def pieces(log):
     """The rotated pieces of `log`, oldest first, then `log`."""
+    if log.name.endswith(".gz"):
+        return [log]
     stem = log.name[:-len(".log")] if log.name.endswith(".log") else log.name
     kept = log.parent / (stem + ".pieces")
     if kept.is_dir() and any(kept.glob("*.log")):
@@ -60,7 +71,8 @@ def pieces(log):
 
 def lines_of(log):
     for piece in pieces(log):
-        with piece.open(errors="replace") as f:
+        opener = gzip.open if piece.name.endswith(".gz") else open
+        with opener(piece, "rt", errors="replace") as f:
             yield from f
 
 
@@ -76,7 +88,8 @@ def main():
     print(f"reading {len(parts)} piece(s): {', '.join(p.name for p in parts)}")
     if len(parts) >= 11:
         print("   WARNING: ten rotated pieces - the logger keeps ten, so the session's start may be lost")
-    archive = args[1] if len(args) > 1 else "/home/nakas/Documents/skate3/Skate3Recomp-Linux/game/data/audio/audiofiles.big"
+    archive = args[1] if len(args) > 1 else os.environ.get(
+        "SKATE_AUDIOFILES", "/home/nakas/Documents/skate3/Skate3Recomp-Linux/game/data/audio/audiofiles.big")
     windows = [("(before the first marker)", None)]
     posts = collections.defaultdict(collections.Counter)
     updates = collections.defaultdict(collections.Counter)
@@ -121,7 +134,7 @@ def main():
     bank_of = collections.defaultdict(list)
     exports = {}
     if pairs:
-        out = subprocess.run([str(FORMATS / "find_samples"), archive, *("*:" + k for k in sorted(pairs))],
+        out = subprocess.run([str(FORMATS / ("find_samples" + EXE)), archive, *("*:" + k for k in sorted(pairs))],
                              capture_output=True, text=True).stdout
         for line in out.splitlines():
             m = re.match(r"(\S+\.abk): \d+ of \d+ match \[([^\]]*)\]", line)
@@ -130,7 +143,7 @@ def main():
                     word = hit.split(":")[1].split("@")[0]
                     if m.group(1) not in bank_of[word]:
                         bank_of[word].append(m.group(1))
-        out = subprocess.run([str(FORMATS / "list_exports"), archive], capture_output=True, text=True).stdout
+        out = subprocess.run([str(FORMATS / ("list_exports" + EXE)), archive], capture_output=True, text=True).stdout
         for line in out.splitlines():
             m = re.match(r"(\S+\.abk) \(\d+ samples\): (.*)", line)
             if m:
